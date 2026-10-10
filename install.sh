@@ -15,6 +15,7 @@ run() { if ((DRY)); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
 
 ((EUID != 0)) || die "run as your normal user, not root"
 [[ -f /etc/arch-release ]] || die "not Arch Linux"
+((DRY)) || sudo -v || die "your user needs sudo (archinstall: make the user a superuser)"
 
 # Piped from curl (no checkout next to us): fetch repo, re-run from it.
 SRC=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd)
@@ -43,7 +44,13 @@ say "packages"
 mapfile -t ALL < <(sed 's/#.*//; /^\s*$/d; s/\s//g' "$SRC/packages.txt")
 PAC=(); AUR=()
 for p in "${ALL[@]}"; do if [[ $p == aur:* ]]; then AUR+=("${p#aur:}"); else PAC+=("$p"); fi; done
+if pacman -Q pulseaudio &>/dev/null; then
+  say "  pulseaudio → pipewire"
+  mapfile -t PA < <(pacman -Qq | grep '^pulseaudio')
+  run sudo pacman -Rdd --noconfirm "${PA[@]}"
+fi
 run sudo pacman -Syu --needed --noconfirm "${PAC[@]}"
+run sudo systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service
 
 if ((${#AUR[@]})); then
   if ! command -v yay >/dev/null; then
@@ -77,4 +84,15 @@ else
   if ((DRY)); then printf '   would append to %s: %s\n' "$BP" "$LINE"; else printf '\n%s\n' "$LINE" >>"$BP"; fi
 fi
 
-say "done. Log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave."
+say "network (NetworkManager + systemd-resolved, active after reboot)"
+run sudo systemctl enable NetworkManager systemd-resolved
+WIFI=0
+for s in systemd-networkd iwd dhcpcd netctl; do
+  if systemctl is-enabled -q "$s" 2>/dev/null; then say "  disable $s"; run sudo systemctl disable "$s"; WIFI=1; fi
+done
+STUB=../run/systemd/resolve/stub-resolv.conf
+[[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf
+
+say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave."
+((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."
+exit 0

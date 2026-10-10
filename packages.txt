@@ -6,4 +6,8 @@ ghostty
 xdg-desktop-portal-hyprland
 hyprpolkitagent
 brightnessctl
+networkmanager
+pipewire
+pipewire-pulse
+wireplumber
 aur:brave-origin-bin
