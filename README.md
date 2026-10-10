@@ -43,7 +43,7 @@ From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, calle
 - USB stick (SanDisk 28.6G exFAT) `oracle-migration-2026-10-10/` = this layout minus tailscale tarballs. Move day: owner runs `server.sh backup <that folder>` on CachyOS (top-up + tailscale), then wipe.
 
 ## Shell mode + look + dashboard (built, VM-tested)
-tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle attach` (tmux session oracle: window 0 = `oracle home` dashboard bin/oracle-home, bash/awk, 2s refresh, keys g/c/u; window 1 shell); look = default/ghostty/config + default/tmux.conf (user files include them, copy-if-missing), app default font, 12h clock; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
+tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle attach` (tmux session oracle: window 0 = `oracle home` dashboard bin/oracle-home (bash/awk, 2s refresh, keys g/c/u): cpu+gpu sparklines (gpu_busy_percent), bars, server/tailscale/wifi, month calendar (right column), Claude Code heatmap 7d×24h from ~/.claude/projects jsonl (60s); window 1 shell); look = default/ghostty/config + default/tmux.conf (user files include them, copy-if-missing), app default font, 12h clock; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
 
 ## Later (one at a time, owner picks when)
 - Oracle ISO PLAN (owner OK'd 2026-10-11; build after dashboard):

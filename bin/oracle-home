@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Oracle home dashboard (tmux window 0). Keys: g gui, c new shell, u update.
 C=$'\e[38;2;0;229;255m' W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
-SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) HIST=() P_IDLE=0 P_TOT=0
+SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) HIST=() GHIST=() P_IDLE=0 P_TOT=0 HEAT='' HEAT_AT=-999
 
 EQ='==========' DASH='----------'
 bar() { # bar <0-100|""> <label> <suffix>
@@ -17,7 +17,19 @@ cpu() {
   local d=$((tot - P_TOT)) di=$((idle - P_IDLE)); P_TOT=$tot P_IDLE=$idle
   CPU=0; ((d > 0)) && CPU=$((100 * (d - di) / d))
 }
-spark() { local o='' v; for v in "${HIST[@]}"; do o+=${SPARK[$((v * 7 / 100))]}; done; printf %s "$o"; }
+spark() { local o='' v; for v; do o+=${SPARK[$((v * 7 / 100))]}; done; printf %s "$o"; }
+gpu() { local f; for f in /sys/class/drm/card*/device/gpu_busy_percent; do [[ -r $f ]] && { cat "$f"; return; }; done; }
+heat() { # Claude Code activity: last 7 days x 24 h, from local logs
+  local cells=' ·░▒▓█'
+  grep -rh --include='*.jsonl' '"type":"assistant"' ~/.claude/projects 2>/dev/null | grep -oE '"timestamp":"[^"]+' | cut -d'"' -f4 |
+    date -f - '+%F %-H' 2>/dev/null | LC_ALL=C.UTF-8 awk -v cells="$cells" -v D="$D" -v C="$C" -v W="$W" -v N="$N" '
+    BEGIN { for (i = 6; i >= 0; i--) { cmd = "LC_ALL=C date -d \"-" i " day\" \"+%F %a\""; cmd | getline l; close(cmd); split(l, a, " "); day[6-i] = a[1]; name[6-i] = a[2] } }
+    { n[$1, $2]++; if (n[$1, $2] > max) max = n[$1, $2] }
+    END { printf "  %sclaude%s    %s0     6     12    18   23%s\n", W, N, D, N
+      for (r = 0; r < 7; r++) { printf "  %s%-9s%s", D, name[r], C
+        for (h = 0; h < 24; h++) { v = n[day[r], h]; k = max ? int((v * 5 + max - 1) / max) : 0; printf "%s", substr(cells, k + 1, 1) }
+        printf "%s\n", N } }'
+}
 temp() { local f; for f in /sys/class/hwmon/hwmon*/name; do [[ -f $f ]] || continue; [[ $(<"$f") == k10temp || $(<"$f") == coretemp ]] && { echo $(($(<"${f%name}temp1_input") / 1000)); return; }; done; }
 svc() { # svc <label> <container>
   local st; st=$(docker inspect -f '{{.State.Status}}' "$2" 2>/dev/null)
@@ -25,7 +37,7 @@ svc() { # svc <label> <container>
 }
 
 draw() {
-  local c m t b bs v l ip wifi
+  local c g m t b bs v l ip wifi
   cpu; c=$CPU; HIST+=("$c"); ((${#HIST[@]} > 30)) && HIST=("${HIST[@]:1}")
   m=$(awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%d %.1f %.1f",100*(t-a)/t,(t-a)/1048576,t/1048576}' /proc/meminfo)
   t=$(temp); b=$(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2"/"$3}')
@@ -37,7 +49,10 @@ draw() {
   printf '\e[H\e[2J'
   printf "\n  ${C}ORACLE${D} · batcomputer${W}%*s${N}\n" 40 "$(LC_ALL=C date '+%I:%M %p  %a %d/%m')"
   printf "  ${D}%s${N}\n\n" "──────────────────────────────────────────────────────────"
-  printf "  ${W}%-9s${C}%-30s${W} %3d%%${D} %s${N}\n" cpu "$(spark)" "$c" "${t:+${t}°C}"
+  g=$(gpu); [[ $g =~ ^[0-9]+$ ]] && { GHIST+=("$g"); ((${#GHIST[@]} > 30)) && GHIST=("${GHIST[@]:1}"); }
+  ((SECONDS - HEAT_AT >= 60)) && { HEAT=$(heat); HEAT_AT=$SECONDS; }
+  printf "  ${W}%-9s${C}%-30s${W} %3d%%${D} %s${N}\n" cpu "$(spark "${HIST[@]}")" "$c" "${t:+${t}°C}"
+  [[ -n $g ]] && printf "  ${W}%-9s${C}%-30s${W} %3d%%${N}\n" gpu "$(spark "${GHIST[@]}")" "$g"
   bar "${m%% *}" ram "$(cut -d' ' -f2 <<<"$m")/$(cut -d' ' -f3 <<<"$m")G"
   bar "${b%% *}" disk "${b#* }"
   bar "$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)" battery "${bs,,}"
@@ -47,8 +62,12 @@ draw() {
   svc immich immich_server; svc dockge dockge; echo
   svc vpn-exit gluetun; printf "  ${W}%-10s${C}%s${N}\n" tailscale "${ip:-off}"
   printf "  ${W}%-10s${C}%s${N}\n\n" wifi "${wifi:-off}"
+  printf '%s\n\n' "$HEAT"
   printf "  ${D}%s${N}\n" "──────────────────────────────────────────────────────────"
   printf "  ${C}[g]${W}ui  ${C}[c]${W}ode  ${C}[u]${W}pdate${N}\n"
+  local r=4 d; d=$(date +%-d)
+  while IFS= read -r line; do printf '\e[%d;66H%s' $((r++)) "$line"; done < <(LC_ALL=C cal | sed -E "1s/.*/${C}&${N}/; 2s/.*/${D}&${W}/; 3,\$s/(^| )($d)( |$)/\1${C}\2${W}\3/")
+  printf '\e[%d;1H' 30
 }
 
 printf '\e[?25l'; trap 'printf "\\e[?25h"' EXIT
