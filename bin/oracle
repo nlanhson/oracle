@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | gui | shell | home | attach | session | help
+# oracle update | backup <dir> | restore <dir> | gui | shell | home | attach | session | help
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
@@ -23,6 +23,7 @@ case ${1:-help} in
     [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
     ;;
   backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
+  restore) shift; exec bash "$DIR/install.sh" --restore "${1:?usage: oracle restore <backup folder>}" ;;
   session) # tty1 login: shell (cage + ghostty + tmux) ⇄ gui (Hyprland). Same mode after exit = logout.
     mkdir -p "${MODE%/*}"; echo shell >"$MODE"
     while :; do
@@ -38,5 +39,6 @@ case ${1:-help} in
   *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
      echo "oracle shell         back to Shell (closes GUI apps). Super+M in GUI"
      echo "oracle update        get newest Oracle + system updates"
-     echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)" ;;
+     echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
+     echo "oracle restore <dir> bring the server back from a backup" ;;
 esac

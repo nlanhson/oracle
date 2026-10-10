@@ -46,6 +46,14 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `Super + B` | Brave browser (in the desktop) |
 | `oracle update` | Update Oracle and the whole system |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
+| `oracle restore <folder>` | Bring the home server back from a backup |
+
+## Manual
+
+- [Getting started](docs/manual/getting-started.md)
+- [Keys](docs/manual/keys.md)
+- [Updating](docs/manual/updating.md)
+- [Backup and home server](docs/manual/backup.md)
 
 ## Your settings
 
