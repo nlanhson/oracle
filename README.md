@@ -19,7 +19,7 @@ Never run installer for real on current machine (CachyOS). Test in `archlinux` d
 Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
 
 ## v1 (now)
-Hyprland + kitty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1.
+Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Base (fresh Arch may lack): networkmanager (nmtui), pipewire + pipewire-pulse + wireplumber (wpctl), noto-fonts, xdg-desktop-portal-hyprland, hyprpolkitagent.
 
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
