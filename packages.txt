@@ -1,0 +1,9 @@
+# one per line. aur: = AUR via yay
+git
+base-devel
+hyprland
+ghostty
+xdg-desktop-portal-hyprland
+hyprpolkitagent
+brightnessctl
+aur:brave-origin-bin

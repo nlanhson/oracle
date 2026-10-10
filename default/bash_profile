@@ -1,0 +1,4 @@
+# Oracle: tty1 login → Hyprland
+if [[ -z ${WAYLAND_DISPLAY:-} && ${XDG_VTNR:-} == 1 ]] && command -v start-hyprland >/dev/null; then
+  exec start-hyprland
+fi
