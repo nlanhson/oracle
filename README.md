@@ -19,10 +19,11 @@ Never run installer for real on current machine (CachyOS). Test in `archlinux` d
 Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
 
 ## v1 (now)
-Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Base (fresh Arch may lack): networkmanager (nmtui), pipewire + pipewire-pulse + wireplumber (wpctl), noto-fonts, xdg-desktop-portal-hyprland, hyprpolkitagent.
+Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Base (fresh Arch may lack): networkmanager (nmtui), pipewire + pipewire-pulse + wireplumber (wpctl), noto-fonts, xdg-desktop-portal-hyprland, hyprpolkitagent.
 
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
+- Dashboard (Shell home): ascii.rest UI+Data sections style (meters, sparklines, uptime bar, boxes, dividers). Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi + net sparkline, clock. Bottom: bracket links `[code] [files] [server] [gui]`.
 - Look: near-black bg, grey/white text, electric cyan accent, muted dark red warn. IBM Plex Mono. ascii.rest style, bracket links `[gui]`.
 - Vietnamese: fcitx5 + fcitx5-bamboo, GUI only. Brave flags in `~/.config/brave-origin-flags.conf`: `--ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3`.
 - Server, moved unchanged: github.com/nlanhson/homeserver. Docker + Dockge (`~/docker/<app>`, `~/dockge`), Immich :2283 (>=3.2.2), Dockge :5001, vpn stack. Tailscale: restore state to keep 100.108.66.46. Net: NetworkManager + systemd-resolved, `/etc/resolv.conf` → `../run/systemd/resolve/stub-resolv.conf` (MagicDNS). logind ignore lid + IdleAction. Screen off on lid (cage: needs watcher). Docker ports bypass ufw.
