@@ -1,176 +1,130 @@
 # Oracle
 
-> A terminal-first, keyboard-driven Arch Linux setup, inspired by the Batcomputer. One repo, one script, one fresh Arch install turned into a personal master machine.
+> Context file for AI coding agents (Claude Code). Read this fully before writing any code.
 
-**Status:** Early planning / design. No install script exists yet. Sections marked **[DECIDED]** are settled; **[OPEN]** are not.
+## TL;DR
 
----
+Oracle is my own Arch Linux respin (similar in spirit to Omakub / Marchy) with an all-text home screen called the **Oracle TUI shell**. Everything lives in this repo: configs, dotfiles, and an `install.sh` that turns a fresh Arch install into Oracle. Goal: as light and fast as pure Arch, terminal-first, keyboard-driven.
 
-## 1. What Oracle is (and is not)
+Name is **"Oracle"**, never "Oracle OS". It's named after the information-hub character in Batman, and the whole machine is my own "Batcomputer".
 
-Oracle is an **opinionated setup layer on top of vanilla Arch Linux**: a dotfiles repo plus an `install.sh` that turns a blank base Arch install into a fully configured system.
+## About the owner (how to work with me)
 
-- It is **not** a new distro in the strict sense. It has no repos, no custom kernel, no custom ISO, and no separate maintainers. It uses stock Arch packages and the AUR.
-- It **is** a "respin / setup script" in the same family as [Omarchy](https://github.com/basecamp/omarchy), [Omakub](https://omakub.org), and, loosely, LARBS. Many such projects call themselves "distros" informally. Calling Oracle a distro is fine for personal use; it is a naming choice, not a technical claim.
-- It does **not** need to be published as an official distro.
+- I am a UI/UX designer. I have **no coding or engineering background**. I am comfortable with Arch Linux basics.
+- Keep answers **short, TL;DR first, no jargon**. Explain simply. Elaborate only when I ask.
+- Show only changed code. Don't reprint unchanged files.
+- **"Done" requires evidence** (command output, test result), not assumption.
+- Prefer production-grade, maintainable solutions over quick hacks, unless I say "just prototype".
+- **Never decide anything listed under "Not settled" yet. Ask me first**, with a short recommendation.
 
-**Name [DECIDED]:** `Oracle` (not "Oracle OS"). Reasons: cleaner, reads as an identity rather than a spec sheet, and avoids sounding like a product competing with Oracle Corporation. The name comes from the Batman lore character Oracle, the information hub who runs everything from a keyboard.
+## Core principles
 
-**Acronym [OPEN]:** Not chosen yet. Candidates:
-1. **O**pinionated **R**aw **A**rch **C**ommand-line **L**ayer **E**nvironment
-2. **O**perator-**R**un **A**rch **C**ommand-line **L**ab **E**nvironment
-3. **O**ne-repo **R**eproducible **A**rch **C**onfig **L**oader **E**verywhere
+1. **Lightweight and fast like pure Arch.** If Oracle ends up as heavy as Ubuntu, Fedora or Mint, the project has failed. Every package and background service must justify itself.
+2. Minimal, terminal-first, keyboard-driven.
+3. No GNOME, no KDE, no heavy theming.
+4. Everything reproducible from this repo on a fresh Arch install.
+5. Both **bash and zsh** available.
 
----
+## Architecture
 
-## 2. Vision and design principles [DECIDED]
+### Oracle TUI shell (the home screen/launcher)
 
-**Inspiration:** the Batcomputer. A "master machine" that feels powerful, alive, and no-nonsense. All text, all data.
+Not a desktop environment and not a window manager. A pure all-text home screen.
 
-**Core principles**
+- Look reference: **ascii.rest**. Dark, monospace, bracket-style links like `[github]`, a search line, plain text. Its animated ASCII art is not needed now (maybe later).
+- **Text launcher** for everything on the machine: a browsable, searchable list (like double-tab completion).
+  - Text apps open in place.
+  - GUI apps (e.g. Brave) open through a proper GUI via Hyprland.
+- **File manager stays in the text UI.** GUI file manager only when I explicitly ask.
+- File navigation feels like plain text: arrow keys, bracket-style selection indicators.
 
-1. **Terminal-first, GUI-optional.** The default experience is a mostly blank screen with plain text. The user does not rely on a GUI.
-2. **Keyboard-driven.** Everything navigable with arrow keys / keyboard. For example, a file manager is pure text: a list of entries, arrow keys to move, and the selected entry marked with square brackets, like `[ selected-item ]`. This is a TUI look and feel, not "a terminal window inside a desktop."
-3. **Minimal and lightweight.** Few packages, low resource use, fast boot.
-4. **Little theming.** A cohesive but restrained look. No heavy ricing, no elaborate theming system.
-5. **Two modes:**
-   - **Primary mode:** terminal-first text environment (described above).
-   - **Secondary mode:** **Hyprland** as a fallback GUI for when a task is easier with a graphical interface (browsers, design tools, anything awkward in a terminal).
-6. **Reproducible.** Everything lives in the repo. A fresh machine should reach "my system" with a handful of commands.
+### Sessions / workspaces
 
-**Explicitly rejected:** GNOME and KDE (too heavy, too GUI-centric).
+- **Workspace 1:** text/ASCII dashboard (btop/htop style).
+- **Workspace 2:** Hyprland GUI session for apps like Brave.
 
----
+### Session approach (exploring, not final)
 
-## 3. Installation flow (target experience) [DECIDED at a high level]
+- Exploring **cage** (single-app fullscreen Wayland compositor) running a fullscreen terminal with **tmux** inside as the home base.
+- **Hyprland is NOT the main session** (it's tiling, I don't want that as home). It is an **on-demand fallback** for GUI apps only.
 
-The base Arch install stays manual (or via `archinstall`) because disk operations are risky to script badly. Oracle takes over after the base system boots.
+## Look
 
-1. **Boot the Arch ISO** and complete a normal base install: partitioning, `pacstrap`, bootloader, user creation, networking.
-2. **Reboot into the fresh base system** and connect to the internet.
-3. **Install git:**
-   ```bash
-   sudo pacman -S git
-   ```
-4. **Clone the repo.** `git clone <url>` creates a folder named after the repo in the current directory. A second argument sets the destination:
-   ```bash
-   git clone <repo-url> ~/oracle
-   cd ~/oracle
-   ```
-5. **Make the script executable (once) and run it:**
-   ```bash
-   chmod +x install.sh
-   ./install.sh
-   ```
-   Notes: `cd` goes into the *folder*, never into the script. `bash install.sh` also works without `chmod`, but it ignores the shebang and always uses bash, which is fine since the script is bash.
+| Element | Value |
+|---|---|
+| Background | Near-black |
+| Text | Grey / white |
+| Accent / highlights | Electric cyan |
+| Warnings | Muted dark red |
+| Font (suggested, not decided) | IBM Plex Mono |
 
-After step 5 the script does everything else with no further manual work (aside from any prompts it deliberately shows).
+Keep theming minimal: one palette, applied consistently, no theme engines.
 
----
+## Security goal
 
-## 4. What `install.sh` should do [OPEN: details]
+If someone gets physical or SSH access to my machine, they must not be able to use it.
 
-High-level responsibilities:
+Considering (not final): full-disk encryption with LUKS (extra password at boot), and SSH key-only login (password login off).
 
-1. Sanity checks (running on Arch, not as root unless required, network available).
-2. Full system update (`pacman -Syu`).
-3. Install an AUR helper (e.g. `yay` or `paru`; **[OPEN]** which one).
-4. Install packages from plain-text package lists (official repos and AUR kept in separate files).
-5. Symlink dotfiles from the repo into `$HOME` / `~/.config` (backing up anything that already exists).
-6. Set up the shell, services (`systemctl enable ...`), and default applications.
-7. Optionally show a minimal TUI menu to choose a **profile**.
+## Decided apps
 
-**Script quality requirements**
+- **Browser:** Brave Origin only. No text-mode browser.
+- **Shell:** bash and zsh both installed.
 
-- **Idempotent:** safe to re-run without breaking or duplicating anything.
-- **Fail loudly:** `set -euo pipefail`, clear error messages, non-zero exit on failure.
-- **Readable and commented:** the maintainer works largely through AI assistance, so scripts should be simple and easy to follow rather than clever.
-- **Linted:** pass `shellcheck`.
-- **Tested in a VM** (QEMU/KVM, VirtualBox, or similar) on a fresh Arch install before anything is called done.
-- **No dependence on Claude or any AI at install time.** The script must run on its own. AI is used to *write and refine* the script, not to run the install.
+## Not settled yet (ASK before choosing)
 
-**Profiles [OPEN]:** possible split such as `minimal` (terminal-only), `dev`, and `full` (adds Hyprland GUI mode). Not finalized.
+- Final choice of **cage** vs another approach for the home session
+- Exact **encryption setup** (LUKS layout, SSH hardening details)
+- **File manager:** yazi or lf (undecided)
+- **App categories** to pre-install (file manager, browser, editor, status/dashboard, etc.). I want to settle categories first, then pick one app per category.
+- Font (IBM Plex Mono is only a suggestion)
 
----
+## Repo goals
 
-## 5. Proposed repository structure [OPEN: proposal only]
+- GitHub repo holding all configs and dotfiles.
+- `install.sh` that, on a **fresh Arch install**:
+  1. Installs the package list
+  2. Symlinks dotfiles into place
+  3. Is safe to re-run (idempotent), and never silently overwrites existing files (back them up)
+  4. Prints clear, plain-language progress and errors
+
+### Proposed structure (suggestion, confirm with me before creating)
 
 ```
 oracle/
 ├── README.md
-├── install.sh              # entry point
-├── packages/
-│   ├── base.txt            # official repo packages (core terminal system)
-│   ├── aur.txt             # AUR packages
-│   └── hyprland.txt        # GUI-mode packages
-├── dotfiles/
-│   ├── shell/              # shell config, prompt
-│   ├── tui/                # terminal-first tools: file manager, launcher, etc.
-│   └── hyprland/           # secondary GUI mode config
-├── scripts/                # helper scripts called by install.sh
-└── docs/                   # design notes, decisions
+├── install.sh
+├── packages/        # package lists, one file per category
+├── dotfiles/        # symlinked into $HOME
+│   ├── shell/       # bash, zsh
+│   ├── tmux/
+│   ├── hypr/
+│   └── ...
+└── scripts/         # launcher, helpers
 ```
 
----
+## Reference
 
-## 6. Open decisions
+- https://github.com/t4t5/omdrop-owl (saved by me as possibly useful: "we might need this")
 
-None of these have been chosen. Candidates are suggestions, not commitments.
+## Rules for Claude Code
 
-| Area | Question | Candidate ideas |
-|---|---|---|
-| TUI file manager | Which tool gives the plain-text, arrow-key, `[ bracket ]` selection feel? | yazi, ranger, nnn, lf (or a custom script) |
-| Primary "screen" | What does the blank-screen, few-lines-of-text home look like? | Custom TUI menu/launcher, tmux-based layout, or a shell-script-driven menu |
-| Terminal emulator | Which one, for the primary mode? | foot, kitty, alacritty |
-| Shell | Which shell and prompt? | zsh, fish, bash |
-| AUR helper | yay vs paru | |
-| Bootloader | Assumed from the base install, not scripted | systemd-boot, GRUB |
-| Hyprland mode | How is it launched alongside the terminal-first mode? | Separate session at login, or a keybind/command that starts it |
-| Profiles | Which profiles exist and what is in each? | minimal / dev / full |
-| Installer UI | Silent install vs a small TUI menu | |
-| Acronym | Which expansion of ORACLE (see section 1)? | |
+1. **Plan first, then code.** For any non-trivial step, give me a 3-5 line plan and wait for a yes.
+2. **One small step at a time.** Don't build the whole system in one go.
+3. **Don't add packages casually.** Each package needs a one-line reason. Prefer fewer, lighter tools.
+4. **Don't pick from "Not settled".** Ask, with a recommendation and the trade-off in plain words.
+5. **Test before saying done.** Show evidence (e.g. `shellcheck install.sh`, a dry run, a VM/container test). If you can't test something (needs real hardware, boot, LUKS), say so clearly.
+6. **Never run destructive commands** (disk partitioning, formatting, encryption setup, deleting files) without showing me the exact command first and getting approval.
+7. **Keep scripts readable.** Comments in plain language, since I'm not an engineer.
+8. Match the palette and the all-text look. No icons-heavy or GUI-style output in the TUI shell.
 
----
+## Suggested build order
 
-## 7. Reference projects
-
-- **Omarchy**: opinionated Arch + Hyprland setup; the closest conceptual model for "Arch with an automated, opinionated setup."
-- **Omakub**: the equivalent for Ubuntu.
-- **LARBS**: script-driven Arch rice bootstrapping.
-- **Garuda / EndeavourOS**: Arch-based projects that commonly call themselves distros.
-
----
-
-## 8. Instructions for an AI assistant working on this repo
-
-If you are an AI session picking this project up from this README, follow these guidelines.
-
-**Context to hold**
-
-- This is an Arch-based setup layer (see section 1), not a from-scratch distro. Do not suggest Linux From Scratch or building a custom kernel/toolchain.
-- The identity is **terminal-first, minimal, keyboard-driven, Batcomputer-inspired**. Do not propose GNOME, KDE, or heavy theming. Hyprland is the secondary GUI mode only.
-- The maintainer is comfortable with Arch and its concepts but works primarily through AI-assisted coding. Explain commands and non-obvious choices briefly, and prefer simple, readable solutions.
-
-**How to work**
-
-- Be concise. Lead with the answer or the code; skip preambles and recaps.
-- When changing a file, show only the changed parts, not the whole file again.
-- Default to production-grade, maintainable solutions (idempotent, linted, error-handled). Only cut corners if the maintainer explicitly says "just prototype."
-- Do not mark anything "done" without evidence: shellcheck output, a successful VM run, or a captured log.
-- Do not make decisions in section 6 silently. Propose options with a recommendation, wait for the maintainer's choice, then record the decision in this README.
-- Keep this README current: when a decision is made, move it from **[OPEN]** to **[DECIDED]** and update the structure section to match reality.
-
-**Good first tasks**
-
-1. Choose and record the open decisions in section 6 (start with TUI file manager and shell).
-2. Create `packages/base.txt` with a minimal terminal-only package set.
-3. Write a first `install.sh` covering: sanity checks, `pacman -Syu`, package install from `packages/base.txt`, and dotfile symlinking with backups.
-4. Set up a VM test loop and document it in `docs/`.
-5. Design the terminal-first "home screen" and file-manager look (plain text, arrow-key navigation, bracket-marked selection).
-6. Add the Hyprland secondary mode as a separate profile.
-
----
-
-## 9. Changelog
-
-- Initial project definition: name chosen (Oracle), vision, install flow, and open decisions captured.
+1. **Settle app categories** with me, then pick one app per category.
+2. Repo skeleton + `install.sh` (packages + symlinks) with a safe dry-run mode.
+3. Shell setup (bash + zsh), palette, font.
+4. tmux config and the text home base (cage vs alternative decided here).
+5. Text launcher (browse + search, opens text apps in place).
+6. Hyprland fallback + GUI app launching (Brave).
+7. Workspace 1 dashboard (btop/htop style).
+8. Security hardening (LUKS, SSH key-only).
