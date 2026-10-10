@@ -19,6 +19,14 @@ Never run installer for real on current machine (CachyOS). Test in `archlinux` d
 
 Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
 
+## Structure (copied from Omarchy v3 model, not v4)
+- Install = clone repo to `~/.local/share/oracle`, run `install.sh` (linear, re-runnable: `--needed`, mkdir -p, copy-if-missing). Clone stays = update source.
+- Defaults vs user: `default/` lives in clone, loaded live (hyprland.lua extends package.path → `require` default). User `~/.config` files load last, copied only if missing, never overwritten by update. Keybinds: default data file + user override data file.
+- `oracle update` = git pull + `sudo pacman -Syu` + `yay -Sua` + migrations + reboot hint if kernel changed. One `oracle` script with `case`, not many bin scripts.
+- Growth = `migrations/<unix-ts>.sh`, tiny + idempotent, markers in `~/.local/state/oracle/migrations/`. Fresh install marks all done.
+- System config only as drop-ins named `oracle-*` (logind.conf.d, sysctl.d, udev rules.d, systemd units). Never edit vendor files.
+- Avoid: ISO/packages model, hundreds of scripts, themes/templates before needed, auto-overwrite of ~/.config.
+
 ## v1 (now)
 Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Base (fresh Arch may lack): networkmanager (nmtui), pipewire + pipewire-pulse + wireplumber (wpctl), noto-fonts, xdg-desktop-portal-hyprland, hyprpolkitagent.
 
