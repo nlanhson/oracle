@@ -107,6 +107,16 @@ else
   if ((DRY)); then printf '   would append to %s: %s\n' "$BP" "$LINE"; else printf '\n%s\n' "$LINE" >>"$BP"; fi
 fi
 
+say "oracle command"
+BIN=$HOME/.local/bin/oracle
+if [[ $(readlink "$BIN") != "$DIR/bin/oracle" ]]; then
+  if [[ -e $BIN ]]; then run mkdir -p "$BACKUP"; run mv "$BIN" "$BACKUP/"; fi
+  run mkdir -p "${BIN%/*}"; run ln -s "$DIR/bin/oracle" "$BIN"
+fi
+M=$HOME/.local/state/oracle/migrations
+run mkdir -p "$M"
+for m in "$SRC"/migrations/*.sh; do [[ ! -f $m ]] || run touch "$M/${m##*/}"; done
+
 S=(); ((DRY)) && S+=(--dry-run); [[ -z $RESTORE ]] || S+=(--restore "$RESTORE")
 bash "$SRC/server/server.sh" "${S[@]}"
 
@@ -141,6 +151,6 @@ else
   printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
 fi
 
-say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave."
+say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave. Later: oracle update"
 ((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."
 exit 0

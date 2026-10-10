@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# oracle update | backup <dir> | help
+set -euo pipefail
+DIR=$HOME/.local/share/oracle
+STATE=$HOME/.local/state/oracle/migrations
+say() { printf '\e[36m::\e[0m %s\n' "$*"; }
+die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
+
+case ${1:-help} in
+  update)
+    say "oracle: pull"
+    git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
+    mkdir -p "$STATE"
+    for m in "$DIR"/migrations/*.sh; do
+      [[ -f $m && ! -f $STATE/${m##*/} ]] || continue
+      say "migration ${m##*/}"
+      bash "$m" || die "migration ${m##*/} failed"
+      touch "$STATE/${m##*/}"
+    done
+    bash "$DIR/install.sh"
+    if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
+    [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
+    ;;
+  backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
+  *) echo "oracle update        get newest Oracle + system updates"
+     echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)" ;;
+esac
