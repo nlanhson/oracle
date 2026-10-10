@@ -23,7 +23,13 @@ Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland aut
 
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
-- Dashboard (Shell home): ascii.rest UI+Data sections style (meters, sparklines, uptime bar, boxes, dividers). Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi + net sparkline, clock. Bottom: bracket links `[code] [files] [server] [gui]`.
+- Dashboard (Shell home): ascii.rest style. Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi, clock. Bottom: bracket links `[code] [files] [server] [gui]`. Parts (owner picks, 2026-10-11):
+  - CPU/GPU: sparklines https://ascii.rest/sparkline/
+  - Clock + calendar https://ascii.rest/calendar/ . 12h with AM/PM, NEVER 24h.
+  - Embedded terminal pane, 2 states inactive/active https://ascii.rest/terminal/ (likely tmux pane).
+  - Claude Code usage heatmap, refresh every minute https://ascii.rest/heatmap/
+  - File navigator https://ascii.rest/file-tree/ (custom or themed yazi; decide when built).
+  - Settings screen https://ascii.rest/form-controls/ : brightness, volume, wallpaper, theme, etc. + keybind editor (so keep binds in a simple data file the settings screen can edit, not hand-edited Lua).
 - Look: near-black bg, grey/white text, electric cyan accent, muted dark red warn. IBM Plex Mono. ascii.rest style, bracket links `[gui]`.
 - Vietnamese: fcitx5 + fcitx5-bamboo, GUI only. Brave flags in `~/.config/brave-origin-flags.conf`: `--ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3`.
 - Server, moved unchanged: github.com/nlanhson/homeserver. Docker + Dockge (`~/docker/<app>`, `~/dockge`), Immich :2283 (>=3.2.2), Dockge :5001, vpn stack. Tailscale: restore state to keep 100.108.66.46. Net: NetworkManager + systemd-resolved, `/etc/resolv.conf` → `../run/systemd/resolve/stub-resolv.conf` (MagicDNS). logind ignore lid + IdleAction. Screen off on lid (cage: needs watcher). Docker ports bypass ufw.
