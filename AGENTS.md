@@ -3,6 +3,10 @@
 Terse context for coding agents. Humans read README.md + docs/ (write those carefully, plain English, like a real distro). Keep this file terse.
 ascii.rest (MIT, github.com/bas3line/ascii) = visual recipe only. Web code, cannot run in terminal; redraw in our own TUI, credit author.
 
+## Working with the owner
+- Owner talks to ONE main Claude session = project manager. It may delegate to helper agents/sessions; helpers report to it, never to the owner.
+- Owner is away often and low on usage sometimes: keep replies short, batch work, report outcomes with evidence.
+
 ## Hard rules
 - Owner = UI/UX designer, not engineer. Replies: short, plain words, TL;DR first. Ideas ok, one line max. No option menus for small stuff.
 - Few files, minimal code comments. Human docs only in README.md / docs/. Modules where they help (owner's suggestion, not mandatory).
@@ -66,3 +70,16 @@ tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle atta
 - Hardware (ASUS G14 GA401QC, AMD iGPU + RTX 3050): `linux` + `nvidia-open`. Pin compositor to iGPU (`/etc/udev/rules.d/61-amd-igpu.rules`: `SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNELS=="0000:04:00.0", SYMLINK+="dri/amd-igpu"`; then `AQ_DRM_DEVICES`/`WLR_DRM_DEVICES=/dev/dri/amd-igpu`), dGPU sleeps D3cold. mkinitcpio `MODULES=(amdgpu)`. Battery cap 80 via sysfs `charge_control_end_threshold` + oneshot unit (resets each boot). power-profiles-daemon balanced. zram-generator (ram, zstd), swappiness 150.
 - Disk: LUKS2 + TPM auto-unlock + btrfs done (see Install). GAP: PCR7-only with Secure Boot OFF → attacker with a live USB can unseal the key. Fix later: Secure Boot own keys (sbctl, owner puts firmware in Setup Mode) + UKI, keep PCR7. Meanwhile systemd-boot `editor no`. Must boot unattended after power cut. No autologin. SSH key-only.
 - Default apps when needed: yazi, micro, btop, nmtui, wiremix, wl-clipboard, bash + zsh.
+
+## Status (2026-10-11)
+Built + VM-tested (`test/vm.sh iso` 16/16): ISO one-pass install (Wi-Fi, disk, user/tz/kb, one password, LUKS2+TPM), Shell mode + dashboard, GUI (Hyprland, Ghostty, Brave Origin), server (docker, Dockge, Immich, Tailscale, vpn) with `oracle backup/restore`, `oracle update` + migrations, MIT license, human README + docs/manual. Not yet on real hardware. ISO not yet published (needs a `v*` tag → GitHub Actions).
+
+## Before move day (do these first, in order)
+1. G14 hardware pack (DMI-gated `/sys/class/dmi/id/product_name`): nvidia-open, compositor pin to iGPU (udev rule in Later/Hardware), battery cap 80 unit, power-profiles-daemon balanced, screen off on lid in Shell mode (cage has no lid support → logind/acpid watcher + wlr-randr or backlight).
+2. GUI essentials: fcitx5 + fcitx5-bamboo (Vietnamese, GUI only), Brave Wayland/IME flags file, Claude Code (owner codes with it daily).
+3. Tag v0.1.0 → ISO on Releases; owner flashes USB.
+4. Move day on CachyOS: plug backup stick, `bash ~/Projects/oracle/server/server.sh backup /run/media/son/586D-16CB/oracle-migration-2026-10-10` (sudo: adds tailscale tarballs + photo top-up). Old full-history bundle: ~/Projects/oracle-history-backup-2026-10-11.bundle (copy to stick too).
+5. Boot ISO → install → `oracle restore <stick folder>` → Immich Job Queues: thumbnails + transcode missing → phone check.
+
+## Ideas (owner picks)
+Secure Boot own keys (sbctl) + UKI (closes TPM gap); btrfs snapshots before `oracle update` (snapper) = undo; dashboard settings file + file navigator + settings screen + keybind editor; one theme colors file applied to all apps; website/download page; `oracle doctor` health check.
