@@ -70,3 +70,7 @@ Ideas, bug reports and pull requests are welcome. Open an [issue](https://github
 - [Arch Linux](https://archlinux.org), [Hyprland](https://hypr.land), [Ghostty](https://ghostty.org), [tmux](https://github.com/tmux/tmux), [cage](https://github.com/cage-kiosk/cage)
 - The dashboard's look is inspired by [ascii.rest](https://ascii.rest) (MIT) by [@bas3line](https://github.com/bas3line).
 - The update and settings model is inspired by [Omarchy](https://omarchy.org).
+
+## License
+
+[MIT](LICENSE)
