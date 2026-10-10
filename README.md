@@ -28,7 +28,7 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 - Avoid: ISO/packages model, hundreds of scripts, themes/templates before needed, auto-overwrite of ~/.config.
 
 ## v1 (now)
-Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Base (fresh Arch may lack): networkmanager (nmtui), pipewire + pipewire-pulse + wireplumber (wpctl), noto-fonts, xdg-desktop-portal-hyprland, hyprpolkitagent.
+Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Owner installs Arch via `archinstall` (pick NetworkManager + pipewire there) → no wifi/audio pkgs in installer. No extra fonts: use app defaults (brave pulls a ttf-font dep).
 
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
