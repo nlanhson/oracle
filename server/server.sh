@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Oracle home server: docker + tailscale + stacks in ~/dockge, ~/docker/<app>. Re-runnable.
 # server.sh [--dry-run] [--restore <backup>]   setup → restore → start apps whose secrets exist
+# server.sh start                              start apps only (oracle-firstboot unit after a USB install)
 # server.sh backup <dir> [--dry-run]           fresh DB dump + photos + configs + tailscale state → <dir>, verified
 set -euo pipefail
 
@@ -26,6 +27,7 @@ while (($#)); do
     --dry-run) DRY=1 ;;
     --restore) B=${2:?--restore needs a folder}; shift ;;
     backup) MODE=backup B=${2:?backup needs a folder}; shift ;;
+    start) MODE=start ;;
     *) die "unknown option $1" ;;
   esac
   shift
@@ -130,8 +132,26 @@ up() { say "  start ${1##*/}"; if ((DRY)); then echo "   would run: docker compo
 
 start() {
   say "server: start apps"
-  if ! sudo docker info &>/dev/null; then todo "Reboot, then run the installer again to start the server apps."; return; fi
   dk_init
+  if ! "${DK[@]}" info &>/dev/null; then
+    [[ -n ${ORACLE_CHROOT:-} ]] || { todo "Reboot, then run the installer again to start the server apps."; return; }
+    say "  on first boot (oracle-firstboot, retries until online, then disables itself)"
+    put /etc/systemd/system/oracle-firstboot.service "[Unit]
+Description=Oracle first boot: start server apps
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+[Service]
+Type=oneshot
+User=$U
+ExecStart=/usr/bin/bash $SRC/server.sh start
+ExecStartPost=+/usr/bin/systemctl disable oracle-firstboot.service
+Restart=on-failure
+RestartSec=30
+[Install]
+WantedBy=multi-user.target"
+    run sudo systemctl enable oracle-firstboot.service
+    return
+  fi
   [[ -d $HOME/dockge/data ]] || todo "Dockge: open http://localhost:5001 and create a login."
   up "$HOME/dockge"
   if [[ -f $I/.env ]]; then up "$I" || todo "Immich didn't start: check 'docker logs immich_server'."; else todo "Immich: no backup given. Rerun with --restore <backup folder>, or start empty (homeserver README step 4)."; fi
@@ -195,8 +215,8 @@ backup() {
 
 case $MODE in
   backup) backup ;;
-  setup)
-    setup
+  setup | start)
+    [[ $MODE == start ]] || setup
     [[ -z $B ]] || restore
     start
     if ((${#STEPS[@]})); then

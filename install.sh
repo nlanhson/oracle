@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Oracle installer: fresh Arch → Oracle. Re-runnable. Never overwrites: backs up to ~/.oracle-backup/<stamp>/.
-# On the Arch ISO it installs Arch first (archinstall.json, wipes /dev/nvme0n1); reboot, log in, run it again.
+# On the Arch ISO (or the Oracle ISO, which autostarts it) it installs Arch + Oracle in one pass (asks which disk to wipe).
 # curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash [-s -- --dry-run] [--restore <backup>]
 set -euo pipefail
 
@@ -14,16 +14,85 @@ say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 run() { if ((DRY)); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
 
-# Arch ISO: one password for user son, root and disk → archinstall menu prefilled → Install. Args go to archinstall.
-if [[ -d /run/archiso ]]; then
-  say "Arch install: WIPES /dev/nvme0n1 (LUKS2 + btrfs). Check the menu, then Install."
+# Arch ISO, one pass: internet (Wi-Fi prompt) → newest installer → disk → one password (son, root, disk) → archinstall
+# → Oracle in chroot as son (temporary NOPASSWD sudo) → TPM enroll → reboot. Embedded USB copy only if GitHub unreachable.
+if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
+  net() { curl -fsI -m 10 --retry 3 --retry-all-errors https://archlinux.org >/dev/null 2>&1; }
+  until net; do
+    W=$(compgen -G '/sys/class/net/*/wireless' | head -1 || true); W=${W%/wireless}; W=${W##*/}
+    [[ -n $W ]] || die "No internet. Plug in a network cable, then start the installer again."
+    rfkill unblock wifi 2>/dev/null || true
+    say "No internet. Wi-Fi networks:"
+    iwctl station "$W" scan || true; sleep 4; iwctl station "$W" get-networks || true
+    read -rp "Wi-Fi name: " SSID </dev/tty
+    read -rsp "Wi-Fi password (empty if none): " WPW </dev/tty; echo
+    P=(); [[ -z $WPW ]] || P=(--passphrase "$WPW")
+    iwctl "${P[@]}" station "$W" connect "$SSID" || say "Could not connect. Try again."
+  done
+  if [[ -z ${ORACLE_LATEST:-} ]] && curl -fsSL -m 60 "$RAW/install.sh" -o /tmp/oracle-install.sh; then
+    ORACLE_LATEST=1 exec bash /tmp/oracle-install.sh
+  fi
+  [[ -n ${ORACLE_LATEST:-} ]] || say "GitHub unreachable: using the installer copy on this USB (may be older)"
+
+  if [[ -z ${ORACLE_DISK:-} ]]; then
+    S=$(findmnt -no SOURCE /run/archiso/bootmnt || true)
+    U=$(lsblk -no PKNAME "$S" 2>/dev/null || true)
+    L=$(lsblk -dno NAME,SIZE,MODEL -e 7,11 | awk -v x=" ${S##*/} ${U//$'\n'/ } " '$1 !~ /^zram/ && !index(x, " " $1 " ")')
+    [[ -n $L ]] || die "no disk found"
+    say "Disks:"; sed 's/^/   /' <<<"$L"
+    while :; do
+      read -rp "Type the disk to ERASE for Oracle (everything on it is lost): " X </dev/tty || die "cancelled"
+      X=${X#/dev/}; [[ -n $X ]] && awk '{print $1}' <<<"$L" | grep -qxF -- "$X" && break
+      say "not in the list"
+    done
+    ORACLE_DISK=/dev/$X
+  fi
+  [[ -b $ORACLE_DISK ]] || die "$ORACLE_DISK is not a disk"
+  MIB=$(($(blockdev --getsize64 "$ORACLE_DISK") / 1048576 - 1026)) # root = disk - 1 MiB gap - 1 GiB EFI - 1 MiB GPT backup
+  ((MIB >= 30000)) || die "$ORACLE_DISK is too small (need 32 GB)"
+
   read -rsp "Password for son, root, disk: " PW </dev/tty; echo
   read -rsp "Again: " P2 </dev/tty; echo
   [[ -n $PW && $PW == "$P2" ]] || die "passwords empty or differ"
   H=$(openssl passwd -6 -stdin <<<"$PW")
   (umask 077; PW=$PW H=$H jq -n '{users: [{username: "son", enc_password: env.H, sudo: true}],
     root_enc_password: env.H, encryption_password: env.PW}' >/tmp/oracle-creds.json)
-  exec archinstall --config-url "$RAW/archinstall.json" --creds /tmp/oracle-creds.json "$@" </dev/tty
+  curl -fsSL -m 60 "$RAW/archinstall.json" -o /tmp/oracle-arch.json || cp /root/oracle/archinstall.json /tmp/oracle-arch.json
+  jq --arg d "$ORACLE_DISK" --argjson m "$MIB" '.disk_config.device_modifications[0] |= (.device = $d | .partitions[1].size.value = $m)' \
+    /tmp/oracle-arch.json >/tmp/oracle-config.json
+  say "Arch → $ORACLE_DISK (wiped: 1G /boot, rest LUKS2 btrfs)"
+  archinstall --config /tmp/oracle-config.json --creds /tmp/oracle-creds.json --silent </dev/tty && mountpoint -q /mnt \
+    || die "archinstall failed (log: /var/log/archinstall/install.log)"
+  rm -f /tmp/oracle-creds.json
+
+  say "Oracle (inside the new system)"
+  SUDO=/mnt/etc/sudoers.d/zz-oracle-install
+  trap 'rm -f "$SUDO"' EXIT
+  install -m440 /dev/stdin "$SUDO" <<<'son ALL=(ALL) NOPASSWD: ALL'
+  cp "${BASH_SOURCE[0]:-}" /mnt/var/tmp/oracle-install.sh
+  ORACLE_CHROOT=1 arch-chroot /mnt su son -c 'bash /var/tmp/oracle-install.sh' </dev/null || die "Oracle install failed"
+  rm -f "$SUDO" /mnt/var/tmp/oracle-install.sh
+  ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
+  for f in /var/lib/iwd/*.psk; do # Wi-Fi known here → NetworkManager
+    s=${f##*/}; s=${s%.psk}; p=$(sed -n 's/^Passphrase=//p' "$f" 2>/dev/null || true)
+    [[ -n $p && $s != =* ]] || continue
+    printf '[connection]\nid=%s\ntype=wifi\n[wifi]\nssid=%s\n[wifi-security]\nkey-mgmt=wpa-psk\npsk=%s\n' "$s" "$s" "$p" \
+      | install -Dm600 /dev/stdin "/mnt/etc/NetworkManager/system-connections/$s.nmconnection"
+  done
+
+  if grep -q tpm2-device /mnt/etc/crypttab; then
+    say "disk unlock by TPM (no password at boot)"
+    DEV=$(cryptsetup status root | awk '$1 == "device:" {print $2}')
+    printf %s "$PW" | systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
+    say "RECOVERY KEY. Write it down now; it unlocks the disk if the TPM ever fails:"
+    printf %s "$PW" | systemd-cryptenroll --unlock-key-file=/dev/stdin --recovery-key "$DEV"
+  else
+    say "no TPM: type the disk password at each boot"
+  fi
+  sync
+  say "Done. Remove the USB stick, press Enter to restart. Log in as son."
+  read -r </dev/tty
+  reboot
 fi
 
 ARGS=("$@")
@@ -38,7 +107,7 @@ done
 
 ((EUID != 0)) || die "run as your normal user, not root"
 [[ -f /etc/arch-release ]] || die "not Arch Linux"
-((DRY)) || sudo -v || die "your user needs sudo (archinstall: make the user a superuser)"
+((DRY)) || sudo true || die "your user needs sudo (archinstall: make the user a superuser)"
 
 # Piped from curl (no checkout next to us): fetch repo, re-run from it.
 SRC=$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" 2>/dev/null && pwd)
@@ -150,12 +219,16 @@ else
   sudo grep -q "$UUID" /etc/crypttab || echo "${MAP##*/} UUID=$UUID none tpm2-device=auto,x-initrd.attach" | sudo tee -a /etc/crypttab >/dev/null
   echo 'HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)' | sudo tee /etc/mkinitcpio.conf.d/oracle-tpm.conf >/dev/null
   sudo mkinitcpio -P
-  read -rsp "Disk password: " PW </dev/tty; echo
-  if [[ $(sudo systemd-cryptenroll "$DEV") != *recovery* ]]; then
-    say "  RECOVERY KEY. Write it down; it unlocks the disk if the TPM ever fails:"
-    printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --recovery-key "$DEV"
+  if [[ -n ${ORACLE_CHROOT:-} ]]; then
+    say "  key: enrolled by the USB installer next"
+  else
+    read -rsp "Disk password: " PW </dev/tty; echo
+    if [[ $(sudo systemd-cryptenroll "$DEV") != *recovery* ]]; then
+      say "  RECOVERY KEY. Write it down; it unlocks the disk if the TPM ever fails:"
+      printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --recovery-key "$DEV"
+    fi
+    printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
   fi
-  printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
 fi
 
 say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave. Later: oracle update"
