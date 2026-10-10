@@ -45,9 +45,21 @@ All-text, like ascii.rest: near-black background, grey/white text, electric cyan
 
 ## Hardware and power
 
-- Keep the NVIDIA GPU asleep: both compositors are pinned to the AMD iGPU (same trick as today).
-- Battery charge capped around 80% if the model supports it (always plugged in).
-- Details come from the research in progress (CachyOS inventory, power tuning).
+From research on the current machine (2026-10-10):
+
+- **Kernel:** Arch `linux` + `nvidia-open`. The NVIDIA GPU sleeps by itself (D3cold) as long as nothing draws the screen with it, so both compositors are pinned to the AMD iGPU through a hand-made udev rule (`61-amd-igpu.rules` gives it the stable name `/dev/dri/amd-igpu`). No supergfxctl/asusctl. Immich ML stays on the CPU. Check after install: `runtime_status` = `suspended`.
+- **Early AMD display:** `MODULES=(amdgpu)` in mkinitcpio.
+- **Battery:** cap charging at 80% via sysfs (`charge_control_end_threshold`). Firmware resets it every boot, so a small systemd unit re-applies it. (Battery is already at ~74% of its design capacity.)
+- **Power:** power-profiles-daemon on **balanced**. Today the CPU is pinned to *performance* 24/7, which is the biggest power waste found.
+- **Memory:** zram (zram-generator, size = RAM, zstd) + high swappiness, like today.
+- **Firewall:** ufw, blocking all incoming. Note: Docker's published ports bypass ufw, so handle this in the security step.
+- **Small extras:** Wi-Fi country VN, journal capped at 50 MB, shorter systemd stop timeouts, new hostname `oracle`.
+- **Dropped from CachyOS:** ananicy, scx, chwd, plymouth, supergfxctl, nvidia-powerd, switcheroo, asusd, noctalia, the audio power-save override, CachyOS repos/kernel.
+
+## Boot and login
+
+- **Bootloader:** systemd-boot with a unified kernel image (works cleanly with TPM auto-unlock via `systemd-cryptenroll`). Replaces limine. Snapshots (snapper) come later.
+- **Login:** **no autologin.** The disk unlocks by itself, so the login prompt is what stops a thief. Log in on TTY1 → Shell mode starts. The server (Docker, Tailscale) runs as system services and works **without anyone logged in**.
 
 ## Default apps (decided by Claude to keep moving; swap anytime)
 
@@ -62,10 +74,11 @@ All-text, like ascii.rest: near-black background, grey/white text, electric cyan
 | Wi-Fi | NetworkManager (`nmtui`) |
 | Sound | PipeWire + `wiremix` |
 | Clipboard | wl-clipboard |
-| Browser | Brave Origin (GUI mode) |
+| Browser | Brave Origin (GUI mode), AUR `brave-origin-bin` (official Brave package), with Wayland + IME flags in `~/.config/brave-origin-flags.conf` |
 | Vietnamese | fcitx5 + Bamboo (GUI mode) |
 | Font | IBM Plex Mono |
 | Coding | git, gh, Claude Code |
+| AUR helper | yay (needed for Brave Origin) |
 
 ## Repo layout
 
