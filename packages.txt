@@ -3,6 +3,8 @@ git
 base-devel
 hyprland
 ghostty
+cage
+tmux
 xdg-desktop-portal-hyprland
 hyprpolkitagent
 brightnessctl

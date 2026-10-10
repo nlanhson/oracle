@@ -42,8 +42,11 @@ From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, calle
 - Backup: `server.sh backup <dir>` (same layout, top-up safe): fresh pg_dump (count checked) → sha256 → copy → drop caches → verify from disk. Tailscale tarballs need sudo. Layout: `immich/library/{upload,backups}`, `upload.sha256`, `configs/{docker/immich,docker/vpn,dockge}`, `configs/tailscale-{host,vpn}.tar.gz`.
 - USB stick (SanDisk 28.6G exFAT) `oracle-migration-2026-10-10/` = this layout minus tailscale tarballs. Move day: owner runs `server.sh backup <that folder>` on CachyOS (top-up + tailscale), then wipe.
 
+## Shell mode (built, VM-tested)
+tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e tmux new -A -s oracle`; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
+
 ## Later (one at a time, owner picks when)
-- Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
+
 - Dashboard (Shell home): ascii.rest style. Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi, clock. Bottom: bracket links `[code] [files] [server] [gui]`. Parts (owner picks, 2026-10-11):
   - CPU/GPU: sparklines https://ascii.rest/sparkline/
   - Clock + calendar https://ascii.rest/calendar/ . 12h with AM/PM, NEVER 24h.

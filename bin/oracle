@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | help
+# oracle update | backup <dir> | gui | shell | session | help
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
+MODE=$HOME/.local/state/oracle/mode
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 
@@ -22,6 +23,17 @@ case ${1:-help} in
     [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
     ;;
   backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
-  *) echo "oracle update        get newest Oracle + system updates"
+  session) # tty1 login: shell (cage + ghostty + tmux) ⇄ gui (Hyprland). Same mode after exit = logout.
+    mkdir -p "${MODE%/*}"; echo shell >"$MODE"
+    while :; do
+      m=$(<"$MODE")
+      if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e tmux new -A -s oracle || true; fi
+      [[ $(<"$MODE") != "$m" ]] || break
+    done ;;
+  gui) echo gui >"$MODE"; pkill -x cage ;;
+  shell) echo shell >"$MODE"; hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
+  *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
+     echo "oracle shell         back to Shell (closes GUI apps). Super+M in GUI"
+     echo "oracle update        get newest Oracle + system updates"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)" ;;
 esac

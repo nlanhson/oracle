@@ -168,9 +168,16 @@ rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run (idempotent)'] = rc == 0 and 'already enrolled' in out
 step('tty1 login via monitor sendkey')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
-rc, out = vm.sh('pgrep -a Hyprland; loginctl list-sessions --no-legend')
-ok['Hyprland running after tty1 login'] = rc == 0 and 'Hyprland' in out
-vm.mon('screendump /vm/tty1.png -f png')
+rc, out = vm.sh('pgrep -a cage; pgrep -a tmux; loginctl list-sessions --no-legend')
+ok['Shell mode after tty1 login (cage + ghostty + tmux)'] = rc == 0 and 'cage' in out and 'ghostty' in out and 'tmux' in out
+vm.mon('screendump /vm/shell.png -f png')
+vm.sh('oracle gui; sleep 25')
+rc, out = vm.sh('pgrep -a Hyprland; pgrep -x cage; cat ~/.local/state/oracle/mode')
+ok['oracle gui → Hyprland'] = 'Hyprland' in out and 'cage' not in out.split('Hyprland')[-1]
+vm.mon('screendump /vm/gui.png -f png')
+vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
+rc, out = vm.sh('pgrep -a cage && tmux ls')
+ok['oracle shell → back to Shell, tmux kept'] = rc == 0 and 'oracle' in out
 vm.send('sudo poweroff\n'); vm.p.wait(120)
 step('result')
 for k, v in ok.items():
