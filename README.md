@@ -46,7 +46,12 @@ From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, calle
 tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e tmux new -A -s oracle`; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
 
 ## Later (one at a time, owner picks when)
-- Oracle ISO (like Omarchy: download ISO → USB → boot → answer password → done, one step). Needs: single-pass install (archinstall + Oracle in chroot + first-boot unit for TPM enroll/server start), archiso profile auto-starting installer, maybe offline pkg cache. Omarchy ISO: disk encryption default, asks a few questions + target drive.
+- Oracle ISO PLAN (owner OK'd 2026-10-11; build after dashboard):
+  1. Single-pass install: ISO step runs archinstall, then Oracle install.sh in chroot as son (`arch-chroot /mnt su son -c`), TPM enroll from ISO (/dev/tpmrm0 visible), server stacks placed; first-boot oneshot unit `oracle-firstboot` does what needs a running system (docker start, restore if stick found, then disables itself).
+  2. Generic disk: ask target drive (list lsblk, type name to confirm), compute sizes at runtime (drop hardcoded G14 sizes). Keep G14 tweaks behind DMI check (`/sys/class/dmi/id/product_name`).
+  3. archiso profile `iso/` (copy releng, add: our installer autostarts on tty1, jq/openssl present, optional offline pkg cache). Build in docker (`mkarchiso`), test with test/vm.sh booting our ISO.
+  4. Publish: GitHub Actions builds ISO on tag → GitHub Releases asset (+ sha256). Download page = README link / later website. Owner: flash with balenaEtcher/caligula.
+  Owner asks: Wi-Fi at ISO (iwctl or nmtui prompt), keyboard must be wired/2.4GHz (LUKS prompt before TPM enroll).
 
 - Dashboard (Shell home): ascii.rest style. Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi, clock. Bottom: bracket links `[code] [files] [server] [gui]`. Parts (owner picks, 2026-10-11):
   - CPU/GPU: sparklines https://ascii.rest/sparkline/
