@@ -1,131 +1,31 @@
 # Oracle
 
-> Context file for AI coding agents (Claude Code). Read this fully before writing any code.
+AI-only context. Owner never reads repo. Keep terse.
 
-## TL;DR
+## Hard rules
+- Owner = UI/UX designer, not engineer. Replies: short, plain words, TL;DR first. Ideas ok, one line max. No option menus for small stuff.
+- Repo for AI only. Fewest files. Minimal comments. No human-style docs. Many files = loss.
+- Bare minimum first. Grow one small step at a time. Never build whole distro at once.
+- Small choices: decide, note below. Ask owner only big/irreversible.
+- No destructive cmd (partition, format, encrypt, delete) without owner yes.
+- Done = evidence (test output).
+- Light/fast like pure Arch. Every package justified.
+- Name "Oracle", never "Oracle OS". Batman's Oracle, machine = Batcomputer.
 
-Oracle is my own Arch Linux respin (similar in spirit to Omakub / Marchy) with an all-text home screen called the **Oracle TUI shell**. Everything lives in this repo: configs, dotfiles, and an `install.sh` that turns a fresh Arch install into Oracle. Goal: as light and fast as pure Arch, terminal-first, keyboard-driven.
+## What
+Arch respin. Fresh Arch (any config) → run installer → Oracle.
+Never run installer for real on current machine (CachyOS). Test in `archlinux` docker container.
 
-Oracle runs on my laptop (ASUS ROG Zephyrus G14), which is **both my daily computer and my always-on home server** (Docker + Dockge, Immich, Tailscale, ProtonVPN exit node; see https://github.com/nlanhson/homeserver). The server setup moves over **unchanged**.
+Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
 
-**Current design: [docs/specs/2026-10-10-oracle-design.md](docs/specs/2026-10-10-oracle-design.md).**
+## v1 (now)
+Hyprland + kitty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1.
 
-Name is **"Oracle"**, never "Oracle OS". It's named after the information-hub character in Batman, and the whole machine is my own "Batcomputer".
-
-## About the owner (how to work with me)
-
-- I am a UI/UX designer. I have **no coding or engineering background**. I am comfortable with Arch Linux basics.
-- Keep answers **short, TL;DR first, no jargon**. Explain simply. Elaborate only when I ask.
-- Show only changed code. Don't reprint unchanged files.
-- **"Done" requires evidence** (command output, test result), not assumption.
-- Prefer production-grade, maintainable solutions over quick hacks, unless I say "just prototype".
-- **Never decide anything listed under "Not settled" yet. Ask me first**, with a short recommendation.
-
-## Core principles
-
-1. **Lightweight and fast like pure Arch.** If Oracle ends up as heavy as Ubuntu, Fedora or Mint, the project has failed. Every package and background service must justify itself.
-2. Minimal, terminal-first, keyboard-driven.
-3. No GNOME, no KDE, no heavy theming.
-4. Everything reproducible from this repo on a fresh Arch install.
-5. Both **bash and zsh** available.
-
-## Architecture
-
-### Oracle TUI shell (the home screen/launcher)
-
-Not a desktop environment and not a window manager. A pure all-text home screen.
-
-- Look reference: **ascii.rest**. Dark, monospace, bracket-style links like `[github]`, a search line, plain text. Its animated ASCII art is not needed now (maybe later).
-- **Text launcher** for everything on the machine: a browsable, searchable list (like double-tab completion).
-  - Text apps open in place.
-  - GUI apps (e.g. Brave) open through a proper GUI via Hyprland.
-- **File manager stays in the text UI.** GUI file manager only when I explicitly ask.
-- File navigation feels like plain text: arrow keys, bracket-style selection indicators.
-
-### Sessions / workspaces
-
-- **Workspace 1:** text/ASCII dashboard (btop/htop style).
-- **Workspace 2:** Hyprland GUI session for apps like Brave.
-
-### Two modes (decided)
-
-- **Shell** (default): **cage** running one fullscreen terminal with **tmux** inside. Home dashboard + coding.
-- **GUI** (on demand): **Hyprland**, for Brave and other GUI apps. Not the main session.
-- Vietnamese typing (fcitx5 + Bamboo) is only needed in GUI mode.
-
-## Look
-
-| Element | Value |
-|---|---|
-| Background | Near-black |
-| Text | Grey / white |
-| Accent / highlights | Electric cyan |
-| Warnings | Muted dark red |
-| Font (suggested, not decided) | IBM Plex Mono |
-
-Keep theming minimal: one palette, applied consistently, no theme engines.
-
-## Security goal
-
-If someone gets physical or SSH access to my machine, they must not be able to use it.
-
-Decided: full-disk encryption (LUKS2) **unlocked automatically by the TPM chip**, because the server must come back by itself after a power cut with nobody home. Plus SSH key-only login (password login off).
-
-## Decided apps
-
-- **Browser:** Brave Origin only. No text-mode browser.
-- **Shell:** bash and zsh both installed.
-
-## Decision style (updated 2026-10-10)
-
-Move fast. The plan only needs to be 40-60% complete before building. Don't give me option menus for small things (apps, fonts, etc.): pick a sensible default, write it in the design doc, and keep going. I can swap it later. Still ask me before anything destructive or hard to undo.
-
-## Repo goals
-
-- GitHub repo holding all configs and dotfiles.
-- `install.sh` that, on a **fresh Arch install**:
-  1. Installs the package list
-  2. Symlinks dotfiles into place
-  3. Is safe to re-run (idempotent), and never silently overwrites existing files (back them up)
-  4. Prints clear, plain-language progress and errors
-
-### Proposed structure (suggestion, confirm with me before creating)
-
-```
-oracle/
-├── README.md
-├── install.sh
-├── packages/        # package lists, one file per category
-├── dotfiles/        # symlinked into $HOME
-│   ├── shell/       # bash, zsh
-│   ├── tmux/
-│   ├── hypr/
-│   └── ...
-└── scripts/         # launcher, helpers
-```
-
-## Reference
-
-- https://github.com/t4t5/omdrop-owl (saved by me as possibly useful: "we might need this")
-
-## Rules for Claude Code
-
-1. **Plan first, then code.** For any non-trivial step, give me a 3-5 line plan and wait for a yes.
-2. **One small step at a time.** Don't build the whole system in one go.
-3. **Don't add packages casually.** Each package needs a one-line reason. Prefer fewer, lighter tools.
-4. **Small choices: decide and note them** in the design doc. Big or irreversible ones: ask in one short question.
-5. **Test before saying done.** Show evidence (e.g. `shellcheck install.sh`, a dry run, a VM/container test). If you can't test something (needs real hardware, boot, LUKS), say so clearly.
-6. **Never run destructive commands** (disk partitioning, formatting, encryption setup, deleting files) without showing me the exact command first and getting approval.
-7. **Keep scripts readable.** Comments in plain language, since I'm not an engineer.
-8. Match the palette and the all-text look. No icons-heavy or GUI-style output in the TUI shell.
-
-## Suggested build order
-
-1. **Settle app categories** with me, then pick one app per category.
-2. Repo skeleton + `install.sh` (packages + symlinks) with a safe dry-run mode.
-3. Shell setup (bash + zsh), palette, font.
-4. tmux config and the text home base (cage vs alternative decided here).
-5. Text launcher (browse + search, opens text apps in place).
-6. Hyprland fallback + GUI app launching (Brave).
-7. Workspace 1 dashboard (btop/htop style).
-8. Security hardening (LUKS, SSH key-only).
+## Later (one at a time, owner picks when)
+- Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
+- Look: near-black bg, grey/white text, electric cyan accent, muted dark red warn. IBM Plex Mono. ascii.rest style, bracket links `[gui]`.
+- Vietnamese: fcitx5 + fcitx5-bamboo, GUI only. Brave flags in `~/.config/brave-origin-flags.conf`: `--ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3`.
+- Server, moved unchanged: github.com/nlanhson/homeserver. Docker + Dockge (`~/docker/<app>`, `~/dockge`), Immich :2283 (>=3.2.2), Dockge :5001, vpn stack. Tailscale: restore state to keep 100.108.66.46. Net: NetworkManager + systemd-resolved, `/etc/resolv.conf` → `../run/systemd/resolve/stub-resolv.conf` (MagicDNS). logind ignore lid + IdleAction. Screen off on lid (cage: needs watcher). Docker ports bypass ufw.
+- Hardware (ASUS G14 GA401QC, AMD iGPU + RTX 3050): `linux` + `nvidia-open`. Pin compositor to iGPU (`/etc/udev/rules.d/61-amd-igpu.rules`: `SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNELS=="0000:04:00.0", SYMLINK+="dri/amd-igpu"`; then `AQ_DRM_DEVICES`/`WLR_DRM_DEVICES=/dev/dri/amd-igpu`), dGPU sleeps D3cold. mkinitcpio `MODULES=(amdgpu)`. Battery cap 80 via sysfs `charge_control_end_threshold` + oneshot unit (resets each boot). power-profiles-daemon balanced. zram-generator (ram, zstd), swappiness 150.
+- Disk: LUKS2 + TPM auto-unlock (`systemd-cryptenroll`), systemd-boot UKI, btrfs. Must boot unattended after power cut. No autologin. SSH key-only.
+- Default apps when needed: yazi, micro, btop, nmtui, wiremix, wl-clipboard, bash + zsh.
