@@ -46,6 +46,7 @@ From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, calle
 tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e tmux new -A -s oracle`; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
 
 ## Later (one at a time, owner picks when)
+- Oracle ISO (like Omarchy: download ISO → USB → boot → answer password → done, one step). Needs: single-pass install (archinstall + Oracle in chroot + first-boot unit for TPM enroll/server start), archiso profile auto-starting installer, maybe offline pkg cache. Omarchy ISO: disk encryption default, asks a few questions + target drive.
 
 - Dashboard (Shell home): ascii.rest style. Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi, clock. Bottom: bracket links `[code] [files] [server] [gui]`. Parts (owner picks, 2026-10-11):
   - CPU/GPU: sparklines https://ascii.rest/sparkline/
