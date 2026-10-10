@@ -6,6 +6,10 @@
 
 Oracle is my own Arch Linux respin (similar in spirit to Omakub / Marchy) with an all-text home screen called the **Oracle TUI shell**. Everything lives in this repo: configs, dotfiles, and an `install.sh` that turns a fresh Arch install into Oracle. Goal: as light and fast as pure Arch, terminal-first, keyboard-driven.
 
+Oracle runs on my laptop (ASUS ROG Zephyrus G14), which is **both my daily computer and my always-on home server** (Docker + Dockge, Immich, Tailscale, ProtonVPN exit node; see https://github.com/nlanhson/homeserver). The server setup moves over **unchanged**.
+
+**Current design: [docs/specs/2026-10-10-oracle-design.md](docs/specs/2026-10-10-oracle-design.md).**
+
 Name is **"Oracle"**, never "Oracle OS". It's named after the information-hub character in Batman, and the whole machine is my own "Batcomputer".
 
 ## About the owner (how to work with me)
@@ -43,10 +47,11 @@ Not a desktop environment and not a window manager. A pure all-text home screen.
 - **Workspace 1:** text/ASCII dashboard (btop/htop style).
 - **Workspace 2:** Hyprland GUI session for apps like Brave.
 
-### Session approach (exploring, not final)
+### Two modes (decided)
 
-- Exploring **cage** (single-app fullscreen Wayland compositor) running a fullscreen terminal with **tmux** inside as the home base.
-- **Hyprland is NOT the main session** (it's tiling, I don't want that as home). It is an **on-demand fallback** for GUI apps only.
+- **Shell** (default): **cage** running one fullscreen terminal with **tmux** inside. Home dashboard + coding.
+- **GUI** (on demand): **Hyprland**, for Brave and other GUI apps. Not the main session.
+- Vietnamese typing (fcitx5 + Bamboo) is only needed in GUI mode.
 
 ## Look
 
@@ -64,20 +69,16 @@ Keep theming minimal: one palette, applied consistently, no theme engines.
 
 If someone gets physical or SSH access to my machine, they must not be able to use it.
 
-Considering (not final): full-disk encryption with LUKS (extra password at boot), and SSH key-only login (password login off).
+Decided: full-disk encryption (LUKS2) **unlocked automatically by the TPM chip**, because the server must come back by itself after a power cut with nobody home. Plus SSH key-only login (password login off).
 
 ## Decided apps
 
 - **Browser:** Brave Origin only. No text-mode browser.
 - **Shell:** bash and zsh both installed.
 
-## Not settled yet (ASK before choosing)
+## Decision style (updated 2026-10-10)
 
-- Final choice of **cage** vs another approach for the home session
-- Exact **encryption setup** (LUKS layout, SSH hardening details)
-- **File manager:** yazi or lf (undecided)
-- **App categories** to pre-install (file manager, browser, editor, status/dashboard, etc.). I want to settle categories first, then pick one app per category.
-- Font (IBM Plex Mono is only a suggestion)
+Move fast. The plan only needs to be 40-60% complete before building. Don't give me option menus for small things (apps, fonts, etc.): pick a sensible default, write it in the design doc, and keep going. I can swap it later. Still ask me before anything destructive or hard to undo.
 
 ## Repo goals
 
@@ -112,7 +113,7 @@ oracle/
 1. **Plan first, then code.** For any non-trivial step, give me a 3-5 line plan and wait for a yes.
 2. **One small step at a time.** Don't build the whole system in one go.
 3. **Don't add packages casually.** Each package needs a one-line reason. Prefer fewer, lighter tools.
-4. **Don't pick from "Not settled".** Ask, with a recommendation and the trade-off in plain words.
+4. **Small choices: decide and note them** in the design doc. Big or irreversible ones: ask in one short question.
 5. **Test before saying done.** Show evidence (e.g. `shellcheck install.sh`, a dry run, a VM/container test). If you can't test something (needs real hardware, boot, LUKS), say so clearly.
 6. **Never run destructive commands** (disk partitioning, formatting, encryption setup, deleting files) without showing me the exact command first and getting approval.
 7. **Keep scripts readable.** Comments in plain language, since I'm not an engineer.
