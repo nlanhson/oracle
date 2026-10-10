@@ -27,7 +27,7 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 - System config only as drop-ins named `oracle-*` (logind.conf.d, sysctl.d, udev rules.d, systemd units). Never edit vendor files.
 - Avoid: ISO/packages model, hundreds of scripts, themes/templates before needed, auto-overwrite of ~/.config.
 
-## v1 (now)
+## v1 (built 2026-10-11, container-tested; not yet on real hardware)
 Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Owner installs Arch via `archinstall` (pick NetworkManager + pipewire there) → no wifi/audio pkgs in installer. No extra fonts: use app defaults (brave pulls a ttf-font dep).
 
 ## Later (one at a time, owner picks when)
