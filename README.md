@@ -15,9 +15,14 @@ ascii.rest (MIT, github.com/bas3line/ascii) = visual recipe only. Web code, cann
 
 ## What
 Arch respin. Fresh Arch (any config) → run installer → Oracle.
-Never run installer for real on current machine (CachyOS). Test: `archlinux` docker container (fast) + `test/vm.sh` (full: ISO → archinstall → installer → reboot, QEMU/KVM inside docker, swtpm). Owner's real install: `archinstall --config-url .../archinstall.json` (prefilled, owner only sets passwords).
+Never run installer for real on current machine (CachyOS). Test: `archlinux` docker container (fast) + `test/vm.sh` (full: ISO → archinstall → installer → reboot, QEMU/KVM inside docker, swtpm).
 
 Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
+- Same line twice. 1) Booted Arch ISO (UEFI; Wi-Fi: `iwctl station wlan0 connect <ssid>`): asks ONE password (user son + root + LUKS), opens archinstall menu prefilled from `archinstall.json` → owner checks, presses Install. Reboot, type disk password once, log in as son. 2) Run again → Oracle + TPM unlock (asks disk password once, prints recovery key to write down). Reboot → no password at boot.
+- Why install.sh writes creds: archinstall drops `disk_encryption` from a config with no password (DiskEncryption.parse_arg), so plain `--config-url` loses LUKS. Creds only in ISO RAM `/tmp`.
+- `archinstall.json`: G14 only. Wipes /dev/nvme0n1; sizes hardcoded for 512110190592 B disk (EFI 1G /boot, rest LUKS2 btrfs @ @home @log @pkg, zstd). Other disk → recompute root size (archinstall rejects too-large). systemd-boot (no UKI), linux, pipewire, NetworkManager, minimal profile, zram, Asia/Ho_Chi_Minh, en_US, us.
+- TPM step: archinstall uses busybox `encrypt` hook (sd-encrypt only with FIDO2). install.sh adds `/etc/mkinitcpio.conf.d/oracle-tpm.conf` (systemd + sd-encrypt hooks), crypttab line `tpm2-device=auto,x-initrd.attach`, recovery key, `systemd-cryptenroll --tpm2-pcrs=7`. Skips if no LUKS root, no /dev/tpmrm0, or tpm2 token exists. Old `cryptdevice=` cmdline arg left, ignored. TPM fail → password/recovery key prompt at boot (needs keyboard).
+- Test: `test/vm.sh` (docker + /dev/kvm only, ~15-20 min): real ISO + QEMU NVMe disk of G14 size + swtpm + OVMF, drives the serial console, serves the working tree as ORACLE_REPO/ORACLE_RAW. `test/vm.sh oracle` = reuse installed Arch. Files: `$VM_DIR` (default ~/.cache/oracle-vm, ~7G).
 
 ## Structure (copied from Omarchy v3 model, not v4)
 - Install = clone repo to `~/.local/share/oracle`, run `install.sh` (linear, re-runnable: `--needed`, mkdir -p, copy-if-missing). Clone stays = update source.
@@ -27,7 +32,7 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 - System config only as drop-ins named `oracle-*` (logind.conf.d, sysctl.d, udev rules.d, systemd units). Never edit vendor files.
 - Avoid: ISO/packages model, hundreds of scripts, themes/templates before needed, auto-overwrite of ~/.config.
 
-## v1 (built 2026-10-11, container-tested; not yet on real hardware)
+## v1 (built 2026-10-11, VM-tested via test/vm.sh; not yet on real hardware)
 Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Must work with ANY archinstall choice: installer adds networkmanager + systemd-resolved (+ resolv.conf stub, disables networkd/iwd/dhcpcd, effective after reboot) and pipewire (replaces pulseaudio). No extra fonts.
 
 ## Later (one at a time, owner picks when)
@@ -43,5 +48,5 @@ Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland aut
 - Vietnamese: fcitx5 + fcitx5-bamboo, GUI only. Brave flags in `~/.config/brave-origin-flags.conf`: `--ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3`.
 - Server, moved unchanged: github.com/nlanhson/homeserver. Docker + Dockge (`~/docker/<app>`, `~/dockge`), Immich :2283 (>=3.2.2), Dockge :5001, vpn stack. Tailscale: restore state to keep 100.108.66.46. Net: NetworkManager + systemd-resolved, `/etc/resolv.conf` → `../run/systemd/resolve/stub-resolv.conf` (MagicDNS). logind ignore lid + IdleAction. Screen off on lid (cage: needs watcher). Docker ports bypass ufw.
 - Hardware (ASUS G14 GA401QC, AMD iGPU + RTX 3050): `linux` + `nvidia-open`. Pin compositor to iGPU (`/etc/udev/rules.d/61-amd-igpu.rules`: `SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNELS=="0000:04:00.0", SYMLINK+="dri/amd-igpu"`; then `AQ_DRM_DEVICES`/`WLR_DRM_DEVICES=/dev/dri/amd-igpu`), dGPU sleeps D3cold. mkinitcpio `MODULES=(amdgpu)`. Battery cap 80 via sysfs `charge_control_end_threshold` + oneshot unit (resets each boot). power-profiles-daemon balanced. zram-generator (ram, zstd), swappiness 150.
-- Disk: LUKS2 + TPM auto-unlock (`systemd-cryptenroll`), systemd-boot UKI, btrfs. Must boot unattended after power cut. No autologin. SSH key-only.
+- Disk: LUKS2 + TPM auto-unlock + btrfs done (see Install). GAP: PCR7-only with Secure Boot OFF → attacker with a live USB can unseal the key. Fix later: Secure Boot own keys (sbctl, owner puts firmware in Setup Mode) + UKI, keep PCR7. Meanwhile systemd-boot `editor no`. Must boot unattended after power cut. No autologin. SSH key-only.
 - Default apps when needed: yazi, micro, btop, nmtui, wiremix, wl-clipboard, bash + zsh.

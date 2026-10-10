@@ -1,0 +1,56 @@
+{
+  "app_config": { "audio_config": { "audio": "pipewire" } },
+  "bootloader_config": { "bootloader": "Systemd-boot", "uki": false, "removable": false },
+  "disk_config": {
+    "config_type": "default_layout",
+    "device_modifications": [
+      {
+        "device": "/dev/nvme0n1",
+        "wipe": true,
+        "partitions": [
+          {
+            "obj_id": "efi",
+            "status": "create",
+            "type": "primary",
+            "start": { "value": 1, "unit": "MiB", "sector_size": { "value": 512, "unit": "B" } },
+            "size": { "value": 1, "unit": "GiB", "sector_size": { "value": 512, "unit": "B" } },
+            "fs_type": "fat32",
+            "mountpoint": "/boot",
+            "mount_options": [],
+            "flags": ["boot", "esp"],
+            "dev_path": null,
+            "btrfs": []
+          },
+          {
+            "obj_id": "root",
+            "status": "create",
+            "type": "primary",
+            "start": { "value": 1025, "unit": "MiB", "sector_size": { "value": 512, "unit": "B" } },
+            "size": { "value": 487360, "unit": "MiB", "sector_size": { "value": 512, "unit": "B" } },
+            "fs_type": "btrfs",
+            "mountpoint": null,
+            "mount_options": ["compress=zstd"],
+            "flags": [],
+            "dev_path": null,
+            "btrfs": [
+              { "name": "@", "mountpoint": "/" },
+              { "name": "@home", "mountpoint": "/home" },
+              { "name": "@log", "mountpoint": "/var/log" },
+              { "name": "@pkg", "mountpoint": "/var/cache/pacman/pkg" }
+            ]
+          }
+        ]
+      }
+    ],
+    "disk_encryption": { "encryption_type": "luks", "partitions": ["root"], "lvm_volumes": [] }
+  },
+  "hostname": "oracle",
+  "kernels": ["linux"],
+  "locale_config": { "kb_layout": "us", "sys_enc": "UTF-8", "sys_lang": "en_US" },
+  "network_config": { "type": "nm" },
+  "ntp": true,
+  "packages": [],
+  "profile_config": { "profile": { "main": "Minimal" }, "gfx_driver": null, "greeter": null },
+  "swap": { "enabled": true, "algorithm": "zstd" },
+  "timezone": "Asia/Ho_Chi_Minh"
+}

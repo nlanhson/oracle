@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Oracle installer: fresh Arch → Oracle. Re-runnable. Never overwrites: backs up to ~/.oracle-backup/<stamp>/.
+# On the Arch ISO it installs Arch first (archinstall.json, wipes /dev/nvme0n1); reboot, log in, run it again.
 # curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash [-s -- --dry-run]
 set -euo pipefail
 
 REPO=${ORACLE_REPO:-https://github.com/nlanhson/oracle.git}
+RAW=${ORACLE_RAW:-https://raw.githubusercontent.com/nlanhson/oracle/main}
 DIR=$HOME/.local/share/oracle
 BACKUP=$HOME/.oracle-backup/$(date +%Y%m%d-%H%M%S)
 DRY=0
@@ -12,6 +14,18 @@ DRY=0
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 run() { if ((DRY)); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
+
+# Arch ISO: one password for user son, root and disk → archinstall menu prefilled → Install. Args go to archinstall.
+if [[ -d /run/archiso ]]; then
+  say "Arch install: WIPES /dev/nvme0n1 (LUKS2 + btrfs). Check the menu, then Install."
+  read -rsp "Password for son, root, disk: " PW </dev/tty; echo
+  read -rsp "Again: " P2 </dev/tty; echo
+  [[ -n $PW && $PW == "$P2" ]] || die "passwords empty or differ"
+  H=$(openssl passwd -6 -stdin <<<"$PW")
+  (umask 077; PW=$PW H=$H jq -n '{users: [{username: "son", enc_password: env.H, sudo: true}],
+    root_enc_password: env.H, encryption_password: env.PW}' >/tmp/oracle-creds.json)
+  exec archinstall --config-url "$RAW/archinstall.json" --creds /tmp/oracle-creds.json "$@" </dev/tty
+fi
 
 ((EUID != 0)) || die "run as your normal user, not root"
 [[ -f /etc/arch-release ]] || die "not Arch Linux"
@@ -92,6 +106,28 @@ for s in systemd-networkd iwd dhcpcd netctl; do
 done
 STUB=../run/systemd/resolve/stub-resolv.conf
 [[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf
+
+say "disk unlock by TPM (no password at boot)"
+L=/boot/loader/loader.conf
+if ((!DRY)) && sudo test -f "$L" && ! sudo grep -q '^editor' "$L"; then run sudo sh -c "echo 'editor no' >> $L"; fi
+MAP=$(findmnt -nvo SOURCE /)
+DEV=$( ((DRY)) || sudo cryptsetup status "$MAP" 2>/dev/null | awk '$1 == "device:" {print $2}' || true)
+if [[ -z $DEV || ! -e /dev/tpmrm0 ]]; then
+  say "  skip: root not on LUKS, no TPM, or dry-run"
+elif [[ $(sudo systemd-cryptenroll "$DEV") == *tpm2* ]]; then
+  say "  already enrolled"
+else
+  UUID=$(sudo cryptsetup luksUUID "$DEV")
+  sudo grep -q "$UUID" /etc/crypttab || echo "${MAP##*/} UUID=$UUID none tpm2-device=auto,x-initrd.attach" | sudo tee -a /etc/crypttab >/dev/null
+  echo 'HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)' | sudo tee /etc/mkinitcpio.conf.d/oracle-tpm.conf >/dev/null
+  sudo mkinitcpio -P
+  read -rsp "Disk password: " PW </dev/tty; echo
+  if [[ $(sudo systemd-cryptenroll "$DEV") != *recovery* ]]; then
+    say "  RECOVERY KEY. Write it down; it unlocks the disk if the TPM ever fails:"
+    printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --recovery-key "$DEV"
+  fi
+  printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
+fi
 
 say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave."
 ((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."
