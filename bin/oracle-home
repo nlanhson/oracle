@@ -6,7 +6,7 @@ SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) HIST=() P_IDLE=0 P_TOT=0
 EQ='==========' DASH='----------'
 bar() { # bar <0-100|""> <label> <suffix>
   local p=$1 f
-  if [[ -z $p ]]; then printf "  ${W}%-9s${D}[----------]  n/a${N}\n" "$2"; return; fi
+  if [[ ! $p =~ ^[0-9]+$ ]]; then printf "  ${W}%-9s${D}[----------]  n/a${N}\n" "$2"; return; fi
   ((p > 100)) && p=100; f=$((p / 10))
   printf "  ${W}%-9s${C}[%s${D}%s${C}]${W} %3d%%${D} %s${N}\n" "$2" "${EQ:0:f}" "${DASH:0:10-f}" "$p" "$3"
 }
@@ -18,7 +18,7 @@ cpu() {
   CPU=0; ((d > 0)) && CPU=$((100 * (d - di) / d))
 }
 spark() { local o='' v; for v in "${HIST[@]}"; do o+=${SPARK[$((v * 7 / 100))]}; done; printf %s "$o"; }
-temp() { local f; for f in /sys/class/hwmon/hwmon*/name; do [[ $(<"$f") == k10temp || $(<"$f") == coretemp ]] && { echo $(($(<"${f%name}temp1_input") / 1000)); return; }; done; }
+temp() { local f; for f in /sys/class/hwmon/hwmon*/name; do [[ -f $f ]] || continue; [[ $(<"$f") == k10temp || $(<"$f") == coretemp ]] && { echo $(($(<"${f%name}temp1_input") / 1000)); return; }; done; }
 svc() { # svc <label> <container>
   local st; st=$(docker inspect -f '{{.State.Status}}' "$2" 2>/dev/null)
   if [[ $st == running ]]; then printf "  ${W}%-10s${C}● up${N}  " "$1"; else printf "  ${W}%-10s${R}● ${st:-off}${N}  " "$1"; fi
@@ -28,7 +28,7 @@ draw() {
   local c m t b bs v l ip wifi
   cpu; c=$CPU; HIST+=("$c"); ((${#HIST[@]} > 30)) && HIST=("${HIST[@]:1}")
   m=$(awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%d %.1f %.1f",100*(t-a)/t,(t-a)/1048576,t/1048576}' /proc/meminfo)
-  read -r t b <<<"$(temp) $(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2"/"$3}')"
+  t=$(temp); b=$(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2"/"$3}')
   bs=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1)
   v=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100)}')
   l=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4+0}')
@@ -51,6 +51,7 @@ draw() {
   printf "  ${C}[g]${W}ui  ${C}[c]${W}ode  ${C}[u]${W}pdate${N}\n"
 }
 
+printf '\e[?25l'; trap 'printf "\\e[?25h"' EXIT
 cpu
 while :; do
   draw

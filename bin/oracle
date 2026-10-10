@@ -30,7 +30,7 @@ case ${1:-help} in
       if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e oracle attach || true; fi
       [[ $(<"$MODE") != "$m" ]] || break
     done ;;
-  attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home \; new-window -t oracle
+  attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home \; new-window -d -t oracle
     exec tmux attach -t oracle ;;
   home) exec "$DIR/bin/oracle-home" ;;
   gui) echo gui >"$MODE"; pkill -x cage ;;
