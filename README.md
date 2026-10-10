@@ -15,7 +15,7 @@ ascii.rest (MIT, github.com/bas3line/ascii) = visual recipe only. Web code, cann
 
 ## What
 Arch respin. Fresh Arch (any config) → run installer → Oracle.
-Never run installer for real on current machine (CachyOS). Test in `archlinux` docker container.
+Never run installer for real on current machine (CachyOS). Test: `archlinux` docker container (fast) + `test/vm.sh` (full: ISO → archinstall → installer → reboot, QEMU/KVM inside docker, swtpm). Owner's real install: `archinstall --config-url .../archinstall.json` (prefilled, owner only sets passwords).
 
 Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash`
 
@@ -28,7 +28,7 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 - Avoid: ISO/packages model, hundreds of scripts, themes/templates before needed, auto-overwrite of ~/.config.
 
 ## v1 (built 2026-10-11, container-tested; not yet on real hardware)
-Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Owner installs Arch via `archinstall` (pick NetworkManager + pipewire there) → no wifi/audio pkgs in installer. No extra fonts: use app defaults (brave pulls a ttf-font dep).
+Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Must work with ANY archinstall choice: installer adds networkmanager + systemd-resolved (+ resolv.conf stub, disables networkd/iwd/dhcpcd, effective after reboot) and pipewire (replaces pulseaudio). No extra fonts.
 
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
