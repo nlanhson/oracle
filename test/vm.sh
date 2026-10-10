@@ -127,7 +127,7 @@ if MODE != 'oracle':
     if MODE == 'iso':
         rc, out = vm.sh('sleep 15; pgrep -af "oracle.install"; pkill -f "oracle.install"')
         ok['ISO autostarts the installer on tty1'] = 'install.sh' in out
-    ENV = 'ORACLE_RAW=http://10.0.2.2:8000 ORACLE_REPO=http://10.0.2.2:8000/oracle.git'
+    ENV = 'ORACLE_USER=son ORACLE_TZ=Asia/Ho_Chi_Minh ORACLE_KB=us ORACLE_RAW=http://10.0.2.2:8000 ORACLE_REPO=http://10.0.2.2:8000/oracle.git'
     RUN = f'{ENV} bash /root/oracle/install.sh' if MODE == 'iso' else f'curl -fsSL http://10.0.2.2:8000/install.sh | {ENV} bash'
     vm.buf = b''; vm.send(RUN + '\n')
     _, m = vm.expect([r'Type the disk to ERASE[^\r\n]*: '], 300)

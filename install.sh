@@ -14,8 +14,8 @@ say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 run() { if ((DRY)); then printf '   would run: %s\n' "$*"; else "$@"; fi; }
 
-# Arch ISO, one pass: internet (Wi-Fi prompt) → newest installer → disk → one password (son, root, disk) → archinstall
-# → Oracle in chroot as son (temporary NOPASSWD sudo) → TPM enroll → reboot. Embedded USB copy only if GitHub unreachable.
+# Arch ISO, one pass: internet (Wi-Fi prompt) → newest installer → disk → user/tz/keyboard → one password (user, root, disk) → archinstall
+# → Oracle in chroot as user (temporary NOPASSWD sudo) → TPM enroll → reboot. Embedded USB copy only if GitHub unreachable.
 if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
   net() { curl -fsI -m 10 --retry 3 --retry-all-errors https://archlinux.org >/dev/null 2>&1; }
   until net; do
@@ -51,14 +51,27 @@ if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
   MIB=$(($(blockdev --getsize64 "$ORACLE_DISK") / 1048576 - 1026)) # root = disk - 1 MiB gap - 1 GiB EFI - 1 MiB GPT backup
   ((MIB >= 30000)) || die "$ORACLE_DISK is too small (need 32 GB)"
 
-  read -rsp "Password for son, root, disk: " PW </dev/tty; echo
+  ask() { # ask <var> <prompt> <default> <check-cmd>: env var wins, Enter = default
+    local v=${!1:-}
+    while [[ -z $v ]] || ! $4 "$v"; do read -rp "$2 [$3]: " v </dev/tty; v=${v:-$3}; done
+    printf -v "$1" %s "$v"
+  }
+  isuser() { [[ $1 =~ ^[a-z_][a-z0-9_-]{0,31}$ && $1 != root ]]; }
+  istz() { [[ -f /usr/share/zoneinfo/$1 && $1 != */.* ]]; }
+  iskb() { [[ -n $(find /usr/share/kbd/keymaps -name "$1.map.gz" -print -quit 2>/dev/null) ]]; }
+  ask ORACLE_USER "Username (lowercase)" "" isuser
+  ask ORACLE_TZ "Time zone" "$(curl -fsS -m 5 'http://ip-api.com/line/?fields=timezone' 2>/dev/null || echo UTC)" istz
+  ask ORACLE_KB "Keyboard layout" us iskb
+  U=$ORACLE_USER
+  read -rsp "Password for $U, root, disk: " PW </dev/tty; echo
   read -rsp "Again: " P2 </dev/tty; echo
   [[ -n $PW && $PW == "$P2" ]] || die "passwords empty or differ"
   H=$(openssl passwd -6 -stdin <<<"$PW")
-  (umask 077; PW=$PW H=$H jq -n '{users: [{username: "son", enc_password: env.H, sudo: true}],
+  (umask 077; PW=$PW H=$H jq -n --arg u "$U" '{users: [{username: $u, enc_password: env.H, sudo: true}],
     root_enc_password: env.H, encryption_password: env.PW}' >/tmp/oracle-creds.json)
   curl -fsSL -m 60 "$RAW/archinstall.json" -o /tmp/oracle-arch.json || cp /root/oracle/archinstall.json /tmp/oracle-arch.json
-  jq --arg d "$ORACLE_DISK" --argjson m "$MIB" '.disk_config.device_modifications[0] |= (.device = $d | .partitions[1].size.value = $m)' \
+  jq --arg d "$ORACLE_DISK" --argjson m "$MIB" --arg tz "$ORACLE_TZ" --arg kb "$ORACLE_KB" '.timezone = $tz | .locale_config.kb_layout = $kb
+    | .disk_config.device_modifications[0] |= (.device = $d | .partitions[1].size.value = $m)' \
     /tmp/oracle-arch.json >/tmp/oracle-config.json
   say "Arch → $ORACLE_DISK (wiped: 1G /boot, rest LUKS2 btrfs)"
   archinstall --config /tmp/oracle-config.json --creds /tmp/oracle-creds.json --silent </dev/tty && mountpoint -q /mnt \
@@ -68,9 +81,9 @@ if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
   say "Oracle (inside the new system)"
   SUDO=/mnt/etc/sudoers.d/zz-oracle-install
   trap 'rm -f "$SUDO"' EXIT
-  install -m440 /dev/stdin "$SUDO" <<<'son ALL=(ALL) NOPASSWD: ALL'
+  install -m440 /dev/stdin "$SUDO" <<<"$U ALL=(ALL) NOPASSWD: ALL"
   cp "${BASH_SOURCE[0]:-}" /mnt/var/tmp/oracle-install.sh
-  ORACLE_CHROOT=1 arch-chroot /mnt su son -c 'bash /var/tmp/oracle-install.sh' </dev/null || die "Oracle install failed"
+  ORACLE_CHROOT=1 arch-chroot /mnt su "$U" -c 'bash /var/tmp/oracle-install.sh' </dev/null || die "Oracle install failed"
   rm -f "$SUDO" /mnt/var/tmp/oracle-install.sh
   ln -sf ../run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
   for f in /var/lib/iwd/*.psk; do # Wi-Fi known here → NetworkManager
@@ -90,7 +103,7 @@ if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
     say "no TPM: type the disk password at each boot"
   fi
   sync
-  say "Done. Remove the USB stick, press Enter to restart. Log in as son."
+  say "Done. Remove the USB stick, press Enter to restart. Log in as $U."
   read -r </dev/tty
   reboot
 fi
