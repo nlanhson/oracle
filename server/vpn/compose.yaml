@@ -1,0 +1,38 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun:v3
+    container_name: gluetun
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    env_file:
+      - .env
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - FREE_ONLY=on
+      - SERVER_COUNTRIES=Singapore
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24
+      - TZ=Asia/Ho_Chi_Minh
+
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: tailscale-vpn-exit
+    restart: always
+    network_mode: service:gluetun
+    env_file:
+      - path: ts.env
+        required: false
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - TS_HOSTNAME=vpn-exit
+      - TS_USERSPACE=true
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_EXTRA_ARGS=--advertise-exit-node
+      - TS_AUTH_ONCE=true
+    volumes:
+      - ./tailscale:/var/lib/tailscale

@@ -10,4 +10,8 @@ networkmanager
 pipewire
 pipewire-pulse
 wireplumber
+docker
+docker-compose
+docker-buildx
+tailscale
 aur:brave-origin-bin

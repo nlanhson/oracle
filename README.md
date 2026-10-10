@@ -35,6 +35,13 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 ## v1 (built 2026-10-11, VM-tested via test/vm.sh; not yet on real hardware)
 Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland autostart on tty1. Keybinds from owner's dotfiles `.config/hypr/modules/binds.lua` (Lua config). Plus xdg-desktop-portal-hyprland, hyprpolkitagent. Must work with ANY archinstall choice: installer adds networkmanager + systemd-resolved (+ resolv.conf stub, disables networkd/iwd/dhcpcd, effective after reboot) and pipewire (replaces pulseaudio). No extra fonts.
 
+## Server (built 2026-10-11, container-tested)
+From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, called by install.sh.
+- Setup: docker + tailscaled enabled (`--now`), user → docker group, `/etc/systemd/logind.conf.d/oracle-server.conf` (lid ignore). Stacks copy-if-missing → `~/dockge`, `~/docker/{immich,vpn}` (`${HOME}` expanded). Start only if secrets exist (immich `.env`; vpn `.env` + tailscale state or `ts.env`). Immich pinned `v3` (>=3.2.2).
+- Restore: `install.sh --restore <backup|stick root>`. .env files, dockge data, tailscale state (host → keeps 100.108.66.46; vpn-exit), photos (sha256 checked), newest dump → postgres db → rename to immich (lesson 1), `.immich` markers (lesson 2), asset count = dump. Refuses if `~/docker/immich/postgres` not empty. Markers `~/.local/state/oracle/done/`.
+- Backup: `server.sh backup <dir>` (same layout, top-up safe): fresh pg_dump (count checked) → sha256 → copy → drop caches → verify from disk. Tailscale tarballs need sudo. Layout: `immich/library/{upload,backups}`, `upload.sha256`, `configs/{docker/immich,docker/vpn,dockge}`, `configs/tailscale-{host,vpn}.tar.gz`.
+- USB stick (SanDisk 28.6G exFAT) `oracle-migration-2026-10-10/` = this layout minus tailscale tarballs. Move day: owner runs `server.sh backup <that folder>` on CachyOS (top-up + tailscale), then wipe.
+
 ## Later (one at a time, owner picks when)
 - Shell mode (default after login): cage + foot + tmux. Home dashboard + coding. GUI mode = Hyprland on demand. Separate clipboards accepted.
 - Dashboard (Shell home): ascii.rest style. Bars like `Volume [=====-----] 50%`. Rows: cpu/ram/disk/temp/battery/volume/brightness, server apps up/down + ports, tailscale, wifi, clock. Bottom: bracket links `[code] [files] [server] [gui]`. Parts (owner picks, 2026-10-11):
@@ -46,7 +53,7 @@ Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland aut
   - Settings screen https://ascii.rest/form-controls/ : brightness, volume, wallpaper, theme, etc. + keybind editor (so keep binds in a simple data file the settings screen can edit, not hand-edited Lua).
 - Look: near-black bg, grey/white text, electric cyan accent, muted dark red warn. IBM Plex Mono. ascii.rest style, bracket links `[gui]`.
 - Vietnamese: fcitx5 + fcitx5-bamboo, GUI only. Brave flags in `~/.config/brave-origin-flags.conf`: `--ozone-platform=wayland --enable-wayland-ime --wayland-text-input-version=3`.
-- Server, moved unchanged: github.com/nlanhson/homeserver. Docker + Dockge (`~/docker/<app>`, `~/dockge`), Immich :2283 (>=3.2.2), Dockge :5001, vpn stack. Tailscale: restore state to keep 100.108.66.46. Net: NetworkManager + systemd-resolved, `/etc/resolv.conf` → `../run/systemd/resolve/stub-resolv.conf` (MagicDNS). logind ignore lid + IdleAction. Screen off on lid (cage: needs watcher). Docker ports bypass ufw.
+- Server: built (see Server section). Left: screen off on lid (cage: needs watcher). Docker ports bypass ufw.
 - Hardware (ASUS G14 GA401QC, AMD iGPU + RTX 3050): `linux` + `nvidia-open`. Pin compositor to iGPU (`/etc/udev/rules.d/61-amd-igpu.rules`: `SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNELS=="0000:04:00.0", SYMLINK+="dri/amd-igpu"`; then `AQ_DRM_DEVICES`/`WLR_DRM_DEVICES=/dev/dri/amd-igpu`), dGPU sleeps D3cold. mkinitcpio `MODULES=(amdgpu)`. Battery cap 80 via sysfs `charge_control_end_threshold` + oneshot unit (resets each boot). power-profiles-daemon balanced. zram-generator (ram, zstd), swappiness 150.
 - Disk: LUKS2 + TPM auto-unlock + btrfs done (see Install). GAP: PCR7-only with Secure Boot OFF → attacker with a live USB can unseal the key. Fix later: Secure Boot own keys (sbctl, owner puts firmware in Setup Mode) + UKI, keep PCR7. Meanwhile systemd-boot `editor no`. Must boot unattended after power cut. No autologin. SSH key-only.
 - Default apps when needed: yazi, micro, btop, nmtui, wiremix, wl-clipboard, bash + zsh.

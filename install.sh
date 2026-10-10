@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # Oracle installer: fresh Arch → Oracle. Re-runnable. Never overwrites: backs up to ~/.oracle-backup/<stamp>/.
 # On the Arch ISO it installs Arch first (archinstall.json, wipes /dev/nvme0n1); reboot, log in, run it again.
-# curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash [-s -- --dry-run]
+# curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/install.sh | bash [-s -- --dry-run] [--restore <backup>]
 set -euo pipefail
 
 REPO=${ORACLE_REPO:-https://github.com/nlanhson/oracle.git}
 RAW=${ORACLE_RAW:-https://raw.githubusercontent.com/nlanhson/oracle/main}
 DIR=$HOME/.local/share/oracle
 BACKUP=$HOME/.oracle-backup/$(date +%Y%m%d-%H%M%S)
-DRY=0
-[[ ${1:-} == --dry-run ]] && DRY=1
+DRY=0 RESTORE=''
 
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
@@ -27,6 +26,16 @@ if [[ -d /run/archiso ]]; then
   exec archinstall --config-url "$RAW/archinstall.json" --creds /tmp/oracle-creds.json "$@" </dev/tty
 fi
 
+ARGS=("$@")
+while (($#)); do
+  case $1 in
+    --dry-run) DRY=1 ;;
+    --restore) RESTORE=$(realpath "${2:?--restore needs the backup folder}"); shift ;;
+    *) die "unknown option $1" ;;
+  esac
+  shift
+done
+
 ((EUID != 0)) || die "run as your normal user, not root"
 [[ -f /etc/arch-release ]] || die "not Arch Linux"
 ((DRY)) || sudo -v || die "your user needs sudo (archinstall: make the user a superuser)"
@@ -42,7 +51,7 @@ if [[ ! -f $SRC/packages.txt || ! -f $SRC/default/hypr/hyprland.lua ]]; then
   else
     git clone -q "$REPO" "$DIR"; SRC=$DIR
   fi
-  exec bash "$SRC/install.sh" "$@"
+  exec bash "$SRC/install.sh" "${ARGS[@]}"
 fi
 
 # Run from a checkout elsewhere (dev): point DIR at it.
@@ -98,6 +107,9 @@ else
   if ((DRY)); then printf '   would append to %s: %s\n' "$BP" "$LINE"; else printf '\n%s\n' "$LINE" >>"$BP"; fi
 fi
 
+S=(); ((DRY)) && S+=(--dry-run); [[ -z $RESTORE ]] || S+=(--restore "$RESTORE")
+bash "$SRC/server/server.sh" "${S[@]}"
+
 say "network (NetworkManager + systemd-resolved, active after reboot)"
 run sudo systemctl enable NetworkManager systemd-resolved
 WIFI=0
@@ -105,7 +117,7 @@ for s in systemd-networkd iwd dhcpcd netctl; do
   if systemctl is-enabled -q "$s" 2>/dev/null; then say "  disable $s"; run sudo systemctl disable "$s"; WIFI=1; fi
 done
 STUB=../run/systemd/resolve/stub-resolv.conf
-[[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf
+[[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf || say "  /etc/resolv.conf busy (container?), skipped"
 
 say "disk unlock by TPM (no password at boot)"
 L=/boot/loader/loader.conf
