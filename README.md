@@ -42,8 +42,8 @@ From github.com/nlanhson/homeserver, unchanged stacks. `server/server.sh`, calle
 - Backup: `server.sh backup <dir>` (same layout, top-up safe): fresh pg_dump (count checked) → sha256 → copy → drop caches → verify from disk. Tailscale tarballs need sudo. Layout: `immich/library/{upload,backups}`, `upload.sha256`, `configs/{docker/immich,docker/vpn,dockge}`, `configs/tailscale-{host,vpn}.tar.gz`.
 - USB stick (SanDisk 28.6G exFAT) `oracle-migration-2026-10-10/` = this layout minus tailscale tarballs. Move day: owner runs `server.sh backup <that folder>` on CachyOS (top-up + tailscale), then wipe.
 
-## Shell mode (built, VM-tested)
-tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e tmux new -A -s oracle`; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
+## Shell mode + look + dashboard (built, VM-tested)
+tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle attach` (tmux session oracle: window 0 = `oracle home` dashboard bin/oracle-home, bash/awk, 2s refresh, keys g/c/u; window 1 shell); look = default/ghostty/config + default/tmux.conf (user files include them, copy-if-missing), app default font, 12h clock; `oracle gui` → Hyprland (start-hyprland); `oracle shell` / Super+M → back. tmux survives switches; GUI apps close on return. Mode file `~/.local/state/oracle/mode`. Exit last tmux shell = logout.
 
 ## Later (one at a time, owner picks when)
 - Oracle ISO PLAN (owner OK'd 2026-10-11; build after dashboard):

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | gui | shell | session | help
+# oracle update | backup <dir> | gui | shell | home | attach | session | help
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
@@ -27,9 +27,12 @@ case ${1:-help} in
     mkdir -p "${MODE%/*}"; echo shell >"$MODE"
     while :; do
       m=$(<"$MODE")
-      if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e tmux new -A -s oracle || true; fi
+      if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e oracle attach || true; fi
       [[ $(<"$MODE") != "$m" ]] || break
     done ;;
+  attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home \; new-window -t oracle
+    exec tmux attach -t oracle ;;
+  home) exec "$DIR/bin/oracle-home" ;;
   gui) echo gui >"$MODE"; pkill -x cage ;;
   shell) echo shell >"$MODE"; hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
   *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"

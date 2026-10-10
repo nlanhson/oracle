@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Oracle home dashboard (tmux window 0). Keys: g gui, c new shell, u update.
+C=$'\e[38;2;0;229;255m' W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
+SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) HIST=() P_IDLE=0 P_TOT=0
+
+EQ='==========' DASH='----------'
+bar() { # bar <0-100|""> <label> <suffix>
+  local p=$1 f
+  if [[ -z $p ]]; then printf "  ${W}%-9s${D}[----------]  n/a${N}\n" "$2"; return; fi
+  ((p > 100)) && p=100; f=$((p / 10))
+  printf "  ${W}%-9s${C}[%s${D}%s${C}]${W} %3d%%${D} %s${N}\n" "$2" "${EQ:0:f}" "${DASH:0:10-f}" "$p" "$3"
+}
+cpu() {
+  local _ u n s i w x y z idle tot
+  read -r _ u n s i w x y z _ </proc/stat
+  idle=$((i + w)) tot=$((u + n + s + i + w + x + y + z))
+  local d=$((tot - P_TOT)) di=$((idle - P_IDLE)); P_TOT=$tot P_IDLE=$idle
+  CPU=0; ((d > 0)) && CPU=$((100 * (d - di) / d))
+}
+spark() { local o='' v; for v in "${HIST[@]}"; do o+=${SPARK[$((v * 7 / 100))]}; done; printf %s "$o"; }
+temp() { local f; for f in /sys/class/hwmon/hwmon*/name; do [[ $(<"$f") == k10temp || $(<"$f") == coretemp ]] && { echo $(($(<"${f%name}temp1_input") / 1000)); return; }; done; }
+svc() { # svc <label> <container>
+  local st; st=$(docker inspect -f '{{.State.Status}}' "$2" 2>/dev/null)
+  if [[ $st == running ]]; then printf "  ${W}%-10s${C}● up${N}  " "$1"; else printf "  ${W}%-10s${R}● ${st:-off}${N}  " "$1"; fi
+}
+
+draw() {
+  local c m t b bs v l ip wifi
+  cpu; c=$CPU; HIST+=("$c"); ((${#HIST[@]} > 30)) && HIST=("${HIST[@]:1}")
+  m=$(awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%d %.1f %.1f",100*(t-a)/t,(t-a)/1048576,t/1048576}' /proc/meminfo)
+  read -r t b <<<"$(temp) $(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2"/"$3}')"
+  bs=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1)
+  v=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100)}')
+  l=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4+0}')
+  ip=$(tailscale ip -4 2>/dev/null | head -1)
+  wifi=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
+  printf '\e[H\e[2J'
+  printf "\n  ${C}ORACLE${D} · batcomputer${W}%*s${N}\n" 40 "$(LC_ALL=C date '+%I:%M %p  %a %d/%m')"
+  printf "  ${D}%s${N}\n\n" "──────────────────────────────────────────────────────────"
+  printf "  ${W}%-9s${C}%-30s${W} %3d%%${D} %s${N}\n" cpu "$(spark)" "$c" "${t:+${t}°C}"
+  bar "${m%% *}" ram "$(cut -d' ' -f2 <<<"$m")/$(cut -d' ' -f3 <<<"$m")G"
+  bar "${b%% *}" disk "${b#* }"
+  bar "$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)" battery "${bs,,}"
+  bar "$v" volume ""
+  bar "$l" bright ""
+  echo
+  svc immich immich_server; svc dockge dockge; echo
+  svc vpn-exit gluetun; printf "  ${W}%-10s${C}%s${N}\n" tailscale "${ip:-off}"
+  printf "  ${W}%-10s${C}%s${N}\n\n" wifi "${wifi:-off}"
+  printf "  ${D}%s${N}\n" "──────────────────────────────────────────────────────────"
+  printf "  ${C}[g]${W}ui  ${C}[c]${W}ode  ${C}[u]${W}pdate${N}\n"
+}
+
+cpu
+while :; do
+  draw
+  read -rsn1 -t 2 k || continue
+  case $k in
+    g) oracle gui ;;
+    c) tmux new-window -n code ;;
+    u) tmux new-window -n update 'oracle update; read -rp "enter to close"' ;;
+  esac
+done

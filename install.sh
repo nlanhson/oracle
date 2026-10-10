@@ -97,6 +97,13 @@ else
   run mkdir -p "$(dirname "$CFG")"; run cp "$SRC/config/hypr/hyprland.lua" "$CFG"
 fi
 
+say "ghostty + tmux config"
+ucfg() { # ucfg <file> <include line>: user file with include, only if missing
+  if [[ -e $1 ]]; then say "  kept your $1"; else run mkdir -p "${1%/*}"; ((DRY)) || printf '%s\n# your changes below\n' "$2" >"$1"; fi
+}
+ucfg "$HOME/.config/ghostty/config" "config-file = $DIR/default/ghostty/config"
+ucfg "$HOME/.config/tmux/tmux.conf" "source-file $DIR/default/tmux.conf"
+
 say "tty1 autostart"
 LINE='[[ -f ~/.local/share/oracle/default/bash_profile ]] && . ~/.local/share/oracle/default/bash_profile'
 BP=$HOME/.bash_profile
