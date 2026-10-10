@@ -26,7 +26,7 @@ Install: `curl -fsSL https://raw.githubusercontent.com/nlanhson/oracle/main/inst
 
 ## Structure (copied from Omarchy v3 model, not v4)
 - Install = clone repo to `~/.local/share/oracle`, run `install.sh` (linear, re-runnable: `--needed`, mkdir -p, copy-if-missing). Clone stays = update source.
-- Defaults vs user: `default/` lives in clone, loaded live (hyprland.lua extends package.path → `require` default). User `~/.config` files load last, copied only if missing, never overwritten by update. Keybinds: default data file + user override data file.
+- Defaults vs user: `default/` lives in clone, loaded live (hyprland.lua extends package.path → `require` default). User `~/.config` files load last, copied only if missing, never overwritten by update. Hyprland defaults modular (owner style): default/hypr/hyprland.lua loads env/look/input/autostart.lua + binds.lua (data) via keys.lua; user ~/.config/hypr/hyprland.lua overrides `O.binds[...]` before `O.apply()`.
 - `bin/oracle` (linked to ~/.local/bin, PATH via default/bash_profile): `oracle update` = git pull --ff-only → pending `migrations/*.sh` (marker per file) → re-run install.sh (idempotent = applies new pkgs/configs, pacman -Syu) → `yay -Sua` → reboot hint. `oracle backup <dir>` → server.sh backup. New features go in install.sh; migrations only for one-off changes (removals/renames). Container-tested.
 - Growth = `migrations/<unix-ts>.sh`, tiny + idempotent, markers in `~/.local/state/oracle/migrations/`. Fresh install marks all done.
 - System config only as drop-ins named `oracle-*` (logind.conf.d, sysctl.d, udev rules.d, systemd units). Never edit vendor files.
