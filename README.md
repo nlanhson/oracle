@@ -1,6 +1,7 @@
 # Oracle
 
 AI-only context. Owner never reads repo. Keep terse.
+ascii.rest (MIT, github.com/bas3line/ascii) = visual recipe only. Web code, cannot run in terminal; redraw in our own TUI, credit author.
 
 ## Hard rules
 - Owner = UI/UX designer, not engineer. Replies: short, plain words, TL;DR first. Ideas ok, one line max. No option menus for small stuff.
@@ -27,7 +28,7 @@ Hyprland + ghostty + Brave Origin (AUR `brave-origin-bin` via yay). Hyprland aut
   - CPU/GPU: sparklines https://ascii.rest/sparkline/
   - Clock + calendar https://ascii.rest/calendar/ . 12h with AM/PM, NEVER 24h.
   - Embedded terminal pane, 2 states inactive/active https://ascii.rest/terminal/ (likely tmux pane).
-  - Claude Code usage heatmap, refresh every minute https://ascii.rest/heatmap/
+  - Claude Code usage heatmap (like `/usage` stats), refresh every minute https://ascii.rest/heatmap/ . Data: local logs `~/.claude/projects/**/*.jsonl` (token usage per message), no network. Plan-limit % later if a local source exists.
   - File navigator https://ascii.rest/file-tree/ (custom or themed yazi; decide when built).
   - Settings screen https://ascii.rest/form-controls/ : brightness, volume, wallpaper, theme, etc. + keybind editor (so keep binds in a simple data file the settings screen can edit, not hand-edited Lua).
 - Look: near-black bg, grey/white text, electric cyan accent, muted dark red warn. IBM Plex Mono. ascii.rest style, bracket links `[gui]`.
