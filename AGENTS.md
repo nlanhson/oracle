@@ -75,8 +75,9 @@ tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle atta
 Built + VM-tested (`test/vm.sh iso` 16/16): ISO one-pass install (Wi-Fi, disk, user/tz/kb, one password, LUKS2+TPM), Shell mode + dashboard, GUI (Hyprland, Ghostty, Brave Origin), server (docker, Dockge, Immich, Tailscale, vpn) with `oracle backup/restore`, `oracle update` + migrations, MIT license, human README + docs/manual. Not yet on real hardware. ISO not yet published (needs a `v*` tag → GitHub Actions).
 
 ## Before move day (do these first, in order)
-1. G14 hardware pack (DMI-gated `/sys/class/dmi/id/product_name`): nvidia-open, compositor pin to iGPU (udev rule in Later/Hardware), battery cap 80 unit, power-profiles-daemon balanced, screen off on lid in Shell mode (cage has no lid support → logind/acpid watcher + wlr-randr or backlight).
-2. GUI essentials: fcitx5 + fcitx5-bamboo (Vietnamese, GUI only), Brave Wayland/IME flags file, Claude Code (owner codes with it daily).
+Owner 2026-10-11: power saving not important → drop nvidia-open/power-profiles (battery cap 80 + iGPU pin pending owner answer). Vietnamese later. Proposed: public Oracle (generic) + owner's personal layer repo (server, backup/restore, lid, Vietnamese, Claude Code) run by an install hook. Pending owner yes.
+1. Screen off when lid closed, machine keeps running (IMPORTANT, home server). Cage has no lid support → logind/acpid watcher + backlight off.
+2. (dropped for now) Vietnamese, Brave flags, Claude Code preinstall.
 3. Tag v0.1.0 → ISO on Releases; owner flashes USB.
 4. Move day on CachyOS: plug backup stick, `bash ~/Projects/oracle/server/server.sh backup /run/media/son/586D-16CB/oracle-migration-2026-10-10` (sudo: adds tailscale tarballs + photo top-up). Old full-history bundle: ~/Projects/oracle-history-backup-2026-10-11.bundle (copy to stick too).
 5. Boot ISO → install → `oracle restore <stick folder>` → Immich Job Queues: thumbnails + transcode missing → phone check.
