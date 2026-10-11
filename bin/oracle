@@ -31,8 +31,13 @@ case ${1:-help} in
       if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e oracle attach || true; fi
       [[ $(<"$MODE") != "$m" ]] || break
     done ;;
-  attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home \; new-window -d -t oracle
-    exec tmux attach -t oracle ;;
+  attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home
+    oracle tabs; exec tmux attach -t oracle \; select-window -t oracle:1 ;;
+  tabs) # workspaces 1-4 always exist: 1 = home dashboard, 2-4 = terminals
+    for i in 1 2 3 4; do
+      tmux list-windows -t oracle -F '#I' 2>/dev/null | grep -qx "$i" && continue
+      if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
+    done 2>/dev/null || true ;;
   home) exec "$DIR/bin/oracle-home" ;;
   battery) L=/etc/oracle/battery-limit
     if [[ -n ${2:-} ]]; then

@@ -221,18 +221,27 @@ STUB=../run/systemd/resolve/stub-resolv.conf
 say "battery charge limit (change: oracle battery <20-100>)"
 BU=/etc/systemd/system/oracle-battery.service
 if ((!DRY)) && [[ ! -f /etc/oracle/battery-limit ]]; then echo 50 | sudo install -Dm644 /dev/stdin /etc/oracle/battery-limit; fi
-if ((!DRY)) && [[ ! -f $BU ]]; then
+if ((!DRY)) && ! grep -qF '$$f' "$BU" 2>/dev/null; then
   sudo tee "$BU" >/dev/null <<'EOF'
 [Unit]
 Description=Oracle battery charge limit
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/sh -c 'for f in /sys/class/power_supply/BAT*/charge_control_end_threshold; do [ -w "$f" ] && cat /etc/oracle/battery-limit >"$f"; done; true'
+ExecStart=/usr/bin/sh -c 'for f in /sys/class/power_supply/BAT*/charge_control_end_threshold; do [ -w "$$f" ] && cat /etc/oracle/battery-limit >"$$f"; done; true'
 [Install]
 WantedBy=multi-user.target
 EOF
 fi
-run sudo systemctl enable oracle-battery.service
+N=(); [[ -d /run/systemd/system && -z ${ORACLE_CHROOT:-} ]] && N=(--now)
+run sudo systemctl enable "${N[@]}" oracle-battery.service
+
+say "lid closed → screen off, keeps running"
+if ((!DRY)) && ! cmp -s "$SRC/system/oracle-lid" /usr/local/bin/oracle-lid; then sudo install -Dm755 "$SRC/system/oracle-lid" /usr/local/bin/oracle-lid; sudo systemctl try-restart oracle-lid.service 2>/dev/null || true; fi
+if ((!DRY)) && [[ ! -f /etc/systemd/system/oracle-lid.service ]]; then
+  printf '[Unit]\nDescription=Oracle: backlight off while the lid is closed\n[Service]\nExecStart=/usr/local/bin/oracle-lid\nRestart=always\n[Install]\nWantedBy=multi-user.target\n' |
+    sudo tee /etc/systemd/system/oracle-lid.service >/dev/null
+fi
+run sudo systemctl enable "${N[@]}" oracle-lid.service
 
 say "disk unlock by TPM (no password at boot)"
 L=/boot/loader/loader.conf

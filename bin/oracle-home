@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
-# Oracle home dashboard (tmux window 0). Widgets: default/home/<name>.sh, each defines w_<name>. Keys: g gui, c code, u update.
+# Oracle home dashboard (tmux workspace 1). Left column ~28% (min 44): LEFT widgets; right: RIGHT widgets.
+# Widgets: default/home/<name>.sh, each defines w_<name> (prints lines). Keys: g gui, u update.
 H=$(dirname "$(readlink -f "$0")")/../default/home
-WIDGETS=(header system server claude footer calendar)
+LEFT=(clock calendar) RIGHT=(system controls claude server footer)
 # shellcheck disable=SC1090
-for f in "$H"/theme.sh "${WIDGETS[@]/#/$H/}"; do [[ $f == *.sh ]] || f+=.sh; source "$f"; done
-printf '\e[?25l'; trap 'printf "\\e[?25h"' EXIT
+for f in "$H"/theme.sh "${LEFT[@]/#/$H/}" "${RIGHT[@]/#/$H/}"; do [[ $f == *.sh ]] || f+=.sh; source "$f"; done
+T=$(mktemp); printf '\e[?25l'; trap 'printf "\\e[?25h"; rm -f "$T"' EXIT
+col() { # col <x> <widgets...>: run each widget in this shell (keeps its state), place its lines at column x
+  local x=$1 r=2 line w; shift
+  for w; do "w_$w" >"$T"; while IFS= read -r line; do OUT+=$'\e['"$((r++));${x}H$line"; done <"$T"; done
+}
 while :; do
-  printf '\e[H\e[2J'
-  for w in "${WIDGETS[@]}"; do "w_$w"; done
-  printf '\e[30;1H'
+  read -r ROWS COLS < <(stty size)
+  LW=$((COLS * 28 / 100)); ((LW < 44)) && LW=44
+  # shellcheck disable=SC2034  # RW, SW used by widgets
+  RW=$((COLS - LW - 6)) SW=$((COLS - LW - 55)); ((SW > 48)) && SW=48; ((SW < 10)) && SW=10
+  OUT=$'\e[H\e[2J'
+  col 2 "${LEFT[@]}"; col $((LW + 4)) "${RIGHT[@]}"
+  for ((r = 1; r <= ROWS; r++)); do OUT+=$'\e['"$r;$((LW + 1))H$F│$N"; done
+  printf '%s\e[%d;1H' "$OUT" "$ROWS"
   read -rsn1 -t 2 k || continue
   case $k in
     g) oracle gui ;;
-    c) tmux new-window -n code ;;
     u) tmux new-window -n update 'oracle update; read -rp "enter to close"' ;;
   esac
 done

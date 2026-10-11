@@ -1,0 +1,18 @@
+#!/bin/sh
+# Lid closed → backlight off, machine keeps running (home server). Lid open → brightness back. Any mode (Shell, GUI, tty).
+# Run as root by oracle-lid.service. Paths overridable for tests.
+L=${ORACLE_LID:-/proc/acpi/button/lid} B=${ORACLE_BACKLIGHT:-/sys/class/backlight} S=${ORACLE_SAVE:-/run/oracle-lid}
+mkdir -p "$S"; p=open
+while :; do
+  s=open; grep -qs closed "$L"/*/state && s=closed
+  if [ "$s" != "$p" ]; then
+    for b in "$B"/*; do
+      [ -w "$b/brightness" ] || continue
+      if [ "$s" = closed ]; then
+        v=$(cat "$b/brightness"); [ "$v" -gt 0 ] && echo "$v" >"$S/${b##*/}"; echo 0 >"$b/brightness"
+      elif [ -s "$S/${b##*/}" ]; then cat "$S/${b##*/}" >"$b/brightness"; fi
+    done
+    p=$s
+  fi
+  sleep 2
+done

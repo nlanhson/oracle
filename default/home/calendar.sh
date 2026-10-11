@@ -1,5 +1,6 @@
-# Month calendar in the right column, today in cyan.
+# Month calendar under the clock, today highlighted.
 w_calendar() {
-  local r=4 d; d=$(date +%-d)
-  while IFS= read -r line; do printf '\e[%d;66H%s' $((r++)) "$line"; done < <(LC_ALL=C cal | sed -E "1s/.*/${C}&${N}/; 2s/.*/${D}&${W}/; 3,\$s/(^| )($d)( |$)/\1${C}\2${W}\3/")
+  local d pad; d=$(date +%-d); printf -v pad "%$(((LW - 20) / 2))s" ''
+  LC_ALL=C cal | sed -E "/^ *$/d; s/^/$pad/; 1s/.*/${C}&${N}/; 2s/.*/${D}&${W}/; 3,\$s/ ($d)( |$)/${C}[\1]${W}/"
+  printf "${N}"
 }

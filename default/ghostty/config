@@ -26,3 +26,12 @@ window-padding-x = 8
 window-padding-y = 6
 cursor-style-blink = false
 confirm-close-surface = false
+# alt+1..4 = tmux workspaces, not ghostty tabs
+keybind = alt+1=unbind
+keybind = alt+2=unbind
+keybind = alt+3=unbind
+keybind = alt+4=unbind
+keybind = alt+digit_1=unbind
+keybind = alt+digit_2=unbind
+keybind = alt+digit_3=unbind
+keybind = alt+digit_4=unbind

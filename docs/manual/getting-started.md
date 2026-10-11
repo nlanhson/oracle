@@ -6,10 +6,10 @@ Oracle starts on a plain login prompt. Type your username and password.
 
 You land in **Shell mode**:
 
-- **Window 0 – home:** the dashboard with your computer's health, the home server, a calendar and your Claude Code activity.
-- **Window 1 – bash:** a terminal, ready for commands.
+- **Workspace 1 – home:** the dashboard. On the left, a big clock and the calendar. On the right, your computer's health, volume and brightness, your Claude Code activity and the home server.
+- **Workspaces 2, 3 and 4:** terminals, ready for commands.
 
-The bar at the bottom shows your open windows and the time. Switch windows with `Ctrl+b` then the window number, or click them.
+The bar at the top shows the workspaces. The one you're on shows its name, like `2 terminal`, or the program running in it, like `2 claude`. Switch with `Alt + 1` to `Alt + 4`, or click a number. If you close a terminal, a fresh one takes its place.
 
 ## The desktop
 

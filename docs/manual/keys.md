@@ -7,15 +7,14 @@
 | Key | Does |
 |---|---|
 | `g` | Open the desktop |
-| `c` | New terminal window |
 | `u` | Run `oracle update` |
 
 ## Terminal sessions (tmux)
 
 | Key | Does |
 |---|---|
-| `Ctrl+b` then `c` | New window |
-| `Ctrl+b` then `0`–`9` | Go to window |
+| `Alt + 1` to `Alt + 4` | Go to workspace (1 is the dashboard) |
+| `Ctrl+b` then `c` | Extra window (5, 6, …) |
 | `Ctrl+b` then `g` | Open the desktop |
 | `Ctrl+b` then `d` | Detach (sessions keep running) |
 

@@ -1,12 +1,22 @@
-# Colors + drawing helpers shared by all widgets.
+# Colors + drawing helpers shared by all widgets. Layout sizes (LW, RW, SW) come from bin/oracle-home.
 # shellcheck disable=SC2034  # used by widget files
-C=$'\e[38;2;0;229;255m' W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
-SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) EQ='==========' DASH='----------'
-bar() { # bar <0-100|""> <label> <suffix>
-  local p=$1 f
-  if [[ ! $p =~ ^[0-9]+$ ]]; then printf "  ${W}%-9s${D}[----------]  n/a${N}\n" "$2"; return; fi
-  ((p > 100)) && p=100; f=$((p / 10))
-  printf "  ${W}%-9s${C}[%s${D}%s${C}]${W} %3d%%${D} %s${N}\n" "$2" "${EQ:0:f}" "${DASH:0:10-f}" "$p" "$3"
+C=$'\e[38;2;0;229;255m' W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' F=$'\e[38;2;52;52;52m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
+SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) 
+rep() { local s; printf -v s "%$2s" ''; printf %s "${s// /$1}"; } # rep <char> <count>
+num() { [[ $1 =~ ^[0-9]+$ ]] && ((10#$1 <= 100)); }
+title() { printf "${D}── ${W}%s ${D}%s${N}\n" "$1" "$(rep ─ $((RW - ${#1} - 4)))"; }
+spark() { # spark <label> <value> <extra> <history...>: scrolling sparkline, oldest left, ends with ▏
+  local l=$1 v=$2 x=$3 o='' h; shift 3
+  for h; do o+=${SPARK[$((h * 7 / 100))]}; done
+  printf "${W}%-12s${F}%s${C}%s${D}▏${W}%8s ${D}%s${N}\n" "$l" "$(rep ▁ $((SW - $#)))" "$o" "$v" "$x"
 }
-spark() { local o='' v; for v; do o+=${SPARK[$((v * 7 / 100))]}; done; printf %s "$o"; }
-rule() { printf "  ${D}%s${N}\n" "──────────────────────────────────────────────────────────"; }
+meter() { # meter <0-100|""> <label> <extra>: ━━━━━─────
+  num "$1" || { printf "${W}%-12s${F}%s${D}%8s${N}\n" "$2" "$(rep ─ $((SW + 1)))" n/a; return; }
+  local f=$(($1 * (SW + 1) / 100))
+  printf "${W}%-12s${C}%s${F}%s${W}%7d%% ${D}%s${N}\n" "$2" "$(rep ━ "$f")" "$(rep ─ $((SW + 1 - f)))" "$1" "$3"
+}
+bar() { # bar <0-100|""> <label>: [=====-----] for things you set
+  num "$1" || { printf "${W}%-12s${D}[%s]%8s${N}\n" "$2" "$(rep - $((SW - 1)))" n/a; return; }
+  local f=$(($1 * (SW - 1) / 100))
+  printf "${W}%-12s${C}[%s${D}%s${C}]${W}%7d%%${N}\n" "$2" "$(rep '=' "$f")" "$(rep - $((SW - 1 - f)))" "$1"
+}

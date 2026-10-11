@@ -11,6 +11,10 @@ Oracle can run a small home server:
 
 The dashboard shows whether each app is up.
 
+**Closing the lid** turns the screen off and keeps everything running, so the laptop can sit closed on a shelf. Opening it brings the screen back.
+
+**Battery:** a laptop that's always plugged in lasts longer if it doesn't sit at 100%. Oracle stops charging at 50%. Change it with `oracle battery 30` (any number from 20 to 100).
+
 ## Back up
 
 Plug in a USB stick or drive and type:

@@ -182,16 +182,21 @@ rc, out = vm.sh('for i in $(seq 120); do docker ps --format "{{.Names}}" | grep 
                 ' docker ps --format "{{.Names}} {{.Status}}"; systemctl is-enabled oracle-firstboot; journalctl -b -u oracle-firstboot -o cat | tail -n 8', 700)
 ok['first boot unit started server apps, then disabled itself'] = 'dockge' in out and re.search(r'^disabled$', out, re.M)
 INSTALL = 'curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.2.2:8000/oracle.git bash'
+vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')  # served repo is new each run
 rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run on the installed system (idempotent)'] = rc == 0 and 'already enrolled' in out
 step('tty1 login via monitor sendkey')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
+ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
+rc, out = vm.sh('systemctl is-active oracle-lid; systemctl show -p Result --value oracle-battery; cat /etc/oracle/battery-limit')
+ok['lid watcher running, battery unit ok'] = re.search(r'^active$', out, re.M) and 'success' in out
 vm.mon('screendump /vm/shell.png -f png')
 vm.sh('oracle gui; sleep 25')
 rc, out = vm.sh('pgrep -a Hyprland; pgrep -x cage; cat ~/.local/state/oracle/mode')
 ok['oracle gui → Hyprland'] = 'Hyprland' in out and 'cage' not in out.split('Hyprland')[-1]
+vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl dispatch \'hl.dsp.exec_cmd("ghostty")\'; sleep 8; hyprctl clients | grep -c "class: com.mitchellh.ghostty"')
 vm.mon('screendump /vm/gui.png -f png')
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('pgrep -a cage && tmux ls')
