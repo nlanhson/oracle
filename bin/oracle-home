@@ -23,7 +23,7 @@ while :; do
   case $k in
     g) oracle gui ;;
     f) oracle files; printf '\e[?25l' ;;
-    s) oracle settings; printf '\e[?25l' ;;
+    s) oracle settings; source "$H/theme.sh"; printf '\e[?25l' ;; # accent may have changed
     u) tmux new-window -n update 'oracle update; read -rp "enter to close"' ;;
   esac
 done

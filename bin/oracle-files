@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Oracle files: folder tree like ascii.rest file-tree. ↑↓ move · enter/→ open · ← close/up · . hidden · q back.
 # A file asks what to do: read, edit, edit as admin, or open in the desktop (pictures, PDFs, …).
+# c copy · x cut · p paste (into the selected folder, or next to the selected file) · r rename · n new folder · d trash · / search
 H=$(dirname "$(readlink -f "$0")")/../default/home
 # shellcheck disable=SC1091
 source "$H/theme.sh"
-ROOT=$(realpath "${1:-$HOME}") SEL=0 TOP=0 HID=0 MSG=''
+ROOT=$(realpath "${1:-$HOME}") SEL=0 TOP=0 HID=0 MSG='' Q='' CLIP='' CLIPOP=''
 declare -A OPEN=(["$ROOT"]=1)
 printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
 
@@ -24,19 +25,47 @@ walk() { # walk <dir> <prefix>: P[] paths, T[] tree lines
 draw() {
   local rows cols h i l
   read -r rows cols < <(stty size)
-  P=() K=() T=() ND=0 NF=0; walk "$ROOT" ''
+  P=() K=() T=() ND=0 NF=0
+  if [[ -n $Q ]]; then found; else walk "$ROOT" ''; fi
   ((SEL >= ${#P[@]})) && SEL=$((${#P[@]} - 1)); ((SEL < 0)) && SEL=0
   h=$((rows - 6)); ((SEL < TOP)) && TOP=$SEL; ((SEL >= TOP + h)) && TOP=$((SEL - h + 1))
-  printf '\e[?2026h\e[H\e[2J\n  %s%s%s\n' "$C" "${ROOT/#$HOME/\~}" "$N"
+  printf '\e[?2026h\e[H\e[2J\n  %s%s%s%s\n' "$C" "${ROOT/#$HOME/\~}" "${Q:+$W   search: $Q  ${D}(esc clears)}" "$N"
   for ((i = TOP; i < TOP + h && i < ${#P[@]}; i++)); do
     l=${T[i]}
     if ((i == SEL)); then l=${l/%── ${l##*── }/──> ${l##*── }}; printf '  %s%s%s\n' "$C" "${l:0:cols-4}" "$N"
     elif [[ ${K[i]} == d ]]; then printf '  %s%s%s\n' "$W" "${l:0:cols-4}" "$N"
     else printf '  %s%s%s\n' "$D" "${l:0:cols-4}" "$N"; fi
   done
-  printf '\e[%d;3H%s%d directories, %d files%s' $((rows - 2)) "$D" "$ND" "$NF" "$N"
-  printf '\e[%d;3H%s%s%s' $((rows - 1)) "$W" "${MSG:-↑↓ move · enter open · ← back · . hidden · q quit}" "$N"
+  [[ -n $Q && ${#P[@]} == 0 ]] && printf '\n  %snothing found%s%s' "$D" "$( ((HID)) || echo ' (press . to include hidden files)')" "$N"
+  printf '\e[%d;3H%s%d directories, %d files%s%s' $((rows - 2)) "$D" "$ND" "$NF" "${CLIP:+   ·   $CLIPOP: ${CLIP##*/}  (p pastes)}" "$N"
+  printf '\e[%d;3H%s%s%s' $((rows - 1)) "$W" "${MSG:-enter open · ← back · c copy · x cut · p paste · r rename · n new folder · d trash · / search · . hidden · q quit}" "$N"
   printf '\e[?2026l'; MSG=''
+}
+found() { # search results under ROOT (names containing Q), at most 500
+  local e; local -a x=(-name '.*' -prune -o); ((HID)) && x=()
+  while IFS= read -r e; do
+    P+=("$ROOT/${e#*/}"); K+=("${e%%/*}"); T+=("${e#*/}"); if [[ ${e%%/*} == d ]]; then ((ND++)); T[-1]+=/; else ((NF++)); fi
+  done < <(find "$ROOT" -mindepth 1 "${x[@]}" -iname "*$Q*" -printf '%Y/%P\n' 2>/dev/null | head -500 | LC_ALL=C sort -t/ -k2f)
+}
+input() { # input <label> <prefill> → REPLY (bottom line, Enter = ok, empty = cancel)
+  local rows cols; read -r rows cols < <(stty size)
+  printf '\e[%d;3H\e[K%s%s: %s\e[?25h' $((rows - 1)) "$C" "$1" "$W"; read -rei "$2" REPLY; printf '\e[?25l%s' "$N"
+}
+here() { # folder that actions go into: the selected folder, or the selected file's folder
+  if ((${#P[@]} == 0)); then TGT=$ROOT; elif [[ ${K[SEL]} == d ]]; then TGT=${P[SEL]}; else TGT=${P[SEL]%/*}; fi
+}
+free_name() { # free_name <dir> <name> → U: name, or "name (2).ext" if taken
+  local b=$2 e='' i=2; U=$1/$2; [[ -e $U ]] || return 0
+  [[ $2 == ?*.* ]] && b=${2%.*} e=.${2##*.}
+  while [[ -e "$1/$b ($i)$e" ]]; do ((i++)); done; U="$1/$b ($i)$e"
+}
+paste_() {
+  [[ -n $CLIP && -e $CLIP ]] || { MSG='nothing to paste: c copies, x cuts'; return; }
+  here; free_name "$TGT" "${CLIP##*/}"
+  [[ $TGT/ == "$CLIP"/* ]] && { MSG="can't put a folder inside itself"; return; }
+  if [[ $CLIPOP == cut ]]; then mv -n -- "$CLIP" "$U" && CLIP='' && MSG="moved to ${U/#$HOME/\~}"
+  else cp -a -- "$CLIP" "$U" && MSG="copied to ${U/#$HOME/\~}"; fi
+  OPEN[$TGT]=1
 }
 ask() { # ask <file>: what to do with it
   local f=$1 m t=0 o
@@ -60,12 +89,25 @@ while :; do
     up | k) ((SEL--)) ;;
     down | j) ((SEL++)) ;;
     enter | right | l) p=${P[SEL]}
-      if [[ ${K[SEL]} == d ]]; then if [[ -n ${OPEN[$p]:-} ]]; then unset "OPEN[$p]"; else OPEN[$p]=1; fi; else ask "$p"; fi ;;
+      if [[ ${K[SEL]} == d && -n $Q ]]; then ROOT=$p Q='' SEL=0; OPEN[$p]=1
+      elif [[ ${K[SEL]} == d ]]; then if [[ -n ${OPEN[$p]:-} ]]; then unset "OPEN[$p]"; else OPEN[$p]=1; fi; else ask "$p"; fi ;;
     left | h) p=${P[SEL]}
       if [[ ${K[SEL]} == d && -n ${OPEN[$p]:-} ]]; then unset "OPEN[$p]"
       elif [[ ${p%/*} != "$ROOT" ]]; then for i in "${!P[@]}"; do [[ ${P[i]} == "${p%/*}" ]] && SEL=$i; done
       else ROOT=${ROOT%/*}; ROOT=${ROOT:-/}; OPEN[$ROOT]=1; SEL=0; fi ;;
     .) HID=$((1 - HID)) ;;
-    q | esc) exit ;;
+    c | x) ((${#P[@]})) && { CLIP=${P[SEL]} CLIPOP=copy; [[ $KEY == x ]] && CLIPOP='cut'; MSG="$CLIPOP ${CLIP##*/}: go to a folder, press p"; } ;;
+    p) paste_ ;;
+    r) ((${#P[@]})) || continue; p=${P[SEL]}; input rename "${p##*/}"
+      if [[ -n $REPLY && $REPLY != "${p##*/}" && $REPLY != */* ]]; then
+        if [[ -e ${p%/*}/$REPLY ]]; then MSG="$REPLY already exists"; else mv -n -- "$p" "${p%/*}/$REPLY" && MSG="renamed to $REPLY"; fi
+      fi ;;
+    n) here; input "new folder in ${TGT/#$HOME/\~}" ''
+      if [[ -n $REPLY && $REPLY != */* ]]; then mkdir -p -- "$TGT/$REPLY" && OPEN[$TGT]=1 && MSG="made ${REPLY}/"; fi ;;
+    d) ((${#P[@]})) || continue; p=${P[SEL]}; MSG="move ${p##*/} to trash? y = yes"; draw; key
+      if [[ $KEY == y ]]; then gio trash -- "$p" 2>/dev/null && MSG="${p##*/} is in the trash (restore: Files in the desktop)" || MSG="could not trash ${p##*/}"; fi ;;
+    /) input search ''; [[ -n $REPLY ]] && Q=$REPLY SEL=0 TOP=0 ;;
+    q) exit ;;
+    esc) if [[ -n $Q ]]; then Q=''; SEL=0; else exit; fi ;;
   esac
 done

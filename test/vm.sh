@@ -189,11 +189,21 @@ rc, _ = vm.sh('pacman -Q noctalia swash bluez micro nautilus noto-fonts')
 ok['desktop packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
 ok['new hyprland config verifies'] = rc == 0 and 'config ok' in out
+rc, out = vm.sh('sudo snapper -c root list | tail -n 2; sudo btrfs subvolume show /.snapshots >/dev/null && echo SNAPDIR', 60, sudo)
+ok['snapshots set up'] = rc == 0 and 'SNAPDIR' in out
+rc, out = vm.sh('sudo pacman -S --noconfirm cowsay >/dev/null; command -v cowsay; printf "1\\n" | oracle undo; command -v cowsay || echo GONE', 600, sudo)
+ok['oracle undo takes back an update'] = 'GONE' in out and 'undone' in out
+rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale; Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 2;'
+                ' oracle set keyboard; oracle set scale; grep -c oracle/ghostty ~/.config/ghostty/config')
+ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
+vm.sh('oracle set nightlight always; mkdir -p ~/.local/state/oracle; echo /usr/share/noctalia/assets/noctalia-wallpaper.png >~/.local/state/oracle/wallpaper')
 step('tty1 login via monitor sendkey')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
 ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
+rc, out = vm.sh('pgrep -x wlsunset && cat ~/.config/oracle/ghostty')
+ok['night light in Shell mode, ghostty settings file'] = rc == 0 and 'font-size' in out
 rc, out = vm.sh('systemctl is-active oracle-lid; systemctl show -p Result --value oracle-battery; cat /etc/oracle/battery-limit')
 ok['lid watcher running, battery unit ok'] = re.search(r'^active$', out, re.M) and 'success' in out
 vm.mon('screendump /vm/shell.png -f png')
@@ -203,6 +213,8 @@ ok['oracle gui → Hyprland'] = 'Hyprland' in out and 'cage' not in out.split('H
 vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl dispatch \'hl.dsp.exec_cmd("ghostty")\'; sleep 8; hyprctl clients | grep -c "class: com.mitchellh.ghostty"')
 rc, out = vm.sh('pgrep -x noctalia; fc-list | wc -l')
 ok['Noctalia running, fonts installed'] = rc == 0 and int(out.split()[-1]) > 20
+rc, out = vm.sh('sleep 10; pgrep -x wlsunset; ls ~/.local/state/oracle/wallpaper 2>&1; oracle set nightlight')
+ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'No such file' in out
 vm.mon('screendump /vm/gui.png -f png')
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('pgrep -a cage && tmux ls')

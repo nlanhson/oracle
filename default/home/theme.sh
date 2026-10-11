@@ -1,7 +1,10 @@
 # Colors + drawing helpers shared by all widgets. Layout sizes (LW, RW, SW) come from bin/oracle-home.
 # shellcheck disable=SC2034  # used by widget files
-C=$'\e[38;2;0;229;255m' W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' F=$'\e[38;2;52;52;52m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
-SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █) 
+W=$'\e[38;2;200;200;200m' D=$'\e[38;2;90;90;90m' F=$'\e[38;2;52;52;52m' R=$'\e[38;2;139;46;46m' N=$'\e[0m'
+SPARK=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █)
+declare -A ACCENTS=([cyan]=00e5ff [amber]=ffb000 [green]=3ddc84 [purple]=b388ff [white]=e8e8e8) # settings: accent
+A=$(sed -n 's/^accent=//p' ~/.config/oracle/settings 2>/dev/null | tail -1) || true; A=${ACCENTS[${A:-cyan}]:-00e5ff}
+C=$'\e[38;2;'"$((16#${A:0:2}));$((16#${A:2:2}));$((16#${A:4:2}))m"
 rep() { local s; printf -v s "%$2s" ''; printf %s "${s// /$1}"; } # rep <char> <count>
 num() { [[ $1 =~ ^[0-9]+$ ]] && ((10#$1 <= 100)); }
 title() { printf "${D}── ${W}%s ${D}%s${N}\n" "$1" "$(rep ─ $((RW - ${#1} - 4)))"; }

@@ -7,7 +7,17 @@ for _, m in ipairs({ "animations", "autostart", "colors", "decorations", "variab
   require("config." .. m)
 end
 
--- Oracle: open what `oracle open` asked for from Shell mode
+-- Oracle settings screen (~/.config/oracle/settings): screen scale, keyboard layout
+local S = {}
+local f = io.open(os.getenv("HOME") .. "/.config/oracle/settings")
+if f then
+  for l in f:lines() do local k, v = l:match("^([%w_]+)=(.*)$"); if k then S[k] = v end end
+  f:close()
+end
+if S.scale then hl.monitor({ output = MONITOR1, mode = "preferred", position = "auto", scale = S.scale }) end
+if S.keyboard then hl.config({ input = { kb_layout = S.keyboard } }) end
+
+-- Oracle: night light, wallpaper picked in Shell mode, file `oracle open` asked for
 hl.on("hyprland.start", function() hl.exec_cmd("oracle pending") end)
 
 -- Noctalia color template (~/.config/hypr/noctalia.lua), if Noctalia has written one

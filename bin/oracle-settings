@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Oracle settings, ascii.rest form-controls look. ↑↓ move · ←→ change · enter open/toggle · q back.
+# Own choices live in ~/.config/oracle/settings (oracle set/get); Hyprland and Shell mode read them when they start.
 H=$(dirname "$(readlink -f "$0")")/../default/home
 # shellcheck disable=SC1091
 source "$H/theme.sh"
-DIR=$HOME/.local/share/oracle SEL=0 MSG=''
-ITEMS=(brightness volume mute battery wifi network bluetooth devices update restart shutdown)
+DIR=$HOME/.local/share/oracle SEL=0 MSG='' BW=64
+ITEMS=(brightness nightlight textsize scale volume mute output battery wifi network bluetooth devices
+       timezone keyboard accent wallpaper about update undo restart shutdown)
+BUTTONS=4 # last 4 items are the buttons row
+declare -A NIGHT=([off]=off [evening]="6 PM to 6 AM" [always]="always on")
 printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
 
 slider() { # slider <0-100|""> <suffix>: ━━━━━█───── 40%
@@ -14,65 +18,83 @@ slider() { # slider <0-100|""> <suffix>: ━━━━━█───── 40%
 toggle() { # toggle <on|off|"">
   case $1 in on) printf "%s▕%s░░░░%s██%s▏ %son%s" "$D" "$F" "$C" "$D" "$W" "$N" ;; off) printf "%s▕%s██%s░░░░%s▏ %soff%s" "$D" "$W" "$F" "$D" "$W" "$N" ;; *) printf "%sn/a%s" "$F" "$N" ;; esac
 }
-select_() { printf "%s[ %s%-24s%s v ]%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # [ value v ]
+select_() { printf "%s[ %s%-24s%s v ]%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # [ value v ] = enter opens a list
+stepper() { printf "%s◂ %s%-24s%s ▸%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # ◂ value ▸ = ←→ change
 button() { printf "%s[ %s%s%s ]%s" "$D" "$W" "$1" "$D" "$N"; }
 
 get() {
+  declare -gA S=(); local k v
+  while IFS='=' read -r k v; do [[ -n $k ]] && S[$k]=$v; done 2>/dev/null <"$HOME/.config/oracle/settings"
   BRI=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4+0}')
   read -r VOL MUTE < <(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3 ~ /MUTED/ ? "on" : "off")}')
+  OUT=$(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | sed -n 's/.*node.description = "\(.*\)"/\1/p')
   BAT=$(cat /etc/oracle/battery-limit 2>/dev/null)
   WIFI=$(nmcli -t radio wifi 2>/dev/null | sed 's/enabled/on/; s/disabled/off/')
   SSID=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
   BT=$(bluetoothctl show 2>/dev/null | awk '/Powered:/{print ($2=="yes" ? "on" : "off"); exit}')
   BTDEV=$(bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3- | paste -sd, -)
+  TZ_=$(timedatectl show -p Timezone --value 2>/dev/null)
+  WP=$(sed -n '/^\[wallpaper.default\]/,/^\[/s/^path = "\(.*\)"/\1/p' ~/.local/state/noctalia/settings.toml 2>/dev/null)
+  [[ -f ~/.local/state/oracle/wallpaper ]] && WP=$(<~/.local/state/oracle/wallpaper)
 }
-row() { # row <i> <label> <control>
-  local m='  ' c=$W; ((SEL == $1)) && m="$C> " c=$C
-  LINES+=("$m$c$(printf '%-12s' "$2")$N$3")
+row() { # row <item> <label> <control>
+  local m='  ' c=$W; [[ ${ITEMS[SEL]} == "$1" ]] && m="$C> " c=$C
+  LINES+=("$m$c$(printf '%-14s' "$2")$N$3")
 }
+place() { read -r ROWS COLS < <(stty size); BX=$(((COLS - BW) / 2)); BY=$(((ROWS - ${#LINES[@]} - 2) / 2)); ((BX < 1)) && BX=1; ((BY < 1)) && BY=1; }
 draw() {
-  local rows cols v k
-  read -r rows cols < <(stty size); get
-  LINES=('')
-  row 0 brightness "$(slider "$BRI")"; row 1 volume "$(slider "$VOL")"; row 2 mute "$(toggle "$MUTE")"
-  row 3 battery "$(slider "$BAT" "stop charging")"; LINES+=('')
-  row 4 wifi "$(toggle "$WIFI")"; row 5 network "$(select_ "${SSID:-not connected}")"
-  row 6 bluetooth "$(toggle "$BT")"; row 7 devices "$(select_ "${BTDEV:-none connected}")"; LINES+=('')
-  LINES+=("  ${D}── about ──${N}")
-  v=$(git -C "$DIR" log -1 --format='%h · %cd' --date=format:'%-d %b %Y' 2>/dev/null)
-  for k in "user|$USER@$(cat /etc/hostname 2>/dev/null)" "oracle|${v:-?}" "system|Arch Linux · kernel $(uname -r)" \
-           "uptime|$(uptime -p | sed 's/^up //')" "memory|$(free -h | awk '/^Mem/{print $3 " of " $2}')" "disk|$(df -h / | awk 'NR==2{print $3 " of " $2}')"; do
-    LINES+=("  $(printf "${D}%-12s${W}%s${N}" "${k%%|*}" "${k#*|}")")
+  local k b=''
+  get; LINES=('')
+  row brightness brightness "$(slider "$BRI")"; row nightlight "night light" "$(stepper "${NIGHT[${S[nightlight]:-off}]}")"
+  row textsize "text size" "$(stepper "${S[textsize]:-12} (Shell mode)")"; row scale "screen scale" "$(stepper "${S[scale]:-1.67}x (desktop)")"; LINES+=('')
+  row volume volume "$(slider "$VOL")"; row mute mute "$(toggle "$MUTE")"; row output "sound output" "$(select_ "${OUT:-none}")"; LINES+=('')
+  row battery battery "$(slider "$BAT" "stop charging")"; LINES+=('')
+  row wifi wifi "$(toggle "$WIFI")"; row network network "$(select_ "${SSID:-not connected}")"
+  row bluetooth bluetooth "$(toggle "$BT")"; row devices devices "$(select_ "${BTDEV:-none connected}")"; LINES+=('')
+  row timezone "time zone" "$(select_ "${TZ_:-?}")"; row keyboard keyboard "$(select_ "${S[keyboard]:-us}")"
+  row accent accent "$(stepper "${S[accent]:-cyan}")"; row wallpaper wallpaper "$(select_ "${WP##*/}")"
+  row about about "$(select_ "$USER@$(cat /etc/hostname 2>/dev/null)")"; LINES+=('')
+  for k in "${ITEMS[@]: -BUTTONS}"; do
+    if [[ ${ITEMS[SEL]} == "$k" ]]; then b+="${C}[ $k ]$N   "; else b+="$(button "$k")   "; fi
   done
-  LINES+=('')
-  local b=''; for k in 8:update 9:restart 10:shutdown; do
-    if ((SEL == ${k%%:*})); then b+="${C}[ ${k#*:} ]$N   "; else b+="$(button "${k#*:}")   "; fi
-  done
-  LINES+=("  $b" '')
-  BW=64; BX=$(((cols - BW) / 2)); BY=$(((rows - ${#LINES[@]} - 2) / 2)); ((BX < 1)) && BX=1; ((BY < 1)) && BY=1
+  LINES+=("  $b" ''); place
   printf '\e[?2026h\e[H\e[2J'; box settings "${MSG:-↑↓ move · ←→ change · enter open · q back}"; printf '\e[?2026l'; MSG=''
 }
-pick() { # pick <title> <options...> → PICK (empty = cancelled)
-  local t=$1 s=0 i; shift; PICK=''
+pick() { # pick <title> <options...> → PICK (empty = cancelled). Long lists: type to search.
+  local t=$1 s=0 top=0 q='' i h; shift; local all=("$@") v; PICK=''
   while :; do
-    LINES=(''); for ((i = 1; i <= $#; i++)); do
-      if ((i - 1 == s)); then LINES+=("$C> ${!i}$N"); else LINES+=("  $W${!i}$N"); fi; done; LINES+=('')
-    printf '\e[?2026h\e[H\e[2J'; box "$t" "↑↓ move · enter choose · q back"; printf '\e[?2026l'
+    v=(); for i in "${all[@]}"; do [[ -z $q || ${i,,} == *"${q,,}"* ]] && v+=("$i"); done
+    read -r ROWS COLS < <(stty size); h=$((ROWS - 12)); ((h > 18)) && h=18; ((h < 3)) && h=3
+    ((s >= ${#v[@]})) && s=$((${#v[@]} - 1)); ((s < 0)) && s=0
+    ((s < top)) && top=$s; ((s >= top + h)) && top=$((s - h + 1))
+    LINES=(''); (($# > 8)) && LINES+=("  ${D}search ${W}$q${C}▏$N" '')
+    for ((i = top; i < top + h && i < ${#v[@]}; i++)); do
+      if ((i == s)); then LINES+=("$C> ${v[i]:0:BW-6}$N"); else LINES+=("  $W${v[i]:0:BW-6}$N"); fi
+    done
+    ((${#v[@]})) || LINES+=("  ${D}no match$N"); LINES+=(''); place
+    printf '\e[?2026h\e[H\e[2J'; box "$t" "$( (($# > 8)) && printf 'type to search · ')enter choose · esc back"; printf '\e[?2026l'
     key || return
-    case $KEY in up | k) ((s > 0)) && ((s--)) ;; down | j) ((s < $# - 1)) && ((s++)) ;; enter) i=$((s + 1)); PICK=${!i}; return ;; q | esc) return ;; esac
+    case $KEY in
+      up) ((s--)) ;; down | tab) ((s++)) ;; esc) return ;;
+      enter) ((${#v[@]})) && PICK=${v[s]}; return ;;
+      k | j | q) if (($# > 8)); then q+=$KEY; elif [[ $KEY == q ]]; then return; elif [[ $KEY == k ]]; then ((s--)); else ((s++)); fi ;;
+      backspace) q=${q%?} ;; space) q+=' ' ;;
+      ?) (($# > 8)) && q+=$KEY ;;
+    esac
   done
 }
 prompt() { # prompt <text> → REPLY (hidden input)
   printf '\e[%d;%dH%s%s: %s' $((BY + ${#LINES[@]} + 3)) $((BX + 2)) "$W" "$1" "$N"; printf '\e[?25h'; read -rs REPLY; printf '\e[?25l'
 }
+asroot() { printf '\e[2J\e[H\e[?25h'; sudo "$@"; local r=$?; printf '\e[?25l'; return $r; } # may ask your password
 wifi() {
-  local l; MSG="scanning…"; draw
+  local l s; MSG="scanning…"; draw
   mapfile -t l < <(nmcli -t -f ssid,signal,security dev wifi list --rescan yes 2>/dev/null | awk -F: '$1!="" && !s[$1]++ {printf "%-28s %3s%%  %s\n", $1, $2, ($3==""?"open":"locked")}')
   ((${#l[@]})) || { MSG="no networks found"; return; }
   pick wifi "${l[@]}"; [[ -n $PICK ]] || return
-  local s; s=$(sed 's/ *[0-9]*%.*$//' <<<"$PICK")
+  s=$(sed 's/ *[0-9]*%.*$//' <<<"$PICK")
   if nmcli dev wifi connect "$s" >/dev/null 2>&1; then MSG="connected to $s"; return; fi
-  prompt "password for $s"; nmcli dev wifi connect "$s" password "$REPLY" >/dev/null 2>&1 && MSG="connected to $s" || MSG="could not connect to $s"
+  draw; prompt "password for $s"; nmcli dev wifi connect "$s" password "$REPLY" >/dev/null 2>&1 && MSG="connected to $s" || MSG="could not connect to $s"
 }
 devices() {
   local l d; mapfile -t l < <(bluetoothctl devices 2>/dev/null | cut -d' ' -f2-)
@@ -85,31 +107,85 @@ devices() {
   if bluetoothctl info "$d" | grep -q 'Connected: yes'; then bluetoothctl disconnect "$d" >/dev/null; MSG="disconnected ${PICK#* }"; return; fi
   { bluetoothctl pair "$d"; bluetoothctl trust "$d"; bluetoothctl connect "$d"; } >/dev/null 2>&1 && MSG="connected ${PICK#* }" || MSG="could not connect ${PICK#* }"
 }
+output() { # speakers, headphones, HDMI, bluetooth… (wpctl status: Audio → Sinks)
+  local l; mapfile -t l < <(wpctl status 2>/dev/null | awk '/^Audio/{a=1} /^Video/{a=0} a && /Sinks:/{s=1; next} s && /Sources:|Filters:|Streams:/{s=0}
+    s && match($0, /[0-9]+\. /) {x = substr($0, RSTART); sub(/ *\[vol:.*/, "", x); print x}')
+  ((${#l[@]})) || { MSG="no sound outputs found"; return; }
+  pick "sound output" "${l[@]}"; [[ -n $PICK ]] || return
+  wpctl set-default "${PICK%%.*}" && MSG="sound now plays on ${PICK#*. }"
+}
+timezone() {
+  local l; mapfile -t l < <(timedatectl list-timezones 2>/dev/null || awk '$1 == "Z" {print $2}' /usr/share/zoneinfo/tzdata.zi | sort)
+  ((${#l[@]})) || { MSG="no time zone list"; return; }
+  pick "time zone" "${l[@]}"; [[ -n $PICK ]] || return
+  asroot timedatectl set-timezone "$PICK" && MSG="time zone: $PICK" || MSG="time zone not changed"
+}
+keyboard() {
+  local l; mapfile -t l < <(localectl list-x11-keymap-layouts 2>/dev/null)
+  ((${#l[@]})) || { MSG="no keyboard list"; return; }
+  pick keyboard "${l[@]}"; [[ -n $PICK ]] || return
+  oracle set keyboard "$PICK"; MSG="keyboard: $PICK (from the next time Shell or desktop starts)"
+}
+wallpaper() { # desktop wallpaper (Noctalia). From Shell mode it is set when the desktop next starts.
+  local l; mapfile -t l < <(find ~/Pictures ~/Wallpapers /usr/share/noctalia/assets -maxdepth 3 -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sed "s|^$HOME|~|" | sort)
+  ((${#l[@]})) || { MSG="no pictures in ~/Pictures"; return; }
+  pick wallpaper "${l[@]}"; [[ -n $PICK ]] || return
+  local p=${PICK/#\~/$HOME}
+  if noctalia msg wallpaper-set "$p" &>/dev/null; then MSG="wallpaper set"
+  else mkdir -p ~/.local/state/oracle; echo "$p" >~/.local/state/oracle/wallpaper; MSG="wallpaper: set when the desktop starts"; fi
+}
+about() {
+  local v k; v=$(git -C "$DIR" log -1 --format='%h · %cd' --date=format:'%-d %b %Y' 2>/dev/null)
+  LINES=('')
+  for k in "user|$USER@$(cat /etc/hostname 2>/dev/null)" "oracle|${v:-?}" "system|Arch Linux · kernel $(uname -r)" \
+           "uptime|$(uptime -p | sed 's/^up //')" "memory|$(free -h | awk '/^Mem/{print $3 " of " $2}')" \
+           "disk|$(df -h / | awk 'NR==2{print $3 " of " $2}')"; do
+    LINES+=("  $(printf "${D}%-14s${W}%s${N}" "${k%%|*}" "${k#*|}")")
+  done
+  LINES+=(''); place; printf '\e[?2026h\e[H\e[2J'; box about "any key back"; printf '\e[?2026l'; key
+}
+cycle() { # cycle <current> <+1|-1> <values...> → V
+  local c=$1 d=$2 i; shift 2; local a=("$@")
+  for ((i = 0; i < $#; i++)); do [[ ${a[i]} == "$c" ]] && break; done; ((i == $#)) && i=0
+  V=${a[$(((i + d + $#) % $#))]}
+}
 change() { # change <+1|-1> for the selected row
-  case $SEL in
-    0) brightnessctl -q set "$((BRI + $1 * 5 < 1 ? 1 : BRI + $1 * 5))%" ;;
-    1) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$((VOL + $1 * 5 < 0 ? 0 : VOL + $1 * 5))%" ;;
-    2) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
-    3) local b=$((${BAT:-100} + $1 * 5)); ((b < 20)) && b=20; ((b > 100)) && b=100; oracle battery "$b" >/dev/null ;;
-    4) [[ $WIFI == on ]] && nmcli radio wifi off || nmcli radio wifi on ;;
-    6) [[ $BT == on ]] && bluetoothctl power off >/dev/null || bluetoothctl power on >/dev/null ;;
+  case ${ITEMS[SEL]} in
+    brightness) brightnessctl -q set "$((BRI + $1 * 5 < 1 ? 1 : BRI + $1 * 5))%" ;;
+    volume) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$((VOL + $1 * 5 < 0 ? 0 : VOL + $1 * 5))%" ;;
+    mute) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    battery) local b=$((${BAT:-100} + $1 * 5)); ((b < 20)) && b=20; ((b > 100)) && b=100; oracle battery "$b" >/dev/null ;;
+    wifi) [[ $WIFI == on ]] && nmcli radio wifi off || nmcli radio wifi on ;;
+    bluetooth) [[ $BT == on ]] && bluetoothctl power off >/dev/null || bluetoothctl power on >/dev/null ;;
+    nightlight) cycle "${S[nightlight]:-off}" "$1" off evening always; oracle set nightlight "$V"; [[ -n ${WAYLAND_DISPLAY:-} ]] && oracle night ;;
+    textsize) local t=$((${S[textsize]:-12} + $1)); ((t < 8)) && t=8; ((t > 28)) && t=28; oracle set textsize "$t"; oracle look ;;
+    scale) cycle "${S[scale]:-1.67}" "$1" 1 1.25 1.5 1.67 2; oracle set scale "$V"; MSG="screen scale: from the next time the desktop starts"
+      [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl reload >/dev/null && MSG="screen scale: $V" ;;
+    accent) cycle "${S[accent]:-cyan}" "$1" cyan amber green purple white; oracle set accent "$V"; oracle look
+      # shellcheck disable=SC1091
+      source "$H/theme.sh" ;;
   esac 2>/dev/null
 }
 confirm() { MSG="$1? press y to confirm"; draw; key && [[ $KEY == y ]]; }
+inline() { printf '\e[?25h\e[2J\e[H'; "$@"; read -rp 'enter to close' _; printf '\e[?25l'; } # inline <cmd>: run in the open
+FIRSTB=$((${#ITEMS[@]} - BUTTONS))
 while :; do
   draw
   key || exit
   case $KEY in
-    up | k) ((SEL > 0)) && ((SEL--)) ;;
-    down | j | tab) ((SEL < ${#ITEMS[@]} - 1)) && ((SEL++)) ;;
-    left | h) if ((SEL < 8)); then change -1; elif ((SEL > 8)); then ((SEL--)); fi ;;
-    right | l) if ((SEL < 8)); then change 1; elif ((SEL < 10)); then ((SEL++)); fi ;;
+    up | k) if ((SEL > FIRSTB)); then SEL=$((FIRSTB - 1)); elif ((SEL > 0)); then ((SEL--)); fi ;;
+    down | j | tab) ((SEL < FIRSTB)) && ((SEL++)) ;;
+    left | h) if ((SEL < FIRSTB)); then change -1; elif ((SEL > FIRSTB)); then ((SEL--)); fi ;;
+    right | l) if ((SEL < FIRSTB)); then change 1; elif ((SEL < ${#ITEMS[@]} - 1)); then ((SEL++)); fi ;;
     enter | space)
-      case $SEL in
-        5) wifi ;; 7) devices ;;
-        8) printf '\e[?25h\e[2J\e[H'; oracle update; read -rp 'enter to close' _; printf '\e[?25l' ;;
-        9) confirm restart && systemctl reboot ;;
-        10) confirm "shut down" && systemctl poweroff ;;
+      case ${ITEMS[SEL]} in
+        network) wifi ;; devices) devices ;; output) output ;; timezone) timezone ;; keyboard) keyboard ;;
+        wallpaper) wallpaper ;; about) about ;;
+        update) inline oracle update ;;
+        undo) inline oracle undo ;;
+        restart) confirm restart && systemctl reboot ;;
+        shutdown) confirm "shut down" && systemctl poweroff ;;
         *) change 1 ;;
       esac ;;
     q | esc) exit ;;

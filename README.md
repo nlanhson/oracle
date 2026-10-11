@@ -11,6 +11,7 @@ Named after Batman's Oracle: your machine is the Batcomputer.
 - **Light like plain Arch.** No desktop environment running all the time. Every package has to earn its place.
 - **Text first.** You land on a dashboard and a terminal. Hyprland starts only when you ask for it.
 - **Home-server ready.** Docker, Immich, Tailscale and a VPN exit node, set up for you, with backup and restore built in.
+- **Undo for updates.** A snapshot before every update; `oracle undo` takes it back.
 - **Secure by default.** Full-disk encryption that unlocks itself through the TPM chip, so the machine comes back on its own after a power cut.
 - **Yours to change.** Your settings live in your own files. Updates never overwrite them.
 
@@ -46,6 +47,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `Super + B` | Brave Origin (in the desktop) |
 | `f` / `s` on the dashboard | Files / Settings |
 | `oracle update` | Update Oracle and the whole system |
+| `oracle undo` | Take back an update that broke something |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
 | `oracle restore <folder>` | Bring the home server back from a backup |
 | `oracle battery 50` | Stop charging at 50% (good for a laptop that's always plugged in) |
@@ -62,10 +64,10 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 Oracle's defaults live in `~/.local/share/oracle/default/`. Your own changes go in:
 
 - `~/.config/hypr/hyprland.lua` (desktop and keybinds)
-- `~/.config/ghostty/config` (terminal)
+- `~/.config/ghostty/mine` (terminal)
 - `~/.config/tmux/tmux.conf` (terminal sessions)
 
-Each of these files first loads Oracle's defaults, then applies your changes. `oracle update` refreshes the defaults and never touches your files.
+Your changes always win over Oracle's defaults. Most everyday choices (text size, night light, keyboard, wallpaper…) are in Settings (`s` on the dashboard). `oracle update` refreshes the defaults and never touches your files.
 
 ## Status
 

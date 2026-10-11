@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell | home | attach | session | help
+# oracle update | undo | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell
+#        internal: home attach tabs session pending look night set get
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
 MODE=$HOME/.local/state/oracle/mode
+SET=$HOME/.config/oracle/settings
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 
 case ${1:-help} in
   update)
+    snap() { command -v snapper >/dev/null && sudo snapper -c root create -c number -p -d "$@" 2>/dev/null; } # undo point
+    PRE=$(snap "oracle update" -t pre || true)
+    trap '[[ -n $PRE ]] && snap "oracle update" -t post --pre-number "$PRE" >/dev/null || true' EXIT
     say "oracle: pull"
     git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
     mkdir -p "$STATE"
@@ -22,17 +27,35 @@ case ${1:-help} in
     if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
     [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
     ;;
+  undo) # put back the files an update changed (snapper pre/post pair), then restart
+    command -v snapper >/dev/null && sudo snapper -c root list >/dev/null 2>&1 || die "no snapshots on this system"
+    mapfile -t U < <(sudo snapper -c root --csvout list --columns number,type,pre-number,date,description |
+      awk -F, '$2 == "post" {print $3 "," $1 "," substr($4, 1, 16) "," $5}' | tac | head -15)
+    ((${#U[@]})) || die "nothing to undo yet"
+    say "updates, newest first:"
+    for i in "${!U[@]}"; do IFS=, read -r _ _ d t <<<"${U[i]}"; printf '  %2d  %s  %s\n' $((i + 1)) "$d" "${t:0:60}"; done
+    read -rp "undo which (number, Enter = cancel): " n
+    [[ $n =~ ^[0-9]+$ ]] && ((n >= 1 && n <= ${#U[@]})) || exit 0
+    IFS=, read -r a b d t <<<"${U[n - 1]}"
+    PRE=$(sudo snapper -c root create -c number -p -t pre -d "undo $d")
+    sudo snapper -c root undochange "$a..$b" >/dev/null || die "undo failed"
+    sudo snapper -c root create -c number -t post --pre-number "$PRE" -d "undo $d"
+    for k in /usr/lib/modules/*/pkgbase; do # kernel went back too: match /boot
+      [[ $(<"$k") == linux ]] || continue; k=${k%/pkgbase}
+      sudo cmp -s "$k/vmlinuz" /boot/vmlinuz-linux || { sudo install -m644 "$k/vmlinuz" /boot/vmlinuz-linux; sudo mkinitcpio -P; }
+    done
+    say "undone ($d · ${t:0:40}). Restart now: systemctl reboot. Changed your mind? oracle undo again, pick \"undo $d\"" ;;
   backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
   restore) shift; exec bash "$DIR/install.sh" --restore "${1:?usage: oracle restore <backup folder>}" ;;
   session) # tty1 login: shell (cage + ghostty + tmux) ⇄ gui (Hyprland). Same mode after exit = logout.
     mkdir -p "${MODE%/*}"; echo shell >"$MODE"
     while :; do
-      m=$(<"$MODE")
-      if [[ $m == gui ]]; then start-hyprland || true; else cage -s -- ghostty -e oracle attach || true; fi
+      m=$(<"$MODE"); "$0" look
+      if [[ $m == gui ]]; then start-hyprland || true; else XKB_DEFAULT_LAYOUT=$("$0" get keyboard us) cage -s -- ghostty -e oracle attach || true; fi
       [[ $(<"$MODE") != "$m" ]] || break
     done ;;
   attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home
-    oracle tabs; exec tmux attach -t oracle \; select-window -t oracle:1 ;;
+    oracle tabs; oracle look; oracle night; exec tmux attach -t oracle \; select-window -t oracle:1 ;;
   tabs) # workspaces 1-4 always exist: 1 = home dashboard, 2-4 = terminals
     for i in 1 2 3 4; do
       tmux list-windows -t oracle -F '#I' 2>/dev/null | grep -qx "$i" && continue
@@ -44,8 +67,28 @@ case ${1:-help} in
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then setsid -f xdg-open "$f" >/dev/null 2>&1; exit; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
-  pending) P=${MODE%/*}/open # Hyprland start: open what `oracle open` asked for
-    [[ -f $P ]] && { f=$(<"$P"); rm -f "$P"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
+  pending) P=${MODE%/*} # Hyprland start: night light, wallpaper picked in Shell mode, file `oracle open` asked for
+    "$0" night
+    if [[ -f $P/wallpaper ]]; then
+      for _ in {1..40}; do noctalia msg status &>/dev/null && break; sleep 0.5; done
+      noctalia msg wallpaper-set "$(<"$P/wallpaper")" &>/dev/null && rm -f "$P/wallpaper"
+    fi
+    [[ -f $P/open ]] && { f=$(<"$P/open"); rm -f "$P/open"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
+  set) mkdir -p "${SET%/*}"; touch "$SET" # set <key> [value]: ~/.config/oracle/settings (settings screen)
+    { grep -v "^${2:?}=" "$SET" || true; [[ -z ${3:-} ]] || printf '%s=%s\n' "$2" "$3"; } >"$SET.new"; mv "$SET.new" "$SET" ;;
+  get) v=$(sed -n "s/^${2:?}=//p" "$SET" 2>/dev/null | tail -1) || true; echo "${v:-${3:-}}" ;; # get <key> [default]
+  look) # text size + accent → ghostty include, tmux colors
+    # shellcheck disable=SC1091
+    source "$DIR/default/home/theme.sh"; a=$A; mkdir -p "${SET%/*}"
+    printf 'font-size = %s\ncursor-color = %s\n' "$("$0" get textsize 12)" "$a" >"${SET%/*}/ghostty.new"
+    cmp -s "${SET%/*}/ghostty.new" "${SET%/*}/ghostty" && rm "${SET%/*}/ghostty.new" || { mv "${SET%/*}/ghostty.new" "${SET%/*}/ghostty"; pkill -USR2 -x ghostty || true; }
+    tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true ;;
+  night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
+    [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0
+    case $("$0" get nightlight off) in
+      evening) setsid -f wlsunset -t 4000 -T 6500 -S 06:00 -s 18:00 -d 1800 &>/dev/null ;;
+      always) setsid -f wlsunset -t 4000 -T 4001 -S 06:00 -s 18:00 &>/dev/null ;;
+    esac ;;
   battery) L=/etc/oracle/battery-limit
     if [[ -n ${2:-} ]]; then
       [[ $2 =~ ^[0-9]+$ ]] && ((${2} >= 20 && ${2} <= 100)) || die "usage: oracle battery <20-100>"
@@ -56,7 +99,8 @@ case ${1:-help} in
   shell) echo shell >"$MODE"; hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
   *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
      echo "oracle shell         back to Shell (closes GUI apps). Super+M in GUI"
-     echo "oracle update        get newest Oracle + system updates"
+     echo "oracle update        get newest Oracle + system updates (saves an undo point first)"
+     echo "oracle undo          take back an update (pick one from the list), then restart"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
      echo "oracle restore <dir> bring the server back from a backup"
      echo "oracle battery [n]   show or set the charge limit (20-100%)"

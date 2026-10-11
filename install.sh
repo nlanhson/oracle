@@ -183,12 +183,18 @@ say "noctalia (desktop bar, launcher, lock) config"
 for f in noctalia/config.toml hypr/noctalia.lua hypr/xdph.conf; do
   if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm644 "$SRC/config/$f" "$HOME/.config/$f"; fi
 done
+NS=$HOME/.local/state/noctalia/settings.toml # owner's look (Gruvbox, Open Sans, sizes), saved by Noctalia's settings window
+[[ -e $NS ]] || run install -Dm644 "$SRC/config/noctalia/settings.toml" "$NS"
 
 say "ghostty + tmux config"
 ucfg() { # ucfg <file> <include line>: user file with include, only if missing
   if [[ -e $1 ]]; then say "  kept your $1"; else run mkdir -p "${1%/*}"; ((DRY)) || printf '%s\n# your changes below\n' "$2" >"$1"; fi
 }
-ucfg "$HOME/.config/ghostty/config" "config-file = $DIR/default/ghostty/config"
+# ghostty loads included files after the whole file, so your changes go in a file included last
+G=$HOME/.config/ghostty/config
+if [[ -e $G ]]; then say "  kept your $G"; ((DRY)) || grep -qF '../oracle/ghostty' "$G" || printf 'config-file = ?../oracle/ghostty\n' >>"$G"
+else run mkdir -p "${G%/*}"; ((DRY)) || printf '%s\n' "config-file = $DIR/default/ghostty/config" 'config-file = ?../oracle/ghostty' \
+  '# your changes go in ~/.config/ghostty/mine (loaded last, so they win)' 'config-file = ?mine' >"$G"; fi
 ucfg "$HOME/.config/tmux/tmux.conf" "source-file $DIR/default/tmux.conf"
 
 say "tty1 autostart"
@@ -210,6 +216,20 @@ fi
 M=$HOME/.local/state/oracle/migrations
 run mkdir -p "$M"
 for m in "$SRC"/migrations/*.sh; do [[ ! -f $m ]] || run touch "$M/${m##*/}"; done
+
+N=(); [[ -d /run/systemd/system && -z ${ORACLE_CHROOT:-} ]] && N=(--now) # start services now (not in the USB installer's chroot)
+
+say "undo for updates (btrfs snapshots before every update: oracle undo)"
+if [[ $(findmnt -no FSTYPE /) == btrfs ]] && ((!DRY)); then
+  [[ -e /var/lib/docker ]] || sudo btrfs -q subvolume create /var/lib/docker # docker images stay out of snapshots
+  if [[ ! -f /etc/snapper/configs/root ]]; then
+    sudo snapper --no-dbus -c root create-config /
+    sudo snapper --no-dbus -c root set-config NUMBER_LIMIT=20 NUMBER_LIMIT_IMPORTANT=5 TIMELINE_CREATE=no
+  fi
+  run sudo systemctl enable "${N[@]}" snapper-cleanup.timer
+else
+  say "  skip: / is not btrfs, or dry-run"
+fi
 
 S=(); ((DRY)) && S+=(--dry-run); [[ -z $RESTORE ]] || S+=(--restore "$RESTORE")
 bash "$SRC/server/server.sh" "${S[@]}"
@@ -249,7 +269,6 @@ if ((!DRY)) && [[ ! -f /etc/systemd/system/oracle-battery.path ]]; then
   printf '[Unit]\nDescription=Oracle: apply battery limit when it changes\n[Path]\nPathChanged=/etc/oracle/battery-limit\n[Install]\nWantedBy=multi-user.target\n' |
     sudo tee /etc/systemd/system/oracle-battery.path >/dev/null
 fi
-N=(); [[ -d /run/systemd/system && -z ${ORACLE_CHROOT:-} ]] && N=(--now)
 run sudo systemctl enable "${N[@]}" oracle-battery.service oracle-battery.path
 
 say "lid closed → screen off, keeps running"

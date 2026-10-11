@@ -15,6 +15,10 @@ hyprpicker
 wl-clipboard
 noto-fonts
 noto-fonts-emoji
+ttf-opensans
+wlsunset
+snapper
+snap-pac
 micro
 xdg-utils
 bluez

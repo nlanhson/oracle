@@ -18,11 +18,30 @@ Press `f` on the dashboard (or type `oracle files`). Folders open and close in p
 - **Text files:** read, edit, or edit as admin (for system settings files).
 - **Pictures, PDFs and other files:** open in the desktop. Oracle switches to the desktop and opens the file there.
 
-Press `.` to show hidden files.
+Work with files using these keys:
+
+| Key | Does |
+|---|---|
+| `c` / `x` | Copy / cut the selected file or folder |
+| `p` | Paste into the selected folder (or next to the selected file) |
+| `r` | Rename |
+| `n` | New folder |
+| `d` | Move to the trash (restore it from Files in the desktop) |
+| `/` | Search by name. `Esc` clears the search |
+| `.` | Show or hide hidden files |
 
 ## Settings
 
-Press `s` on the dashboard (or type `oracle settings`) for brightness, volume, Wi-Fi, Bluetooth, the battery limit, and information about your computer. Update, restart and shut down are at the bottom.
+Press `s` on the dashboard (or type `oracle settings`). Move with the arrow keys, change a value with left and right, open a list with Enter. In long lists, just type to search.
+
+- **Screen:** brightness, night light (off, 6 PM to 6 AM, or always on), text size in Shell mode, screen scale in the desktop.
+- **Sound:** volume, mute, and where sound plays (speakers, headphones, Bluetooth).
+- **Battery:** where charging stops.
+- **Network:** Wi-Fi and Bluetooth, on/off, and picking a network or device.
+- **System:** time zone, keyboard layout, accent color, desktop wallpaper, and **about** (user, Oracle version, memory, disk).
+- **Buttons:** update, undo (take back an update), restart, shut down.
+
+Keyboard layout and screen scale apply the next time Shell mode or the desktop starts. Desktop colors and the bar are set in the desktop itself: click the bar.
 
 You can use the mouse in Shell mode too: click a workspace number, scroll, and select text to copy it.
 
