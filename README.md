@@ -43,7 +43,8 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `g` on the dashboard, or `oracle gui` | Open the desktop (Hyprland) |
 | `Super + M`, or `oracle shell` | Go back to Shell mode |
 | `Super + Enter` | Terminal (in the desktop) |
-| `Super + B` | Brave browser (in the desktop) |
+| `Super + B` | Brave Origin (in the desktop) |
+| `f` / `s` on the dashboard | Files / Settings |
 | `oracle update` | Update Oracle and the whole system |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
 | `oracle restore <folder>` | Bring the home server back from a backup |

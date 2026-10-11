@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | restore <dir> | battery [n] | gui | shell | home | attach | session | help
+# oracle update | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell | home | attach | session | help
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
@@ -39,10 +39,17 @@ case ${1:-help} in
       if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
     done 2>/dev/null || true ;;
   home) exec "$DIR/bin/oracle-home" ;;
+  files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
+  settings) exec "$DIR/bin/oracle-settings" ;;
+  open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
+    if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then setsid -f xdg-open "$f" >/dev/null 2>&1; exit; fi
+    echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
+  pending) P=${MODE%/*}/open # Hyprland start: open what `oracle open` asked for
+    [[ -f $P ]] && { f=$(<"$P"); rm -f "$P"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
   battery) L=/etc/oracle/battery-limit
     if [[ -n ${2:-} ]]; then
       [[ $2 =~ ^[0-9]+$ ]] && ((${2} >= 20 && ${2} <= 100)) || die "usage: oracle battery <20-100>"
-      echo "$2" | sudo tee "$L" >/dev/null; sudo systemctl start oracle-battery.service
+      if [[ -w $L ]]; then echo "$2" >"$L"; else echo "$2" | sudo tee "$L" >/dev/null; sudo systemctl start oracle-battery.service; fi
     fi
     echo "battery stops charging at $(cat "$L" 2>/dev/null || echo 100)%" ;;
   gui) echo gui >"$MODE"; pkill -x cage ;;
@@ -52,5 +59,8 @@ case ${1:-help} in
      echo "oracle update        get newest Oracle + system updates"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
      echo "oracle restore <dir> bring the server back from a backup"
-     echo "oracle battery [n]   show or set the charge limit (20-100%)" ;;
+     echo "oracle battery [n]   show or set the charge limit (20-100%)"
+     echo "oracle files [dir]   file browser"
+     echo "oracle settings      settings (brightness, sound, wifi, bluetooth, battery, about)"
+     echo "oracle open <file>   open a file in the desktop" ;;
 esac

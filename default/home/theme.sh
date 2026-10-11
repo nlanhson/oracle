@@ -20,3 +20,18 @@ bar() { # bar <0-100|""> <label>: [=====-----] for things you set
   local f=$(($1 * (SW - 1) / 100))
   printf "${W}%-12s${C}[%s${D}%s${C}]${W}%7d%%${N}\n" "$2" "$(rep '=' "$f")" "$(rep - $((SW - 1 - f)))" "$1"
 }
+key() { # key → KEY = up down left right enter esc tab space backspace or the character
+  local k r; IFS= read -rsn1 k || return 1
+  case $k in
+    $'\e') IFS= read -rsn2 -t 0.02 r; case $r in '[A') KEY=up ;; '[B') KEY=down ;; '[C') KEY=right ;; '[D') KEY=left ;; *) KEY=esc ;; esac ;;
+    '') KEY=enter ;; $'\t') KEY=tab ;; ' ') KEY=space ;; $'\x7f') KEY=backspace ;; *) KEY=$k ;;
+  esac
+}
+box() { # box <title> <footer>: LINES[] in an ascii.rest frame, BW wide, top-left at BY;BX
+  local t=$1 f=$2 i=0 l
+  printf "\e[%d;%dH${D}╭─ ${W}%s ${D}%s╮" "$BY" "$BX" "$t" "$(rep ─ $((BW - ${#t} - 5)))"
+  for l in "${LINES[@]}"; do
+    ((++i)); printf "\e[%d;%dH${D}│${N} %s\e[%d;%dH${D}│" $((BY + i)) "$BX" "$l" $((BY + i)) $((BX + BW - 1))
+  done
+  printf "\e[%d;%dH${D}╰%s ${W}%s ${D}─╯${N}" $((BY + i + 1)) "$BX" "$(rep ─ $((BW - ${#f} - 5)))" "$f"
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Oracle home dashboard (tmux workspace 1). Left column ~28% (min 44): LEFT widgets; right: RIGHT widgets.
-# Widgets: default/home/<name>.sh, each defines w_<name> (prints lines). Keys: g gui, u update.
+# Oracle home dashboard (tmux workspace 1). Left column ~28% (min 38): LEFT widgets; right: RIGHT widgets.
+# Widgets: default/home/<name>.sh, each defines w_<name> (prints lines). Keys: g gui, f files, s settings, u update.
 H=$(dirname "$(readlink -f "$0")")/../default/home
 LEFT=(clock calendar) RIGHT=(system controls claude server footer)
 # shellcheck disable=SC1090
@@ -12,16 +12,18 @@ col() { # col <x> <widgets...>: run each widget in this shell (keeps its state),
 }
 while :; do
   read -r ROWS COLS < <(stty size)
-  LW=$((COLS * 28 / 100)); ((LW < 44)) && LW=44
+  LW=$((COLS * 28 / 100)); ((LW < 38)) && LW=38
   # shellcheck disable=SC2034  # RW, SW used by widgets
   RW=$((COLS - LW - 6)) SW=$((COLS - LW - 55)); ((SW > 48)) && SW=48; ((SW < 10)) && SW=10
-  OUT=$'\e[H\e[2J'
+  OUT=$'\e[?2026h\e[H\e[2J'
   col 2 "${LEFT[@]}"; col $((LW + 4)) "${RIGHT[@]}"
   for ((r = 1; r <= ROWS; r++)); do OUT+=$'\e['"$r;$((LW + 1))H$F│$N"; done
-  printf '%s\e[%d;1H' "$OUT" "$ROWS"
+  printf '%s\e[%d;1H\e[?2026l' "$OUT" "$ROWS"
   read -rsn1 -t 2 k || continue
   case $k in
     g) oracle gui ;;
+    f) oracle files; printf '\e[?25l' ;;
+    s) oracle settings; printf '\e[?25l' ;;
     u) tmux new-window -n update 'oracle update; read -rp "enter to close"' ;;
   esac
 done

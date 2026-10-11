@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Oracle settings, ascii.rest form-controls look. ↑↓ move · ←→ change · enter open/toggle · q back.
+H=$(dirname "$(readlink -f "$0")")/../default/home
+# shellcheck disable=SC1091
+source "$H/theme.sh"
+DIR=$HOME/.local/share/oracle SEL=0 MSG=''
+ITEMS=(brightness volume mute battery wifi network bluetooth devices update restart shutdown)
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
+
+slider() { # slider <0-100|""> <suffix>: ━━━━━█───── 40%
+  local w=24 f; num "$1" || { printf "%s%s  n/a%s" "$F" "$(rep ─ $((w + 1)))" "$N"; return; }
+  f=$(($1 * w / 100)); printf "%s%s█%s%s %5s%s" "$C" "$(rep ━ "$f")" "$F" "$(rep ─ $((w - f)))" "$1%" "$W${2:+ $2}$N"
+}
+toggle() { # toggle <on|off|"">
+  case $1 in on) printf "%s▕%s░░░░%s██%s▏ %son%s" "$D" "$F" "$C" "$D" "$W" "$N" ;; off) printf "%s▕%s██%s░░░░%s▏ %soff%s" "$D" "$W" "$F" "$D" "$W" "$N" ;; *) printf "%sn/a%s" "$F" "$N" ;; esac
+}
+select_() { printf "%s[ %s%-24s%s v ]%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # [ value v ]
+button() { printf "%s[ %s%s%s ]%s" "$D" "$W" "$1" "$D" "$N"; }
+
+get() {
+  BRI=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4+0}')
+  read -r VOL MUTE < <(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3 ~ /MUTED/ ? "on" : "off")}')
+  BAT=$(cat /etc/oracle/battery-limit 2>/dev/null)
+  WIFI=$(nmcli -t radio wifi 2>/dev/null | sed 's/enabled/on/; s/disabled/off/')
+  SSID=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
+  BT=$(bluetoothctl show 2>/dev/null | awk '/Powered:/{print ($2=="yes" ? "on" : "off"); exit}')
+  BTDEV=$(bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3- | paste -sd, -)
+}
+row() { # row <i> <label> <control>
+  local m='  ' c=$W; ((SEL == $1)) && m="$C> " c=$C
+  LINES+=("$m$c$(printf '%-12s' "$2")$N$3")
+}
+draw() {
+  local rows cols v k
+  read -r rows cols < <(stty size); get
+  LINES=('')
+  row 0 brightness "$(slider "$BRI")"; row 1 volume "$(slider "$VOL")"; row 2 mute "$(toggle "$MUTE")"
+  row 3 battery "$(slider "$BAT" "stop charging")"; LINES+=('')
+  row 4 wifi "$(toggle "$WIFI")"; row 5 network "$(select_ "${SSID:-not connected}")"
+  row 6 bluetooth "$(toggle "$BT")"; row 7 devices "$(select_ "${BTDEV:-none connected}")"; LINES+=('')
+  LINES+=("  ${D}── about ──${N}")
+  v=$(git -C "$DIR" log -1 --format='%h · %cd' --date=format:'%-d %b %Y' 2>/dev/null)
+  for k in "user|$USER@$(cat /etc/hostname 2>/dev/null)" "oracle|${v:-?}" "system|Arch Linux · kernel $(uname -r)" \
+           "uptime|$(uptime -p | sed 's/^up //')" "memory|$(free -h | awk '/^Mem/{print $3 " of " $2}')" "disk|$(df -h / | awk 'NR==2{print $3 " of " $2}')"; do
+    LINES+=("  $(printf "${D}%-12s${W}%s${N}" "${k%%|*}" "${k#*|}")")
+  done
+  LINES+=('')
+  local b=''; for k in 8:update 9:restart 10:shutdown; do
+    if ((SEL == ${k%%:*})); then b+="${C}[ ${k#*:} ]$N   "; else b+="$(button "${k#*:}")   "; fi
+  done
+  LINES+=("  $b" '')
+  BW=64; BX=$(((cols - BW) / 2)); BY=$(((rows - ${#LINES[@]} - 2) / 2)); ((BX < 1)) && BX=1; ((BY < 1)) && BY=1
+  printf '\e[?2026h\e[H\e[2J'; box settings "${MSG:-↑↓ move · ←→ change · enter open · q back}"; printf '\e[?2026l'; MSG=''
+}
+pick() { # pick <title> <options...> → PICK (empty = cancelled)
+  local t=$1 s=0 i; shift; PICK=''
+  while :; do
+    LINES=(''); for ((i = 1; i <= $#; i++)); do
+      if ((i - 1 == s)); then LINES+=("$C> ${!i}$N"); else LINES+=("  $W${!i}$N"); fi; done; LINES+=('')
+    printf '\e[?2026h\e[H\e[2J'; box "$t" "↑↓ move · enter choose · q back"; printf '\e[?2026l'
+    key || return
+    case $KEY in up | k) ((s > 0)) && ((s--)) ;; down | j) ((s < $# - 1)) && ((s++)) ;; enter) i=$((s + 1)); PICK=${!i}; return ;; q | esc) return ;; esac
+  done
+}
+prompt() { # prompt <text> → REPLY (hidden input)
+  printf '\e[%d;%dH%s%s: %s' $((BY + ${#LINES[@]} + 3)) $((BX + 2)) "$W" "$1" "$N"; printf '\e[?25h'; read -rs REPLY; printf '\e[?25l'
+}
+wifi() {
+  local l; MSG="scanning…"; draw
+  mapfile -t l < <(nmcli -t -f ssid,signal,security dev wifi list --rescan yes 2>/dev/null | awk -F: '$1!="" && !s[$1]++ {printf "%-28s %3s%%  %s\n", $1, $2, ($3==""?"open":"locked")}')
+  ((${#l[@]})) || { MSG="no networks found"; return; }
+  pick wifi "${l[@]}"; [[ -n $PICK ]] || return
+  local s; s=$(sed 's/ *[0-9]*%.*$//' <<<"$PICK")
+  if nmcli dev wifi connect "$s" >/dev/null 2>&1; then MSG="connected to $s"; return; fi
+  prompt "password for $s"; nmcli dev wifi connect "$s" password "$REPLY" >/dev/null 2>&1 && MSG="connected to $s" || MSG="could not connect to $s"
+}
+devices() {
+  local l d; mapfile -t l < <(bluetoothctl devices 2>/dev/null | cut -d' ' -f2-)
+  pick bluetooth "scan for new devices (10 s)" "${l[@]}"; [[ -n $PICK ]] || return
+  if [[ $PICK == scan* ]]; then
+    MSG="scanning…"; draw; bluetoothctl --timeout 10 scan on >/dev/null 2>&1
+    mapfile -t l < <(bluetoothctl devices 2>/dev/null | cut -d' ' -f2-); pick "bluetooth: choose" "${l[@]}"; [[ -n $PICK ]] || return
+  fi
+  d=${PICK%% *}
+  if bluetoothctl info "$d" | grep -q 'Connected: yes'; then bluetoothctl disconnect "$d" >/dev/null; MSG="disconnected ${PICK#* }"; return; fi
+  { bluetoothctl pair "$d"; bluetoothctl trust "$d"; bluetoothctl connect "$d"; } >/dev/null 2>&1 && MSG="connected ${PICK#* }" || MSG="could not connect ${PICK#* }"
+}
+change() { # change <+1|-1> for the selected row
+  case $SEL in
+    0) brightnessctl -q set "$((BRI + $1 * 5 < 1 ? 1 : BRI + $1 * 5))%" ;;
+    1) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$((VOL + $1 * 5 < 0 ? 0 : VOL + $1 * 5))%" ;;
+    2) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    3) local b=$((${BAT:-100} + $1 * 5)); ((b < 20)) && b=20; ((b > 100)) && b=100; oracle battery "$b" >/dev/null ;;
+    4) [[ $WIFI == on ]] && nmcli radio wifi off || nmcli radio wifi on ;;
+    6) [[ $BT == on ]] && bluetoothctl power off >/dev/null || bluetoothctl power on >/dev/null ;;
+  esac 2>/dev/null
+}
+confirm() { MSG="$1? press y to confirm"; draw; key && [[ $KEY == y ]]; }
+while :; do
+  draw
+  key || exit
+  case $KEY in
+    up | k) ((SEL > 0)) && ((SEL--)) ;;
+    down | j | tab) ((SEL < ${#ITEMS[@]} - 1)) && ((SEL++)) ;;
+    left | h) if ((SEL < 8)); then change -1; elif ((SEL > 8)); then ((SEL--)); fi ;;
+    right | l) if ((SEL < 8)); then change 1; elif ((SEL < 10)); then ((SEL++)); fi ;;
+    enter | space)
+      case $SEL in
+        5) wifi ;; 7) devices ;;
+        8) printf '\e[?25h\e[2J\e[H'; oracle update; read -rp 'enter to close' _; printf '\e[?25l' ;;
+        9) confirm restart && systemctl reboot ;;
+        10) confirm "shut down" && systemctl poweroff ;;
+        *) change 1 ;;
+      esac ;;
+    q | esc) exit ;;
+  esac
+done

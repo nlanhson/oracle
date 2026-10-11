@@ -185,6 +185,10 @@ INSTALL = 'curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.
 vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')  # served repo is new each run
 rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run on the installed system (idempotent)'] = rc == 0 and 'already enrolled' in out
+rc, _ = vm.sh('pacman -Q noctalia swash bluez micro nautilus noto-fonts')
+ok['desktop packages'] = rc == 0
+rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
+ok['new hyprland config verifies'] = rc == 0 and 'config ok' in out
 step('tty1 login via monitor sendkey')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
@@ -197,6 +201,8 @@ vm.sh('oracle gui; sleep 25')
 rc, out = vm.sh('pgrep -a Hyprland; pgrep -x cage; cat ~/.local/state/oracle/mode')
 ok['oracle gui → Hyprland'] = 'Hyprland' in out and 'cage' not in out.split('Hyprland')[-1]
 vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl dispatch \'hl.dsp.exec_cmd("ghostty")\'; sleep 8; hyprctl clients | grep -c "class: com.mitchellh.ghostty"')
+rc, out = vm.sh('pgrep -x noctalia; fc-list | wc -l')
+ok['Noctalia running, fonts installed'] = rc == 0 and int(out.split()[-1]) > 20
 vm.mon('screendump /vm/gui.png -f png')
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('pgrep -a cage && tmux ls')

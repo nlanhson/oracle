@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Oracle files: folder tree like ascii.rest file-tree. ↑↓ move · enter/→ open · ← close/up · . hidden · q back.
+# A file asks what to do: read, edit, edit as admin, or open in the desktop (pictures, PDFs, …).
+H=$(dirname "$(readlink -f "$0")")/../default/home
+# shellcheck disable=SC1091
+source "$H/theme.sh"
+ROOT=$(realpath "${1:-$HOME}") SEL=0 TOP=0 HID=0 MSG=''
+declare -A OPEN=(["$ROOT"]=1)
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
+
+walk() { # walk <dir> <prefix>: P[] paths, T[] tree lines
+  local d=$1 pre=$2 e n i c
+  mapfile -t e < <(find "$d" -mindepth 1 -maxdepth 1 -printf '%Y/%f\n' 2>/dev/null | LC_ALL=C sort -t/ -k1,1 -k2f)
+  ((HID)) || mapfile -t e < <(printf '%s\n' "${e[@]}" | grep -v '^./\.')
+  n=${#e[@]}; ND=$((ND + 0))
+  for ((i = 0; i < n; i++)); do
+    [[ -n ${e[i]} ]] || continue
+    c='├── '; ((i == n - 1)) && c='└── '
+    P+=("${d%/}/${e[i]#*/}"); K+=("${e[i]%%/*}"); T+=("$pre$c${e[i]#*/}")
+    if [[ ${e[i]%%/*} == d ]]; then ((ND++)); T[-1]+=/; [[ -n ${OPEN[${d%/}/${e[i]#*/}]:-} ]] && walk "${d%/}/${e[i]#*/}" "$pre$([[ $c == └* ]] && echo '    ' || echo '│   ')"
+    else ((NF++)); fi
+  done
+}
+draw() {
+  local rows cols h i l
+  read -r rows cols < <(stty size)
+  P=() K=() T=() ND=0 NF=0; walk "$ROOT" ''
+  ((SEL >= ${#P[@]})) && SEL=$((${#P[@]} - 1)); ((SEL < 0)) && SEL=0
+  h=$((rows - 6)); ((SEL < TOP)) && TOP=$SEL; ((SEL >= TOP + h)) && TOP=$((SEL - h + 1))
+  printf '\e[?2026h\e[H\e[2J\n  %s%s%s\n' "$C" "${ROOT/#$HOME/\~}" "$N"
+  for ((i = TOP; i < TOP + h && i < ${#P[@]}; i++)); do
+    l=${T[i]}
+    if ((i == SEL)); then l=${l/%── ${l##*── }/──> ${l##*── }}; printf '  %s%s%s\n' "$C" "${l:0:cols-4}" "$N"
+    elif [[ ${K[i]} == d ]]; then printf '  %s%s%s\n' "$W" "${l:0:cols-4}" "$N"
+    else printf '  %s%s%s\n' "$D" "${l:0:cols-4}" "$N"; fi
+  done
+  printf '\e[%d;3H%s%d directories, %d files%s' $((rows - 2)) "$D" "$ND" "$NF" "$N"
+  printf '\e[%d;3H%s%s%s' $((rows - 1)) "$W" "${MSG:-↑↓ move · enter open · ← back · . hidden · q quit}" "$N"
+  printf '\e[?2026l'; MSG=''
+}
+ask() { # ask <file>: what to do with it
+  local f=$1 m t=0 o
+  m=$(file -b --mime-type "$f"); [[ $m == text/* || $m == application/json || $m == application/x-shellscript || $m == inode/x-empty || $m == application/xml ]] && t=1
+  ((t)) && o="${C}[r]${W} read   ${C}[e]${W} edit   ${C}[s]${W} edit as admin   ${C}[o]${W} open in desktop" || o="${C}[o]${W} open in desktop   ${C}[r]${W} read as text"
+  MSG="${C}${f##*/}${W}   $o   ${C}[esc]${W} back"; draw
+  key || return
+  case $KEY in
+    r) micro -readonly true "$f" ;;
+    e) micro "$f" ;;
+    s) SUDO_EDITOR=micro sudoedit "$f" ;;
+    o) oracle open "$f" ;;
+    enter) if ((t)); then micro "$f"; else oracle open "$f"; fi ;;
+  esac
+  printf '\e[?25l'
+}
+while :; do
+  draw
+  key || exit
+  case $KEY in
+    up | k) ((SEL--)) ;;
+    down | j) ((SEL++)) ;;
+    enter | right | l) p=${P[SEL]}
+      if [[ ${K[SEL]} == d ]]; then if [[ -n ${OPEN[$p]:-} ]]; then unset "OPEN[$p]"; else OPEN[$p]=1; fi; else ask "$p"; fi ;;
+    left | h) p=${P[SEL]}
+      if [[ ${K[SEL]} == d && -n ${OPEN[$p]:-} ]]; then unset "OPEN[$p]"
+      elif [[ ${p%/*} != "$ROOT" ]]; then for i in "${!P[@]}"; do [[ ${P[i]} == "${p%/*}" ]] && SEL=$i; done
+      else ROOT=${ROOT%/*}; ROOT=${ROOT:-/}; OPEN[$ROOT]=1; SEL=0; fi ;;
+    .) HID=$((1 - HID)) ;;
+    q | esc) exit ;;
+  esac
+done

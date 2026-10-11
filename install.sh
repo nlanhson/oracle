@@ -179,6 +179,11 @@ else
   run mkdir -p "$(dirname "$CFG")"; run cp "$SRC/config/hypr/hyprland.lua" "$CFG"
 fi
 
+say "noctalia (desktop bar, launcher, lock) config"
+for f in noctalia/config.toml hypr/noctalia.lua hypr/xdph.conf; do
+  if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm644 "$SRC/config/$f" "$HOME/.config/$f"; fi
+done
+
 say "ghostty + tmux config"
 ucfg() { # ucfg <file> <include line>: user file with include, only if missing
   if [[ -e $1 ]]; then say "  kept your $1"; else run mkdir -p "${1%/*}"; ((DRY)) || printf '%s\n# your changes below\n' "$2" >"$1"; fi
@@ -218,6 +223,13 @@ done
 STUB=../run/systemd/resolve/stub-resolv.conf
 [[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf || say "  /etc/resolv.conf busy (container?), skipped"
 
+say "bluetooth"
+run sudo systemctl enable bluetooth.service
+
+say "desktop on the AMD chip (if this machine has one at 04:00.0, like the G14)"
+R=/etc/udev/rules.d/61-oracle-amd-igpu.rules
+if ((!DRY)) && [[ ! -f $R ]]; then echo 'SUBSYSTEM=="drm", KERNEL=="card[0-9]*", KERNELS=="0000:04:00.0", SYMLINK+="dri/amd-igpu"' | sudo tee "$R" >/dev/null; fi
+
 say "battery charge limit (change: oracle battery <20-100>)"
 BU=/etc/systemd/system/oracle-battery.service
 if ((!DRY)) && [[ ! -f /etc/oracle/battery-limit ]]; then echo 50 | sudo install -Dm644 /dev/stdin /etc/oracle/battery-limit; fi
@@ -232,8 +244,13 @@ ExecStart=/usr/bin/sh -c 'for f in /sys/class/power_supply/BAT*/charge_control_e
 WantedBy=multi-user.target
 EOF
 fi
+((DRY)) || { sudo chgrp wheel /etc/oracle/battery-limit; sudo chmod 664 /etc/oracle/battery-limit; } # settings can change it without a password
+if ((!DRY)) && [[ ! -f /etc/systemd/system/oracle-battery.path ]]; then
+  printf '[Unit]\nDescription=Oracle: apply battery limit when it changes\n[Path]\nPathChanged=/etc/oracle/battery-limit\n[Install]\nWantedBy=multi-user.target\n' |
+    sudo tee /etc/systemd/system/oracle-battery.path >/dev/null
+fi
 N=(); [[ -d /run/systemd/system && -z ${ORACLE_CHROOT:-} ]] && N=(--now)
-run sudo systemctl enable "${N[@]}" oracle-battery.service
+run sudo systemctl enable "${N[@]}" oracle-battery.service oracle-battery.path
 
 say "lid closed → screen off, keeps running"
 if ((!DRY)) && ! cmp -s "$SRC/system/oracle-lid" /usr/local/bin/oracle-lid; then sudo install -Dm755 "$SRC/system/oracle-lid" /usr/local/bin/oracle-lid; sudo systemctl try-restart oracle-lid.service 2>/dev/null || true; fi

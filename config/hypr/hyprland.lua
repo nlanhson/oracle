@@ -1,10 +1,6 @@
 -- oracle-user-config: yours. Updates never touch this file.
-local O = dofile(os.getenv("HOME") .. "/.local/share/oracle/default/hypr/hyprland.lua")
+dofile(os.getenv("HOME") .. "/.local/share/oracle/default/hypr/hyprland.lua")
 
--- Change or remove binds before apply. Examples:
--- O.binds["SUPER + B"] = "exec firefox"
--- O.binds["SUPER + O"] = false
-
-O.apply()
-
--- Extra Hyprland settings after apply.
+-- Your changes below. They load last, so they win. Examples:
+-- hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"))
+-- hl.config({ general = { gaps_out = 4 } })

@@ -11,6 +11,21 @@ You land in **Shell mode**:
 
 The bar at the top shows the workspaces. The one you're on shows its name, like `2 terminal`, or the program running in it, like `2 claude`. Switch with `Alt + 1` to `Alt + 4`, or click a number. If you close a terminal, a fresh one takes its place.
 
+## Files
+
+Press `f` on the dashboard (or type `oracle files`). Folders open and close in place, like a tree. Pick a file and Oracle asks what to do:
+
+- **Text files:** read, edit, or edit as admin (for system settings files).
+- **Pictures, PDFs and other files:** open in the desktop. Oracle switches to the desktop and opens the file there.
+
+Press `.` to show hidden files.
+
+## Settings
+
+Press `s` on the dashboard (or type `oracle settings`) for brightness, volume, Wi-Fi, Bluetooth, the battery limit, and information about your computer. Update, restart and shut down are at the bottom.
+
+You can use the mouse in Shell mode too: click a workspace number, scroll, and select text to copy it.
+
 ## The desktop
 
 Press `g` on the dashboard (or type `oracle gui`) to open the desktop, Hyprland. Use it for the browser and other graphical apps. Press `Super + M` (or type `oracle shell`) to go back.

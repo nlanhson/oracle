@@ -6,7 +6,19 @@ ghostty
 cage
 tmux
 xdg-desktop-portal-hyprland
-hyprpolkitagent
+noctalia
+nautilus
+gnome-text-editor
+gnome-calculator
+btop
+hyprpicker
+wl-clipboard
+noto-fonts
+noto-fonts-emoji
+micro
+xdg-utils
+bluez
+bluez-utils
 brightnessctl
 networkmanager
 pipewire
@@ -17,3 +29,4 @@ docker-compose
 docker-buildx
 tailscale
 aur:brave-origin-bin
+aur:swash
