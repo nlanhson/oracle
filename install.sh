@@ -162,6 +162,9 @@ if ((!DRY)) && sudo test -f "$LC" && ! sudo test -f /etc/default/limine; then
   C=$(sudo sed -n 's/^ *cmdline: //p' "$LC" | head -1)
   printf 'ESP_PATH="/boot"\nKERNEL_CMDLINE[default]+="%s"\nBOOT_ORDER="*, *fallback, Snapshots"\n' "$C" | sudo tee /etc/default/limine >/dev/null
 fi
+if ((!DRY)) && ! sudo test -f /etc/default/limine; then # other boot loader (Arch installed without the Oracle USB): its kernel hooks stay
+  mapfile -t AUR < <(printf '%s\n' "${AUR[@]}" | grep -v '^limine-')
+fi
 
 if ((${#AUR[@]})); then
   if ! command -v yay >/dev/null; then

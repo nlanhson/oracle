@@ -14,7 +14,7 @@ walk() { # walk <dir> <prefix>: P[] paths, T[] tree lines
   local d=$1 pre=$2 e n i c
   mapfile -t e < <(find "$d" -mindepth 1 -maxdepth 1 -printf '%Y/%f\n' 2>/dev/null | LC_ALL=C sort -t/ -k1,1 -k2f)
   ((HID)) || mapfile -t e < <(printf '%s\n' "${e[@]}" | grep -v '^./\.')
-  n=${#e[@]}; ND=$((ND + 0))
+  n=${#e[@]}
   for ((i = 0; i < n; i++)); do
     [[ -n ${e[i]} ]] || continue
     c='├── '; ((i == n - 1)) && c='└── '
@@ -50,7 +50,7 @@ found() { # search results under ROOT (names containing Q), at most 500
 }
 input() { # input <label> <prefill> → REPLY (bottom line, Enter = ok, empty = cancel)
   local rows cols; read -r rows cols < <(stty size)
-  printf '\e[%d;3H\e[K%s%s: %s\e[?25h' $((rows - 1)) "$C" "$1" "$W"; read -rei "$2" REPLY; printf '\e[?25l%s' "$N"
+  printf '\e[%d;3H\e[K%s%s%s: %s\e[?25h' $((rows - 1)) "$NOMOUSE" "$C" "$1" "$W"; read -rei "$2" REPLY; printf '\e[?25l%s' "$N"
 }
 here() { # folder that actions go into: the selected folder, or the selected file's folder
   if ((${#P[@]} == 0)); then TGT=$ROOT; elif [[ ${K[SEL]} == d ]]; then TGT=${P[SEL]}; else TGT=${P[SEL]%/*}; fi
@@ -73,7 +73,7 @@ ask() { # ask <file>: what to do with it
   m=$(file -b --mime-type "$f"); [[ $m == text/* || $m == application/json || $m == application/x-shellscript || $m == inode/x-empty || $m == application/xml ]] && t=1
   ((t)) && o="${C}[r]${W} read   ${C}[e]${W} edit   ${C}[s]${W} edit as admin   ${C}[o]${W} open in desktop" || o="${C}[o]${W} open in desktop   ${C}[r]${W} read as text"
   MSG="${C}${f##*/}${W}   $o   ${C}[esc]${W} back"; draw
-  key || return
+  key || return; printf %s "$NOMOUSE"
   case $KEY in
     r) micro -readonly true "$f" ;;
     e) micro "$f" ;;

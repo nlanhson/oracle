@@ -1,24 +1,24 @@
-# Oracle look. Owned by repo; edit ~/.config/ghostty/config instead.
+# Oracle look: monochrome (red/green/yellow kept, muted, for errors and diffs). Owned by repo; your changes go in ~/.config/ghostty/mine.
 background = 0a0a0a
 foreground = c8c8c8
-cursor-color = 00e5ff
-selection-background = 1f3a40
+cursor-color = e8e8e8
+selection-background = 3a3a3a
 selection-foreground = ffffff
 palette = 0=0a0a0a
 palette = 1=8b2e2e
 palette = 2=7a9a7a
 palette = 3=b5a46a
-palette = 4=4a7a8c
-palette = 5=8a6a8c
-palette = 6=00e5ff
+palette = 4=8a8a8a
+palette = 5=7a7a7a
+palette = 6=a8a8a8
 palette = 7=c8c8c8
 palette = 8=4a4a4a
 palette = 9=a33a3a
 palette = 10=9ab89a
 palette = 11=d4c27f
-palette = 12=6aa0b5
-palette = 13=a888aa
-palette = 14=7ff2ff
+palette = 12=b0b0b0
+palette = 13=9a9a9a
+palette = 14=d0d0d0
 palette = 15=ffffff
 window-decoration = none
 gtk-titlebar = false

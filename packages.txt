@@ -25,6 +25,7 @@ udiskie
 pavucontrol
 nautilus
 mousepad
+loupe
 btop
 wl-clipboard
 xdg-utils
@@ -34,6 +35,11 @@ ttf-jetbrains-mono-nerd
 woff2-font-awesome
 noto-fonts
 noto-fonts-emoji
+# Vietnamese typing (desktop only): Ctrl+Shift switches English ⇄ Vietnamese (Telex)
+fcitx5
+fcitx5-gtk
+fcitx5-qt
+fcitx5-bamboo
 # system
 bluez
 bluez-utils

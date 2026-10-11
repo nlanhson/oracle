@@ -47,6 +47,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + scroll` | Previous / next workspace |
 | `Super + drag` | Move window (left button) / resize (right button) |
 | `Print` | Screenshot of an area (saved in ~/Pictures/Screenshots) |
+| `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 
 ## Change a key

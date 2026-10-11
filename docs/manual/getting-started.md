@@ -53,6 +53,8 @@ You can use the mouse in Shell mode too: click a workspace number, scroll, and s
 
 Press `g` on the dashboard (or type `oracle gui`) to open the desktop, Hyprland. Use it for the browser and other graphical apps. Press `Super + M` (or type `oracle shell`) to go back.
 
+To type Vietnamese in the desktop, press `Ctrl + Shift` to switch between English and Vietnamese (Telex: `aa` = â, `s` = sắc, …). Shell mode is English only.
+
 Your terminal sessions keep running while you're in the desktop. Apps you opened in the desktop close when you go back.
 
 ## First things to do

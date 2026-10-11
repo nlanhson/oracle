@@ -10,6 +10,7 @@
 hl.on("hyprland.start", function ()
   hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP &")
   hl.exec_cmd("systemctl --user start hyprpolkitagent") -- Oracle: admin password prompts for desktop apps
+  hl.exec_cmd("fcitx5 -d") -- Vietnamese typing (Ctrl+Shift)
   hl.exec_cmd("hypridle")
   hl.exec_cmd("swayosd-server &")
   hl.exec_cmd("waybar &")

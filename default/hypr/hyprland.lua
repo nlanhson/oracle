@@ -9,6 +9,11 @@ end
 -- G14: draw the desktop on the AMD chip (udev rule 61-oracle-amd-igpu.rules), the NVIDIA one stays asleep
 if io.open("/dev/dri/amd-igpu") then hl.env("AQ_DRM_DEVICES", "/dev/dri/amd-igpu") end
 
+-- Vietnamese typing (fcitx5 + bamboo), desktop only: Shell mode never sets these
+for k, v in pairs({ GTK_IM_MODULE = "fcitx", QT_IM_MODULE = "fcitx", XMODIFIERS = "@im=fcitx", SDL_IM_MODULE = "fcitx", GLFW_IM_MODULE = "ibus" }) do
+  hl.env(k, v)
+end
+
 -- Oracle settings screen (~/.config/oracle/settings): screen scale, keyboard layout
 local S = {}
 local f = io.open(os.getenv("HOME") .. "/.config/oracle/settings")

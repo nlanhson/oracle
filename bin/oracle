@@ -76,6 +76,8 @@ case ${1:-help} in
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
   pending) P=${MODE%/*} # Hyprland start: wallpaper, night light, file `oracle open` asked for
     "$0" wall; "$0" night
+    gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true # GTK apps: dark, grey accent (monochrome)
+    gsettings set org.gnome.desktop.interface accent-color slate 2>/dev/null || true
     [[ -f $P/open ]] && { f=$(<"$P/open"); rm -f "$P/open"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
   set) mkdir -p "${SET%/*}"; touch "$SET" # set <key> [value]: ~/.config/oracle/settings (settings screen)
     { grep -v "^${2:?}=" "$SET" || true; [[ -z ${3:-} ]] || printf '%s=%s\n' "$2" "$3"; } >"$SET.new"; mv "$SET.new" "$SET" ;;
