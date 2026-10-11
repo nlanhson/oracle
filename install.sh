@@ -48,7 +48,7 @@ if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
     ORACLE_DISK=/dev/$X
   fi
   [[ -b $ORACLE_DISK ]] || die "$ORACLE_DISK is not a disk"
-  MIB=$(($(blockdev --getsize64 "$ORACLE_DISK") / 1048576 - 1026)) # root = disk - 1 MiB gap - 1 GiB EFI - 1 MiB GPT backup
+  MIB=$(($(blockdev --getsize64 "$ORACLE_DISK") / 1048576 - 4098)) # root = disk - 1 MiB gap - 4 GiB EFI (kernels for boot-menu snapshots) - 1 MiB GPT backup
   ((MIB >= 30000)) || die "$ORACLE_DISK is too small (need 32 GB)"
 
   ask() { # ask <var> <prompt> <default> <check-cmd>: env var wins, Enter = default
@@ -73,7 +73,7 @@ if [[ -d /run/archiso && -z ${ORACLE_CHROOT:-} ]]; then
   jq --arg d "$ORACLE_DISK" --argjson m "$MIB" --arg tz "$ORACLE_TZ" --arg kb "$ORACLE_KB" '.timezone = $tz | .locale_config.kb_layout = $kb
     | .disk_config.device_modifications[0] |= (.device = $d | .partitions[1].size.value = $m)' \
     /tmp/oracle-arch.json >/tmp/oracle-config.json
-  say "Arch → $ORACLE_DISK (wiped: 1G /boot, rest LUKS2 btrfs)"
+  say "Arch → $ORACLE_DISK (wiped: 4G /boot, rest LUKS2 btrfs)"
   archinstall --config /tmp/oracle-config.json --creds /tmp/oracle-creds.json --silent </dev/tty && mountpoint -q /mnt \
     || die "archinstall failed (log: /var/log/archinstall/install.log)"
   rm -f /tmp/oracle-creds.json
@@ -157,6 +157,12 @@ fi
 run sudo pacman -Syu --needed --noconfirm "${PAC[@]}"
 run sudo systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service
 
+LC=/boot/EFI/arch-limine/limine.conf # archinstall's Limine: its boot line seeds limine-entry-tool (before its AUR hook runs)
+if ((!DRY)) && sudo test -f "$LC" && ! sudo test -f /etc/default/limine; then
+  C=$(sudo sed -n 's/^ *cmdline: //p' "$LC" | head -1)
+  printf 'ESP_PATH="/boot"\nKERNEL_CMDLINE[default]+="%s"\nBOOT_ORDER="*, *fallback, Snapshots"\n' "$C" | sudo tee /etc/default/limine >/dev/null
+fi
+
 if ((${#AUR[@]})); then
   if ! command -v yay >/dev/null; then
     say "yay (AUR helper)"
@@ -164,7 +170,10 @@ if ((${#AUR[@]})); then
     run git clone -q https://aur.archlinux.org/yay-bin.git "$T/yay-bin"
     if ((DRY)); then run makepkg -si --noconfirm; else (cd "$T/yay-bin" && makepkg -si --noconfirm); fi
   fi
-  run yay -S --needed --noconfirm "${AUR[@]}"
+  Y=(yay -S --needed --noconfirm "${AUR[@]}")
+  if [[ -n ${ORACLE_CHROOT:-} ]]; then # arch-chroot's /proc is from another pid namespace; the GraalVM builds (limine tools) need a matching one
+    run sudo unshare --pid --fork --mount-proc su "$USER" -c "${Y[*]}"
+  else run "${Y[@]}"; fi
 fi
 
 say "hyprland config"
@@ -179,12 +188,11 @@ else
   run mkdir -p "$(dirname "$CFG")"; run cp "$SRC/config/hypr/hyprland.lua" "$CFG"
 fi
 
-say "noctalia (desktop bar, launcher, lock) config"
-for f in noctalia/config.toml hypr/noctalia.lua hypr/xdph.conf; do
-  if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm644 "$SRC/config/$f" "$HOME/.config/$f"; fi
-done
-NS=$HOME/.local/state/noctalia/settings.toml # owner's look (Gruvbox, Open Sans, sizes), saved by Noctalia's settings window
-[[ -e $NS ]] || run install -Dm644 "$SRC/config/noctalia/settings.toml" "$NS"
+say "desktop config = owner's dotfiles (waybar, fuzzel, notifications, idle, lock, gtk)"
+while IFS= read -r f; do
+  f=${f#"$SRC/config/"}; [[ $f == hypr/hyprland.lua ]] && continue
+  if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm"$([[ $f == *.sh ]] && echo 755 || echo 644)" "$SRC/config/$f" "$HOME/.config/$f"; fi
+done < <(find "$SRC/config" -type f | sort)
 
 say "ghostty + tmux config"
 ucfg() { # ucfg <file> <include line>: user file with include, only if missing
@@ -219,7 +227,7 @@ for m in "$SRC"/migrations/*.sh; do [[ ! -f $m ]] || run touch "$M/${m##*/}"; do
 
 N=(); [[ -d /run/systemd/system && -z ${ORACLE_CHROOT:-} ]] && N=(--now) # start services now (not in the USB installer's chroot)
 
-say "undo for updates (btrfs snapshots before every update: oracle undo)"
+say "rollback for updates (btrfs snapshots before every update: oracle rollback)"
 if [[ $(findmnt -no FSTYPE /) == btrfs ]] && ((!DRY)); then
   [[ -e /var/lib/docker ]] || sudo btrfs -q subvolume create /var/lib/docker # docker images stay out of snapshots
   if [[ ! -f /etc/snapper/configs/root ]]; then
@@ -229,6 +237,20 @@ if [[ $(findmnt -no FSTYPE /) == btrfs ]] && ((!DRY)); then
   run sudo systemctl enable "${N[@]}" snapper-cleanup.timer
 else
   say "  skip: / is not btrfs, or dry-run"
+fi
+
+say "boot menu: Limine, with snapshots to start an older system"
+if ((!DRY)) && command -v limine-entry-tool >/dev/null && sudo test -f /etc/default/limine; then
+  run sudo systemctl enable "${N[@]}" limine-snapper-sync.service
+  if sudo test -d /boot/EFI/arch-limine; then # archinstall's own Limine copy → replaced by limine-entry-tool's (/boot/limine.conf)
+    sudo limine-install || sudo limine-install --skip-uefi --fallback || true
+    sudo limine-update && sudo test -s /boot/limine.conf || die "Limine setup failed"
+    sudo rm -rf /boot/EFI/arch-limine /etc/pacman.d/hooks/99-limine.hook /boot/vmlinuz-linux /boot/initramfs-linux.img /boot/initramfs-linux-fallback.img
+    for b in $(sudo efibootmgr | sed -n 's/^Boot\([0-9A-F]\{4\}\)\* Arch Linux Limine Bootloader.*/\1/p'); do sudo efibootmgr -q -b "$b" -B; done
+  fi
+  sudo grep -q '^editor_enabled' /boot/limine.conf || sudo sed -i '1i editor_enabled: no' /boot/limine.conf # no editing the boot line: TPM unlocks the disk
+else
+  say "  skip: not installed with Limine, or dry-run"
 fi
 
 S=(); ((DRY)) && S+=(--dry-run); [[ -z $RESTORE ]] || S+=(--restore "$RESTORE")
@@ -284,15 +306,20 @@ L=/boot/loader/loader.conf
 if ((!DRY)) && sudo test -f "$L" && ! sudo grep -q '^editor' "$L"; then run sudo sh -c "echo 'editor no' >> $L"; fi
 MAP=$(findmnt -nvo SOURCE /)
 DEV=$( ((DRY)) || sudo cryptsetup status "$MAP" 2>/dev/null | awk '$1 == "device:" {print $2}' || true)
+HK='HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)'
+[[ -f /usr/lib/initcpio/install/sd-btrfs-overlayfs ]] && HK=${HK/filesystems/filesystems sd-btrfs-overlayfs} # boot-menu snapshots start writable
+HF=/etc/mkinitcpio.conf.d/oracle-tpm.conf
+initramfs() { if command -v limine-mkinitcpio >/dev/null; then sudo limine-mkinitcpio; else sudo /usr/bin/mkinitcpio -P; fi; }
 if [[ -z $DEV || ! -e /dev/tpmrm0 ]]; then
   say "  skip: root not on LUKS, no TPM, or dry-run"
 elif [[ $(sudo systemd-cryptenroll "$DEV") == *tpm2* ]]; then
   say "  already enrolled"
+  [[ $(cat "$HF" 2>/dev/null) == "$HK" ]] || { echo "$HK" | sudo tee "$HF" >/dev/null; initramfs; }
 else
   UUID=$(sudo cryptsetup luksUUID "$DEV")
   sudo grep -q "$UUID" /etc/crypttab || echo "${MAP##*/} UUID=$UUID none tpm2-device=auto,x-initrd.attach" | sudo tee -a /etc/crypttab >/dev/null
-  echo 'HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)' | sudo tee /etc/mkinitcpio.conf.d/oracle-tpm.conf >/dev/null
-  sudo mkinitcpio -P
+  echo "$HK" | sudo tee "$HF" >/dev/null
+  initramfs
   if [[ -n ${ORACLE_CHROOT:-} ]]; then
     say "  key: enrolled by the USB installer next"
   else
@@ -305,6 +332,6 @@ else
   fi
 fi
 
-say "done. Reboot, log in on tty1 → Hyprland. Super+Return terminal, Super+B Brave. Later: oracle update"
+say "done. Reboot, log in on tty1 → Shell mode (g = desktop). Later: oracle update"
 ((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."
 exit 0

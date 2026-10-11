@@ -20,39 +20,34 @@
 | `Ctrl+b` then `g` | Open the desktop |
 | `Ctrl+b` then `d` | Detach (sessions keep running) |
 
+## Mouse in Shell mode
+
+Click a workspace number in the top bar to switch. On the dashboard, click `[g]ui`, `[f]iles`, `[s]ettings` or `[u]pdate`. In Files, click a line to select it and click it again to open it; the key hints at the bottom are buttons too. In Settings, click a row, click on a slider to set it, or click the left or right half of `◂ ▸` to step. The scroll wheel moves up and down. Right click goes back.
+
 ## Desktop (Hyprland)
 
-The bar, launcher, notifications, lock screen and control center come from [Noctalia](https://github.com/noctalia-dev/noctalia).
+Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for notifications, hypridle dims the screen after 5 minutes and turns it off after 7 (the computer never sleeps by itself, so the home server stays up).
 
 | Key | Does |
 |---|---|
 | `Super + M` | Back to Shell mode |
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
-| `Super + E` | Files (Nautilus) |
-| `Super + T` | Text editor |
-| `Super + C` | Calculator |
+| `Super + R` | Files (Nautilus) |
 | `Super + Space` | App launcher |
-| `Super + X` | Control center (Wi-Fi, Bluetooth, sound) |
-| `Super + Z` | Noctalia settings |
-| `Super + V` | Clipboard history |
 | `Super + A` | Notifications |
-| `Super + L` | Lock the screen |
-| `Super + Alt + C` | Lock, log out, restart, shut down |
+| `Super + P` | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
+| `Super + O` | Screen off now (press again or move the mouse to wake it) |
+| `Super + W` | Restart the top bar |
 | `Super + Q` | Close window |
-| `Super + F` / `Super + D` | Fullscreen / maximize |
-| `Super + Alt + Space` | Float / unfloat window |
-| `Super + ←↑→↓` | Move focus |
-| `Super + Shift + ←↑→↓` | Move window |
-| `Super + 1`–`3` | Go to workspace |
-| `Super + Shift + Ctrl + 1`–`3` | Move window to workspace |
-| `Super + S` | Scratchpad (`Super + Shift + S` sends a window there) |
+| `Super + F` | Float / unfloat window |
+| `Super + J / L / I / K` | Move focus left / right / up / down |
+| `Super + ← / →` | Previous / next workspace |
+| `Super + 1`–`5` | Go to workspace |
+| `Super + scroll` | Previous / next workspace |
 | `Super + drag` | Move window (left button) / resize (right button) |
-| `Super + +` / `Super + -` | Zoom in / out |
-| `Print` / `Super + Print` | Screenshot of an area / the whole screen |
-| `Super + P` | Color picker |
-| `Ctrl + Shift + Esc` | Task manager (btop) |
-| `Alt + Tab` | Next window |
+| `Print` | Screenshot of an area (saved in ~/Pictures/Screenshots) |
+| Volume and brightness keys | Change them, with an on-screen bar |
 
 ## Change a key
 

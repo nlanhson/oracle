@@ -23,10 +23,18 @@ bar() { # bar <0-100|""> <label>: [=====-----] for things you set
   local f=$(($1 * (SW - 1) / 100))
   printf "${W}%-12s${C}[%s${D}%s${C}]${W}%7d%%${N}\n" "$2" "$(rep '=' "$f")" "$(rep - $((SW - 1 - f)))" "$1"
 }
-key() { # key → KEY = up down left right enter esc tab space backspace or the character
-  local k r; IFS= read -rsn1 k || return 1
+MOUSE=$'\e[?1000h\e[?1006h' NOMOUSE=$'\e[?1000l\e[?1006l' # print MOUSE to get clicks (SGR), NOMOUSE when leaving
+key() { # key [timeout] → KEY = up down left right enter esc tab space backspace, click (at MX, MY), back (right click) or the character
+  local k r c=''; IFS= read -rsn1 ${1:+-t "$1"} k || return 1
   case $k in
-    $'\e') IFS= read -rsn2 -t 0.02 r; case $r in '[A') KEY=up ;; '[B') KEY=down ;; '[C') KEY=right ;; '[D') KEY=left ;; *) KEY=esc ;; esac ;;
+    $'\e') IFS= read -rsn2 -t 0.02 r
+      if [[ $r == '[<' ]]; then # mouse: ESC [ < button ; x ; y M/m.  wheel = up/down, right click = back
+        r=''; while IFS= read -rsn1 -t 0.05 c && [[ $c != [Mm] ]]; do r+=$c; done
+        IFS=';' read -r MB MX MY <<<"$r"; KEY=mouse
+        case $MB in 64) KEY=up ;; 65) KEY=down ;; 0) [[ $c == M ]] && KEY=click ;; 2) [[ $c == M ]] && KEY=back ;; esac
+        return 0
+      fi
+      case $r in '[A') KEY=up ;; '[B') KEY=down ;; '[C') KEY=right ;; '[D') KEY=left ;; *) KEY=esc ;; esac ;;
     '') KEY=enter ;; $'\t') KEY=tab ;; ' ') KEY=space ;; $'\x7f') KEY=backspace ;; *) KEY=$k ;;
   esac
 }

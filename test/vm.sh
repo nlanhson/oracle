@@ -53,7 +53,7 @@ class VM:
     def __init__(s, extra):
         subprocess.run(['swtpm', 'socket', '--tpm2', '--tpmstate', 'dir=/vm/tpm', '--daemon',
                         '--ctrl', 'type=unixio,path=/vm/tpm.sock'], check=True)
-        s.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35,accel=kvm', '-cpu', 'host', '-smp', '4', '-m', '4096',
+        s.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35,accel=kvm', '-cpu', 'host', '-smp', '4', '-m', '6144',
             '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd',
             '-drive', 'if=pflash,format=raw,file=/vm/vars.fd',
             '-drive', 'if=none,id=d0,file=/vm/disk.qcow2', '-device', 'nvme,drive=d0,serial=oracle',
@@ -146,7 +146,8 @@ if MODE != 'oracle':
     if i: sys.exit('install failed')
     vm.send('\x03')
     vm.sh('ls /mnt/etc/sudoers.d; readlink /mnt/etc/resolv.conf; lsblk -o NAME,SIZE,FSTYPE /dev/nvme0n1')
-    vm.sh('sed -i "/^options/s/$/ console=tty0 console=ttyS0,115200/" /mnt/boot/loader/entries/*.conf && grep -H . /mnt/boot/loader/entries/*.conf; sync')
+    vm.sh('sed -i "/^ *cmdline:/s/$/ console=tty0 console=ttyS0,115200/" /mnt/boot/limine.conf && sed -i "/^KERNEL_CMDLINE/s/.$/ console=tty0 console=ttyS0,115200&/" /mnt/etc/default/limine'
+          ' && grep -E "cmdline|^/|editor" /mnt/boot/limine.conf; cat /mnt/etc/default/limine; sync')
     vm.send('poweroff\n'); vm.p.wait(120)
     os.system('cd /vm && mv disk.qcow2 arch.qcow2 && qemu-img create -qf qcow2 -b arch.qcow2 -F qcow2 disk.qcow2'
               ' && cp vars.fd arch.vars.fd && cp -a tpm arch.tpm')
@@ -174,7 +175,7 @@ rc, _ = vm.sh('resolvectl query archlinux.org && curl -sSI https://archlinux.org
 ok['DNS'] = rc == 0
 rc, out = vm.sh('nmcli -g NAME,TYPE connection show')
 ok['Wi-Fi from the ISO → NetworkManager'] = 'OracleTest:802-11-wireless' in out
-rc, _ = vm.sh('pacman -Q hyprland brave-origin-bin ghostty docker')
+rc, _ = vm.sh('pacman -Q hyprland brave-origin-bin ghostty docker limine-snapper-sync waybar')
 ok['packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
 ok['hyprland.lua verifies'] = rc == 0 and 'config ok' in out
@@ -185,25 +186,27 @@ INSTALL = 'curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.
 vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')  # served repo is new each run
 rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run on the installed system (idempotent)'] = rc == 0 and 'already enrolled' in out
-rc, _ = vm.sh('pacman -Q noctalia swash bluez micro nautilus noto-fonts')
+rc, _ = vm.sh('pacman -Q waybar fuzzel swaync hypridle swaybg fwupd bluez micro nautilus noto-fonts')
 ok['desktop packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
 ok['new hyprland config verifies'] = rc == 0 and 'config ok' in out
 rc, out = vm.sh('sudo snapper -c root list | tail -n 2; sudo btrfs subvolume show /.snapshots >/dev/null && echo SNAPDIR', 60, sudo)
 ok['snapshots set up'] = rc == 0 and 'SNAPDIR' in out
-rc, out = vm.sh('sudo pacman -S --noconfirm cowsay >/dev/null; command -v cowsay; printf "1\\n" | oracle undo; command -v cowsay || echo GONE', 600, sudo)
-ok['oracle undo takes back an update'] = 'GONE' in out and 'undone' in out
+rc, out = vm.sh('sudo pacman -S --noconfirm cowsay >/dev/null; command -v cowsay; printf "1\\n" | oracle rollback; command -v cowsay || echo GONE', 600, sudo)
+ok['oracle rollback takes back an update'] = 'GONE' in out and 'rolled back' in out
+rc, out = vm.sh('sleep 10; sudo grep -E "^ */|editor_enabled|subvol" /boot/limine.conf | head -n 30; efibootmgr | grep -i limine; bootctl is-installed 2>&1 | tail -n 1', 120, sudo)
+ok['Limine boot menu: snapshots listed, editor off'] = 'editor_enabled: no' in out and 'Snapshots' in out and '.snapshots/' in out
 rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale; Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 2;'
                 ' oracle set keyboard; oracle set scale; grep -c oracle/ghostty ~/.config/ghostty/config')
 ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
-vm.sh('oracle set nightlight always; mkdir -p ~/.local/state/oracle; echo /usr/share/noctalia/assets/noctalia-wallpaper.png >~/.local/state/oracle/wallpaper')
+vm.sh('oracle set nightlight always; oracle set wallpaper $(ls /usr/share/hypr/*.png | head -1)')
 step('tty1 login via monitor sendkey')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
 ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
-rc, out = vm.sh('pgrep -x wlsunset && cat ~/.config/oracle/ghostty')
-ok['night light in Shell mode, ghostty settings file'] = rc == 0 and 'font-size' in out
+rc, out = vm.sh('pgrep -x wlsunset && pgrep -x swayidle && cat ~/.config/oracle/ghostty')
+ok['Shell mode: night light, idle dimming, ghostty settings file'] = rc == 0 and 'font-size' in out
 rc, out = vm.sh('systemctl is-active oracle-lid; systemctl show -p Result --value oracle-battery; cat /etc/oracle/battery-limit')
 ok['lid watcher running, battery unit ok'] = re.search(r'^active$', out, re.M) and 'success' in out
 vm.mon('screendump /vm/shell.png -f png')
@@ -211,10 +214,10 @@ vm.sh('oracle gui; sleep 25')
 rc, out = vm.sh('pgrep -a Hyprland; pgrep -x cage; cat ~/.local/state/oracle/mode')
 ok['oracle gui → Hyprland'] = 'Hyprland' in out and 'cage' not in out.split('Hyprland')[-1]
 vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl dispatch \'hl.dsp.exec_cmd("ghostty")\'; sleep 8; hyprctl clients | grep -c "class: com.mitchellh.ghostty"')
-rc, out = vm.sh('pgrep -x noctalia; fc-list | wc -l')
-ok['Noctalia running, fonts installed'] = rc == 0 and int(out.split()[-1]) > 20
-rc, out = vm.sh('sleep 10; pgrep -x wlsunset; ls ~/.local/state/oracle/wallpaper 2>&1; oracle set nightlight')
-ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'No such file' in out
+rc, out = vm.sh('pgrep -x waybar && pgrep -x swaync && pgrep -x hypridle && fc-list | wc -l')
+ok['desktop: waybar, notifications, idle running, fonts installed'] = rc == 0 and int(out.split()[-1]) > 20
+rc, out = vm.sh('sleep 5; pgrep -x wlsunset; pgrep -a swaybg; oracle set nightlight; oracle set wallpaper')
+ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'swaybg -i' in out
 vm.mon('screendump /vm/gui.png -f png')
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('pgrep -a cage && tmux ls')

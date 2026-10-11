@@ -38,10 +38,14 @@ Press `s` on the dashboard (or type `oracle settings`). Move with the arrow keys
 - **Sound:** volume, mute, and where sound plays (speakers, headphones, Bluetooth).
 - **Battery:** where charging stops.
 - **Network:** Wi-Fi and Bluetooth, on/off, and picking a network or device.
-- **System:** time zone, keyboard layout, accent color, desktop wallpaper, and **about** (user, Oracle version, memory, disk).
-- **Buttons:** update, undo (take back an update), restart, shut down.
+- **System:** time zone, keyboard layout, accent color, desktop wallpaper (a picture from ~/Pictures, or black), and **about** (user, Oracle version, memory, disk).
+- **Buttons:** update, rollback (take back an update), restart, shut down.
 
-Keyboard layout and screen scale apply the next time Shell mode or the desktop starts. Desktop colors and the bar are set in the desktop itself: click the bar.
+Keyboard layout and screen scale apply the next time Shell mode or the desktop starts.
+
+You can also use the mouse everywhere: see [Keys](keys.md#mouse-in-shell-mode).
+
+After 5 minutes without touching anything, the screen dims; after 7 it turns off. Closing the lid also turns the screen off. The computer keeps running either way, so the home server stays up.
 
 You can use the mouse in Shell mode too: click a workspace number, scroll, and select text to copy it.
 

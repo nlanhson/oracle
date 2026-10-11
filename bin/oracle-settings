@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Oracle settings, ascii.rest form-controls look. ↑↓ move · ←→ change · enter open/toggle · q back.
+# Oracle settings, ascii.rest form-controls look. ↑↓ move · ←→ change · enter open/toggle · q back. Mouse: click, wheel, right click = back.
 # Own choices live in ~/.config/oracle/settings (oracle set/get); Hyprland and Shell mode read them when they start.
 H=$(dirname "$(readlink -f "$0")")/../default/home
 # shellcheck disable=SC1091
 source "$H/theme.sh"
 DIR=$HOME/.local/share/oracle SEL=0 MSG='' BW=64
 ITEMS=(brightness nightlight textsize scale volume mute output battery wifi network bluetooth devices
-       timezone keyboard accent wallpaper about update undo restart shutdown)
+       timezone keyboard accent wallpaper about update rollback restart shutdown)
 BUTTONS=4 # last 4 items are the buttons row
+declare -A IDX; for i in "${!ITEMS[@]}"; do IDX[${ITEMS[i]}]=$i; done
 declare -A NIGHT=([off]=off [evening]="6 PM to 6 AM" [always]="always on")
-printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H%s" "$NOMOUSE"' EXIT
 
 slider() { # slider <0-100|""> <suffix>: ━━━━━█───── 40%
   local w=24 f; num "$1" || { printf "%s%s  n/a%s" "$F" "$(rep ─ $((w + 1)))" "$N"; return; }
@@ -34,17 +35,17 @@ get() {
   BT=$(bluetoothctl show 2>/dev/null | awk '/Powered:/{print ($2=="yes" ? "on" : "off"); exit}')
   BTDEV=$(bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3- | paste -sd, -)
   TZ_=$(timedatectl show -p Timezone --value 2>/dev/null)
-  WP=$(sed -n '/^\[wallpaper.default\]/,/^\[/s/^path = "\(.*\)"/\1/p' ~/.local/state/noctalia/settings.toml 2>/dev/null)
-  [[ -f ~/.local/state/oracle/wallpaper ]] && WP=$(<~/.local/state/oracle/wallpaper)
+  WP=${S[wallpaper]:-black}
 }
 row() { # row <item> <label> <control>
   local m='  ' c=$W; [[ ${ITEMS[SEL]} == "$1" ]] && m="$C> " c=$C
+  ROWOF[${#LINES[@]}]=${IDX[$1]}
   LINES+=("$m$c$(printf '%-14s' "$2")$N$3")
 }
 place() { read -r ROWS COLS < <(stty size); BX=$(((COLS - BW) / 2)); BY=$(((ROWS - ${#LINES[@]} - 2) / 2)); ((BX < 1)) && BX=1; ((BY < 1)) && BY=1; }
 draw() {
   local k b=''
-  get; LINES=('')
+  get; LINES=('') ROWOF=()
   row brightness brightness "$(slider "$BRI")"; row nightlight "night light" "$(stepper "${NIGHT[${S[nightlight]:-off}]}")"
   row textsize "text size" "$(stepper "${S[textsize]:-12} (Shell mode)")"; row scale "screen scale" "$(stepper "${S[scale]:-1.67}x (desktop)")"; LINES+=('')
   row volume volume "$(slider "$VOL")"; row mute mute "$(toggle "$MUTE")"; row output "sound output" "$(select_ "${OUT:-none}")"; LINES+=('')
@@ -57,8 +58,8 @@ draw() {
   for k in "${ITEMS[@]: -BUTTONS}"; do
     if [[ ${ITEMS[SEL]} == "$k" ]]; then b+="${C}[ $k ]$N   "; else b+="$(button "$k")   "; fi
   done
-  LINES+=("  $b" ''); place
-  printf '\e[?2026h\e[H\e[2J'; box settings "${MSG:-↑↓ move · ←→ change · enter open · q back}"; printf '\e[?2026l'; MSG=''
+  BTNROW=${#LINES[@]}; LINES+=("  $b" ''); place
+  printf '\e[?2026h\e[H\e[2J%s' "$MOUSE"; box settings "${MSG:-↑↓ move · ←→ change · enter open · q back}"; printf '\e[?2026l'; MSG=''
 }
 pick() { # pick <title> <options...> → PICK (empty = cancelled). Long lists: type to search.
   local t=$1 s=0 top=0 q='' i h; shift; local all=("$@") v; PICK=''
@@ -67,7 +68,7 @@ pick() { # pick <title> <options...> → PICK (empty = cancelled). Long lists: t
     read -r ROWS COLS < <(stty size); h=$((ROWS - 12)); ((h > 18)) && h=18; ((h < 3)) && h=3
     ((s >= ${#v[@]})) && s=$((${#v[@]} - 1)); ((s < 0)) && s=0
     ((s < top)) && top=$s; ((s >= top + h)) && top=$((s - h + 1))
-    LINES=(''); (($# > 8)) && LINES+=("  ${D}search ${W}$q${C}▏$N" '')
+    LINES=(''); (($# > 8)) && LINES+=("  ${D}search ${W}$q${C}▏$N" ''); local first=${#LINES[@]}
     for ((i = top; i < top + h && i < ${#v[@]}; i++)); do
       if ((i == s)); then LINES+=("$C> ${v[i]:0:BW-6}$N"); else LINES+=("  $W${v[i]:0:BW-6}$N"); fi
     done
@@ -75,7 +76,8 @@ pick() { # pick <title> <options...> → PICK (empty = cancelled). Long lists: t
     printf '\e[?2026h\e[H\e[2J'; box "$t" "$( (($# > 8)) && printf 'type to search · ')enter choose · esc back"; printf '\e[?2026l'
     key || return
     case $KEY in
-      up) ((s--)) ;; down | tab) ((s++)) ;; esc) return ;;
+      up) ((s--)) ;; down | tab) ((s++)) ;; esc | back) return ;;
+      click) i=$((top + MY - BY - 1 - first)); ((i >= top && i < ${#v[@]} && MY - BY - 1 >= first)) && { PICK=${v[i]}; return; } ;;
       enter) ((${#v[@]})) && PICK=${v[s]}; return ;;
       k | j | q) if (($# > 8)); then q+=$KEY; elif [[ $KEY == q ]]; then return; elif [[ $KEY == k ]]; then ((s--)); else ((s++)); fi ;;
       backspace) q=${q%?} ;; space) q+=' ' ;;
@@ -126,14 +128,11 @@ keyboard() {
   pick keyboard "${l[@]}"; [[ -n $PICK ]] || return
   oracle set keyboard "$PICK"; MSG="keyboard: $PICK (from the next time Shell or desktop starts)"
 }
-wallpaper() { # desktop wallpaper (Noctalia). From Shell mode it is set when the desktop next starts.
-  local l; mapfile -t l < <(find ~/Pictures ~/Wallpapers /usr/share/noctalia/assets -maxdepth 3 -type f \
-    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sed "s|^$HOME|~|" | sort)
-  ((${#l[@]})) || { MSG="no pictures in ~/Pictures"; return; }
-  pick wallpaper "${l[@]}"; [[ -n $PICK ]] || return
-  local p=${PICK/#\~/$HOME}
-  if noctalia msg wallpaper-set "$p" &>/dev/null; then MSG="wallpaper set"
-  else mkdir -p ~/.local/state/oracle; echo "$p" >~/.local/state/oracle/wallpaper; MSG="wallpaper: set when the desktop starts"; fi
+wallpaper() { # desktop wallpaper (swaybg): a picture from ~/Pictures, or black
+  local l; mapfile -t l < <(find ~/Pictures ~/Wallpapers -maxdepth 3 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sed "s|^$HOME|~|" | sort)
+  pick wallpaper black "${l[@]}"; [[ -n $PICK ]] || return
+  if [[ $PICK == black ]]; then oracle set wallpaper; else oracle set wallpaper "${PICK/#\~/$HOME}"; fi
+  [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && oracle wall; MSG="wallpaper: ${PICK##*/}"
 }
 about() {
   local v k; v=$(git -C "$DIR" log -1 --format='%h · %cd' --date=format:'%-d %b %Y' 2>/dev/null)
@@ -143,7 +142,7 @@ about() {
            "disk|$(df -h / | awk 'NR==2{print $3 " of " $2}')"; do
     LINES+=("  $(printf "${D}%-14s${W}%s${N}" "${k%%|*}" "${k#*|}")")
   done
-  LINES+=(''); place; printf '\e[?2026h\e[H\e[2J'; box about "any key back"; printf '\e[?2026l'; key
+  LINES+=(''); place; printf '\e[?2026h\e[H\e[2J'; box about "any key or click: back"; printf '\e[?2026l'; key
 }
 cycle() { # cycle <current> <+1|-1> <values...> → V
   local c=$1 d=$2 i; shift 2; local a=("$@")
@@ -169,6 +168,38 @@ change() { # change <+1|-1> for the selected row
 }
 confirm() { MSG="$1? press y to confirm"; draw; key && [[ $KEY == y ]]; }
 inline() { printf '\e[?25h\e[2J\e[H'; "$@"; read -rp 'enter to close' _; printf '\e[?25l'; } # inline <cmd>: run in the open
+press() { # enter on the selected row
+  case ${ITEMS[SEL]} in
+    network) wifi ;; devices) devices ;; output) output ;; timezone) timezone ;; keyboard) keyboard ;;
+    wallpaper) wallpaper ;; about) about ;;
+    update) inline oracle update ;;
+    rollback) inline oracle rollback ;;
+    restart) confirm restart && systemctl reboot ;;
+    shutdown) confirm "shut down" && systemctl poweroff ;;
+    *) change 1 ;;
+  esac
+}
+click() { # mouse: row = select + act; slider = set to that spot; ◂ / ▸ half of a stepper = down / up; buttons
+  local r=$((MY - BY - 1)) x=$((MX - BX - 2)) p=2 k v
+  if ((r == BTNROW)); then
+    for k in "${ITEMS[@]: -BUTTONS}"; do
+      ((x >= p && x < p + ${#k} + 4)) && { SEL=${IDX[$k]}; press; return; }
+      p=$((p + ${#k} + 7))
+    done; return
+  fi
+  [[ -n ${ROWOF[r]:-} ]] || return
+  SEL=${ROWOF[r]} x=$((x - 16)) # controls start after "> " + 14-wide label
+  case ${ITEMS[SEL]} in
+    brightness | volume | battery) ((x >= 0 && x <= 24)) || return; v=$((x * 100 / 24))
+      case ${ITEMS[SEL]} in
+        brightness) brightnessctl -q set "$((v < 1 ? 1 : v))%" ;;
+        volume) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$v%" ;;
+        battery) v=$(((v + 2) / 5 * 5)); oracle battery "$((v < 20 ? 20 : v))" >/dev/null ;;
+      esac 2>/dev/null ;;
+    nightlight | textsize | scale | accent) ((x < 0)) && return; if ((x < 14)); then change -1; else change 1; fi ;;
+    *) ((x >= 0)) && press ;;
+  esac
+}
 FIRSTB=$((${#ITEMS[@]} - BUTTONS))
 while :; do
   draw
@@ -178,16 +209,8 @@ while :; do
     down | j | tab) ((SEL < FIRSTB)) && ((SEL++)) ;;
     left | h) if ((SEL < FIRSTB)); then change -1; elif ((SEL > FIRSTB)); then ((SEL--)); fi ;;
     right | l) if ((SEL < FIRSTB)); then change 1; elif ((SEL < ${#ITEMS[@]} - 1)); then ((SEL++)); fi ;;
-    enter | space)
-      case ${ITEMS[SEL]} in
-        network) wifi ;; devices) devices ;; output) output ;; timezone) timezone ;; keyboard) keyboard ;;
-        wallpaper) wallpaper ;; about) about ;;
-        update) inline oracle update ;;
-        undo) inline oracle undo ;;
-        restart) confirm restart && systemctl reboot ;;
-        shutdown) confirm "shut down" && systemctl poweroff ;;
-        *) change 1 ;;
-      esac ;;
-    q | esc) exit ;;
+    enter | space) press ;;
+    click) click ;;
+    q | esc | back) exit ;;
   esac
 done

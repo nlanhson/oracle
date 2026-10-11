@@ -1,36 +1,56 @@
 # one per line. aur: = AUR via yay
 git
 base-devel
-hyprland
+# Shell mode
 ghostty
 cage
 tmux
+micro
+swayidle
+wlsunset
+brightnessctl
+# desktop = owner's dotfiles: Hyprland + waybar + fuzzel + swaync
+hyprland
 xdg-desktop-portal-hyprland
-noctalia
+hyprpolkitagent
+hypridle
+hyprlock
+hyprshot
+waybar
+fuzzel
+swaync
+swaybg
+swayosd
+udiskie
+pavucontrol
 nautilus
-gnome-text-editor
-gnome-calculator
+mousepad
 btop
-hyprpicker
 wl-clipboard
+xdg-utils
+gnome-themes-extra
+papirus-icon-theme
+ttf-jetbrains-mono-nerd
+woff2-font-awesome
 noto-fonts
 noto-fonts-emoji
-ttf-opensans
-wlsunset
-snapper
-snap-pac
-micro
-xdg-utils
+# system
 bluez
 bluez-utils
-brightnessctl
 networkmanager
 pipewire
 pipewire-pulse
 wireplumber
+fwupd
+# rollback: snapshots + Limine boot menu
+snapper
+snap-pac
+limine
+aur:limine-mkinitcpio-hook
+aur:limine-snapper-sync
+# server
 docker
 docker-compose
 docker-buildx
 tailscale
 aur:brave-origin-bin
-aur:swash

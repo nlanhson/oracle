@@ -11,7 +11,7 @@ Named after Batman's Oracle: your machine is the Batcomputer.
 - **Light like plain Arch.** No desktop environment running all the time. Every package has to earn its place.
 - **Text first.** You land on a dashboard and a terminal. Hyprland starts only when you ask for it.
 - **Home-server ready.** Docker, Immich, Tailscale and a VPN exit node, set up for you, with backup and restore built in.
-- **Undo for updates.** A snapshot before every update; `oracle undo` takes it back.
+- **Rollback for updates.** A snapshot before every update; `oracle rollback` takes it back, and the boot menu can start an older snapshot.
 - **Secure by default.** Full-disk encryption that unlocks itself through the TPM chip, so the machine comes back on its own after a power cut.
 - **Yours to change.** Your settings live in your own files. Updates never overwrite them.
 
@@ -46,8 +46,8 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `Super + Enter` | Terminal (in the desktop) |
 | `Super + B` | Brave Origin (in the desktop) |
 | `f` / `s` on the dashboard | Files / Settings |
-| `oracle update` | Update Oracle and the whole system |
-| `oracle undo` | Take back an update that broke something |
+| `oracle update` | Update everything: Oracle, all programs, firmware |
+| `oracle rollback` | Take back an update that broke something |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
 | `oracle restore <folder>` | Bring the home server back from a backup |
 | `oracle battery 50` | Stop charging at 50% (good for a laptop that's always plugged in) |
@@ -66,6 +66,7 @@ Oracle's defaults live in `~/.local/share/oracle/default/`. Your own changes go 
 - `~/.config/hypr/hyprland.lua` (desktop and keybinds)
 - `~/.config/ghostty/mine` (terminal)
 - `~/.config/tmux/tmux.conf` (terminal sessions)
+- `~/.config/waybar`, `fuzzel`, `swaync`, `hypr/hypridle.conf`, `hypr/hyprlock.conf` (desktop bar, launcher, notifications, idle, lock: copied once at install, then fully yours)
 
 Your changes always win over Oracle's defaults. Most everyday choices (text size, night light, keyboard, wallpaper…) are in Settings (`s` on the dashboard). `oracle update` refreshes the defaults and never touches your files.
 
@@ -79,7 +80,7 @@ Ideas, bug reports and pull requests are welcome. Open an [issue](https://github
 
 ## Credits
 
-- [Arch Linux](https://archlinux.org), [Hyprland](https://hypr.land), [Ghostty](https://ghostty.org), [tmux](https://github.com/tmux/tmux), [cage](https://github.com/cage-kiosk/cage)
+- [Arch Linux](https://archlinux.org), [Hyprland](https://hypr.land), [Ghostty](https://ghostty.org), [tmux](https://github.com/tmux/tmux), [cage](https://github.com/cage-kiosk/cage), [Limine](https://limine-bootloader.org) + [limine-snapper-sync](https://gitlab.com/Zesko/limine-snapper-sync), [waybar](https://github.com/Alexays/Waybar), [fuzzel](https://codeberg.org/dnkl/fuzzel)
 - The dashboard's look is inspired by [ascii.rest](https://ascii.rest) (MIT) by [@bas3line](https://github.com/bas3line).
 - The update and settings model is inspired by [Omarchy](https://omarchy.org).
 

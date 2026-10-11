@@ -7,7 +7,8 @@ H=$(dirname "$(readlink -f "$0")")/../default/home
 source "$H/theme.sh"
 ROOT=$(realpath "${1:-$HOME}") SEL=0 TOP=0 HID=0 MSG='' Q='' CLIP='' CLIPOP=''
 declare -A OPEN=(["$ROOT"]=1)
-printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H"' EXIT
+HINT='enter open · ← back · c copy · x cut · p paste · r rename · n new folder · d trash · / search · . hidden · q quit'
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H%s" "$NOMOUSE"' EXIT
 
 walk() { # walk <dir> <prefix>: P[] paths, T[] tree lines
   local d=$1 pre=$2 e n i c
@@ -29,7 +30,7 @@ draw() {
   if [[ -n $Q ]]; then found; else walk "$ROOT" ''; fi
   ((SEL >= ${#P[@]})) && SEL=$((${#P[@]} - 1)); ((SEL < 0)) && SEL=0
   h=$((rows - 6)); ((SEL < TOP)) && TOP=$SEL; ((SEL >= TOP + h)) && TOP=$((SEL - h + 1))
-  printf '\e[?2026h\e[H\e[2J\n  %s%s%s%s\n' "$C" "${ROOT/#$HOME/\~}" "${Q:+$W   search: $Q  ${D}(esc clears)}" "$N"
+  HROW=$((rows - 1)); printf '\e[?2026h\e[H\e[2J%s\n  %s%s%s%s\n' "$MOUSE" "$C" "${ROOT/#$HOME/\~}" "${Q:+$W   search: $Q  ${D}(esc clears)}" "$N"
   for ((i = TOP; i < TOP + h && i < ${#P[@]}; i++)); do
     l=${T[i]}
     if ((i == SEL)); then l=${l/%── ${l##*── }/──> ${l##*── }}; printf '  %s%s%s\n' "$C" "${l:0:cols-4}" "$N"
@@ -38,7 +39,7 @@ draw() {
   done
   [[ -n $Q && ${#P[@]} == 0 ]] && printf '\n  %snothing found%s%s' "$D" "$( ((HID)) || echo ' (press . to include hidden files)')" "$N"
   printf '\e[%d;3H%s%d directories, %d files%s%s' $((rows - 2)) "$D" "$ND" "$NF" "${CLIP:+   ·   $CLIPOP: ${CLIP##*/}  (p pastes)}" "$N"
-  printf '\e[%d;3H%s%s%s' $((rows - 1)) "$W" "${MSG:-enter open · ← back · c copy · x cut · p paste · r rename · n new folder · d trash · / search · . hidden · q quit}" "$N"
+  printf '\e[%d;3H%s%s%s' $((rows - 1)) "$W" "${MSG:-$HINT}" "$N"
   printf '\e[?2026l'; MSG=''
 }
 found() { # search results under ROOT (names containing Q), at most 500
@@ -85,6 +86,14 @@ ask() { # ask <file>: what to do with it
 while :; do
   draw
   key || exit
+  if [[ $KEY == click && $MY == "$HROW" ]]; then # the key hints at the bottom are buttons too
+    hx=3 KEY=''; IFS=$'\t' read -ra hs <<<"${HINT// · /$'\t'}"
+    for h in "${hs[@]}"; do ((MX >= hx && MX < hx + ${#h})) && { KEY=${h%% *}; [[ $KEY == ← ]] && KEY=left; }; hx=$((hx + ${#h} + 3)); done
+  elif [[ $KEY == click ]]; then # click a line = select it, click it again = open
+    i=$((TOP + MY - 3)); ((i >= 0 && i < ${#P[@]})) || continue
+    if ((i == SEL)); then KEY=enter; else SEL=$i; continue; fi
+  fi
+  [[ $KEY == back ]] && KEY=left
   case $KEY in
     up | k) ((SEL--)) ;;
     down | j) ((SEL++)) ;;
