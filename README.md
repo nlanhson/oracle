@@ -47,6 +47,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `oracle update` | Update Oracle and the whole system |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
 | `oracle restore <folder>` | Bring the home server back from a backup |
+| `oracle battery 50` | Stop charging at 50% (good for a laptop that's always plugged in) |
 
 ## Manual
 

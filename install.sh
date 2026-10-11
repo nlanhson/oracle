@@ -218,6 +218,22 @@ done
 STUB=../run/systemd/resolve/stub-resolv.conf
 [[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf || say "  /etc/resolv.conf busy (container?), skipped"
 
+say "battery charge limit (change: oracle battery <20-100>)"
+BU=/etc/systemd/system/oracle-battery.service
+if ((!DRY)) && [[ ! -f /etc/oracle/battery-limit ]]; then echo 50 | sudo install -Dm644 /dev/stdin /etc/oracle/battery-limit; fi
+if ((!DRY)) && [[ ! -f $BU ]]; then
+  sudo tee "$BU" >/dev/null <<'EOF'
+[Unit]
+Description=Oracle battery charge limit
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/sh -c 'for f in /sys/class/power_supply/BAT*/charge_control_end_threshold; do [ -w "$f" ] && cat /etc/oracle/battery-limit >"$f"; done; true'
+[Install]
+WantedBy=multi-user.target
+EOF
+fi
+run sudo systemctl enable oracle-battery.service
+
 say "disk unlock by TPM (no password at boot)"
 L=/boot/loader/loader.conf
 if ((!DRY)) && sudo test -f "$L" && ! sudo grep -q '^editor' "$L"; then run sudo sh -c "echo 'editor no' >> $L"; fi

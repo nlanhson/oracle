@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oracle update | backup <dir> | restore <dir> | gui | shell | home | attach | session | help
+# oracle update | backup <dir> | restore <dir> | battery [n] | gui | shell | home | attach | session | help
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
 STATE=$HOME/.local/state/oracle/migrations
@@ -34,11 +34,18 @@ case ${1:-help} in
   attach) tmux has -t oracle 2>/dev/null || tmux new -d -s oracle -n home oracle home \; new-window -d -t oracle
     exec tmux attach -t oracle ;;
   home) exec "$DIR/bin/oracle-home" ;;
+  battery) L=/etc/oracle/battery-limit
+    if [[ -n ${2:-} ]]; then
+      [[ $2 =~ ^[0-9]+$ ]] && ((${2} >= 20 && ${2} <= 100)) || die "usage: oracle battery <20-100>"
+      echo "$2" | sudo tee "$L" >/dev/null; sudo systemctl start oracle-battery.service
+    fi
+    echo "battery stops charging at $(cat "$L" 2>/dev/null || echo 100)%" ;;
   gui) echo gui >"$MODE"; pkill -x cage ;;
   shell) echo shell >"$MODE"; hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
   *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
      echo "oracle shell         back to Shell (closes GUI apps). Super+M in GUI"
      echo "oracle update        get newest Oracle + system updates"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
-     echo "oracle restore <dir> bring the server back from a backup" ;;
+     echo "oracle restore <dir> bring the server back from a backup"
+     echo "oracle battery [n]   show or set the charge limit (20-100%)" ;;
 esac

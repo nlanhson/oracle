@@ -11,7 +11,8 @@ gpu() { local f; for f in /sys/class/drm/card*/device/gpu_busy_percent; do [[ -r
 temp() { local f; for f in /sys/class/hwmon/hwmon*/name; do [[ -f $f ]] || continue; [[ $(<"$f") == k10temp || $(<"$f") == coretemp ]] && { echo $(($(<"${f%name}temp1_input") / 1000)); return; }; done; }
 cpu
 w_system() {
-  local g m t b
+  local g m t b L
+  [[ -r /etc/oracle/battery-limit ]] && L=$(</etc/oracle/battery-limit)
   cpu; HIST+=("$CPU"); ((${#HIST[@]} > 30)) && HIST=("${HIST[@]:1}")
   g=$(gpu); [[ $g =~ ^[0-9]+$ ]] && { GHIST+=("$g"); ((${#GHIST[@]} > 30)) && GHIST=("${GHIST[@]:1}"); }
   t=$(temp)
@@ -21,7 +22,7 @@ w_system() {
   bar "${m%% *}" ram "${m#* }"
   b=$(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2"/"$3}')
   bar "${b%% *}" disk "${b#* }"
-  bar "$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)" battery "$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1 | tr A-Z a-z)"
+  bar "$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -1)" battery "$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -1 | tr A-Z a-z)${L:+ · limit $L%}"
   bar "$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100)}')" volume ""
   bar "$(brightnessctl -m 2>/dev/null | awk -F, '{print $4+0}')" bright ""
   echo

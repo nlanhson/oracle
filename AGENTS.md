@@ -75,10 +75,11 @@ tty1 login → `oracle session` loop: Shell = `cage -s -- ghostty -e oracle atta
 Built + VM-tested (`test/vm.sh iso` 16/16): ISO one-pass install (Wi-Fi, disk, user/tz/kb, one password, LUKS2+TPM), Shell mode + dashboard, GUI (Hyprland, Ghostty, Brave Origin), server (docker, Dockge, Immich, Tailscale, vpn) with `oracle backup/restore`, `oracle update` + migrations, MIT license, human README + docs/manual. Not yet on real hardware. ISO not yet published (needs a `v*` tag → GitHub Actions).
 
 ## Before move day (do these first, in order)
-Owner 2026-10-11: power saving not important → drop nvidia-open/power-profiles (battery cap 80 + iGPU pin pending owner answer). Vietnamese later. Proposed: public Oracle (generic) + owner's personal layer repo (server, backup/restore, lid, Vietnamese, Claude Code) run by an install hook. Pending owner yes.
+Owner 2026-10-11: ONE Oracle, tailored to owner only, not published anywhere. Public version = later (then: archinstall-style choices, encryption optional). Power saving not important: no nvidia-open/power-profiles. AMD iGPU only (GPU switching maybe later). Browser = Brave Origin (never say plain "Brave"). Vietnamese + Claude Code preinstall: later.
+Done: battery limit (`/etc/oracle/battery-limit`, default 50, `oracle-battery.service` writes sysfs each boot, `oracle battery <20-100>`, dashboard shows limit). Settings screen will edit it later.
 1. Screen off when lid closed, machine keeps running (IMPORTANT, home server). Cage has no lid support → logind/acpid watcher + backlight off.
-2. (dropped for now) Vietnamese, Brave flags, Claude Code preinstall.
-3. Tag v0.1.0 → ISO on Releases; owner flashes USB.
+2. Repo → private (owner ok). First: ISO carries the whole repo (no clone/RAW fetch at install), `oracle update` needs GitHub auth (`gh auth login` once after install). Then flip visibility. CI ISO → private Release, or build locally.
+3. ISO → owner flashes USB.
 4. Move day on CachyOS: plug backup stick, `bash ~/Projects/oracle/server/server.sh backup /run/media/son/586D-16CB/oracle-migration-2026-10-10` (sudo: adds tailscale tarballs + photo top-up). Old full-history bundle: ~/Projects/oracle-history-backup-2026-10-11.bundle (copy to stick too).
 5. Boot ISO → install → `oracle restore <stick folder>` → Immich Job Queues: thumbnails + transcode missing → phone check.
 
