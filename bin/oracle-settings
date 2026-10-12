@@ -138,7 +138,7 @@ about() {
   local v k; v=$(git -C "$DIR" log -1 --format='%h · %cd' --date=format:'%-d %b %Y' 2>/dev/null)
   LINES=('')
   for k in "user|$USER@$(cat /etc/hostname 2>/dev/null)" "oracle|${v:-?}" "system|Arch Linux · kernel $(uname -r)" \
-           "uptime|$(uptime -p | sed 's/^up //')" "memory|$(free -h | awk '/^Mem/{print $3 " of " $2}')" \
+           "uptime|$(uptime -p | sed 's/^up //')" "ram|$(free -h | awk '/^Mem/{print $3 " of " $2}')" \
            "disk|$(df -h / | awk 'NR==2{print $3 " of " $2}')"; do
     LINES+=("  $(printf "${D}%-14s${W}%s${N}" "${k%%|*}" "${k#*|}")")
   done

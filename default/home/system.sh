@@ -1,5 +1,5 @@
-# Hardware: cpu/gpu/memory sparklines (one sample per refresh), disk + battery meters.
-HIST=() GHIST=() MHIST=() P_IDLE=0 P_TOT=0
+# Hardware: cpu/gpu/ram/temperature sparklines (one sample per refresh), disk + battery meters.
+HIST=() GHIST=() MHIST=() THIST=() P_IDLE=0 P_TOT=0
 cpu() {
   local _ u n s i w x y z idle tot
   read -r _ u n s i w x y z _ </proc/stat
@@ -15,11 +15,12 @@ w_system() {
   local g m t b L s p u tot
   title system
   cpu; push HIST "$CPU"; t=$(temp)
-  spark cpu "$CPU%" "${t:+${t}°c}" "${HIST[@]}"
+  spark cpu "$CPU%" "" "${HIST[@]}"
   g=$(gpu); if num "$g"; then push GHIST "$g"; spark gpu "$g%" "" "${GHIST[@]}"; fi
   m=$(awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{printf "%d %.1f %.1f",100*(t-a)/t,(t-a)/1048576,t/1048576}' /proc/meminfo)
   read -r p u tot <<<"$m"; push MHIST "$p"
-  spark memory "$u gb" "of $tot" "${MHIST[@]}"
+  spark ram "$u gb" "of $tot" "${MHIST[@]}"
+  if num "$t"; then push THIST $((t > 100 ? 100 : t)); spark temperature "${t}°c" cpu "${THIST[@]}"; fi
   printf "${D}%12s%-$((SW - 2))s%s${N}\n\n" '' "$((SW * 2))s ago" now
   b=$(df --output=pcent,used,size -BG / | awk 'NR==2{print $1+0, $2" of "$3}')
   meter "${b%% *}" disk "${b#* }"

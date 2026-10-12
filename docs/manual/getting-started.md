@@ -38,7 +38,7 @@ Press `s` on the dashboard (or type `oracle settings`). Move with the arrow keys
 - **Sound:** volume, mute, and where sound plays (speakers, headphones, Bluetooth).
 - **Battery:** where charging stops.
 - **Network:** Wi-Fi and Bluetooth, on/off, and picking a network or device.
-- **System:** time zone, keyboard layout, accent color, desktop wallpaper (a picture from ~/Pictures, or black), and **about** (user, Oracle version, memory, disk).
+- **System:** time zone, keyboard layout, accent color, desktop wallpaper (a picture from ~/Pictures, or black), and **about** (user, Oracle version, RAM, disk).
 - **Buttons:** update, rollback (take back an update), restart, shut down.
 
 Keyboard layout and screen scale apply the next time Shell mode or the desktop starts.
