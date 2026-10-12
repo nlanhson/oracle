@@ -1,0 +1,23 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = true
+
+format = """
+[](fg:#3a3a3a)$directory[](fg:#3a3a3a) $cmd_duration
+$character"""
+
+[directory]
+style = "bold fg:#e8e8e8 bg:#3a3a3a"
+format = "[   $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+home_symbol = "~"
+
+[cmd_duration]
+min_time = 2000
+style = "fg:#8a8a8a"
+format = "[took $duration]($style)"
+
+[character]
+success_symbol = "[❯](bold #e8e8e8)"
+error_symbol = "[❯](bold #a33a3a)"

@@ -208,15 +208,19 @@ else run mkdir -p "${G%/*}"; ((DRY)) || printf '%s\n' "config-file = $DIR/defaul
   '# your changes go in ~/.config/ghostty/mine (loaded last, so they win)' 'config-file = ?mine' >"$G"; fi
 ucfg "$HOME/.config/tmux/tmux.conf" "source-file $DIR/default/tmux.conf"
 
-say "tty1 autostart"
+say "zsh + tty1 autostart"
+ucfg "$HOME/.zshrc" "[[ -f $DIR/default/zshrc ]] && source $DIR/default/zshrc"
 LINE='[[ -f ~/.local/share/oracle/default/bash_profile ]] && . ~/.local/share/oracle/default/bash_profile'
-BP=$HOME/.bash_profile
-if [[ -f $BP ]] && grep -qF "$LINE" "$BP"; then
-  say "  already in $BP"
-else
-  [[ -f $BP || ! -f /etc/skel/.bash_profile ]] || run cp /etc/skel/.bash_profile "$BP"
-  if ((DRY)); then printf '   would append to %s: %s\n' "$BP" "$LINE"; else printf '\n%s\n' "$LINE" >>"$BP"; fi
-fi
+for BP in "$HOME/.bash_profile" "$HOME/.zprofile"; do
+  if [[ -f $BP ]] && grep -qF "$LINE" "$BP"; then
+    say "  already in $BP"
+  else
+    [[ -f $BP || ! -f /etc/skel/${BP##*/} ]] || run cp "/etc/skel/${BP##*/}" "$BP"
+    if ((DRY)); then printf '   would append to %s: %s\n' "$BP" "$LINE"; else printf '\n%s\n' "$LINE" >>"$BP"; fi
+  fi
+done
+SH=$(getent passwd "$USER" | cut -d: -f7)
+if [[ $SH == */zsh ]]; then say "  login shell: zsh"; elif [[ -x /usr/bin/zsh ]]; then run sudo chsh -s /usr/bin/zsh "$USER"; fi
 
 say "oracle command"
 BIN=$HOME/.local/bin/oracle

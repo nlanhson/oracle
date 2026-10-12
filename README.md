@@ -66,6 +66,7 @@ Oracle's defaults live in `~/.local/share/oracle/default/`. Your own changes go 
 - `~/.config/hypr/hyprland.lua` (desktop and keybinds)
 - `~/.config/ghostty/mine` (terminal)
 - `~/.config/tmux/tmux.conf` (terminal sessions)
+- `~/.zshrc` (shell) and `~/.config/starship.toml` (prompt)
 - `~/.config/waybar`, `fuzzel`, `swaync`, `hypr/hypridle.conf`, `hypr/hyprlock.conf` (desktop bar, launcher, notifications, idle, lock: copied once at install, then fully yours)
 
 Your changes always win over Oracle's defaults. Most everyday choices (text size, night light, keyboard, wallpaper…) are in Settings (`s` on the dashboard). `oracle update` refreshes the defaults and never touches your files.
@@ -80,7 +81,7 @@ Ideas, bug reports and pull requests are welcome. Open an [issue](https://github
 
 ## Credits
 
-- [Arch Linux](https://archlinux.org), [Hyprland](https://hypr.land), [Ghostty](https://ghostty.org), [tmux](https://github.com/tmux/tmux), [cage](https://github.com/cage-kiosk/cage), [Limine](https://limine-bootloader.org) + [limine-snapper-sync](https://gitlab.com/Zesko/limine-snapper-sync), [waybar](https://github.com/Alexays/Waybar), [fuzzel](https://codeberg.org/dnkl/fuzzel)
+- [Arch Linux](https://archlinux.org), [Hyprland](https://hypr.land), [Ghostty](https://ghostty.org), [tmux](https://github.com/tmux/tmux), [cage](https://github.com/cage-kiosk/cage), [Limine](https://limine-bootloader.org) + [limine-snapper-sync](https://gitlab.com/Zesko/limine-snapper-sync), [waybar](https://github.com/Alexays/Waybar), [fuzzel](https://codeberg.org/dnkl/fuzzel), [zsh](https://www.zsh.org), [Starship](https://starship.rs), [zoxide](https://github.com/ajeetdsouza/zoxide), [fzf](https://github.com/junegunn/fzf)
 - The dashboard's look is inspired by [ascii.rest](https://ascii.rest) (MIT) by [@bas3line](https://github.com/bas3line).
 - The update and settings model is inspired by [Omarchy](https://omarchy.org).
 

@@ -1,0 +1,28 @@
+# Oracle zsh (owner's setup). Owned by repo; your changes go in ~/.zshrc, below the line that loads this.
+HISTFILE=~/.zsh_history HISTSIZE=10000 SAVEHIST=10000
+setopt share_history hist_ignore_dups
+
+# Home / End / Delete (in ghostty and in tmux)
+for k in '^[[H' '^[[1~' '^[OH'; do bindkey "$k" beginning-of-line; done
+for k in '^[[F' '^[[4~' '^[OF'; do bindkey "$k" end-of-line; done
+bindkey '^[[3~' delete-char
+
+# Tab menu with arrows
+autoload -Uz compinit && compinit
+zstyle ':completion:*' menu select
+
+# Grey guess text (→ accepts)
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Folder picker with Ctrl+G
+eval "$(zoxide init zsh)"
+_pick_dir() {
+  local dir
+  dir=$(zoxide query -l | fzf --height 40% --reverse --no-sort --prompt 'folder> ') || { zle reset-prompt; return }
+  cd -- "$dir"
+  zle reset-prompt
+}
+zle -N _pick_dir
+bindkey '^G' _pick_dir
+
+eval "$(starship init zsh)"

@@ -111,7 +111,8 @@ class VM:
     def login(s, seen=False):
         seen or s.expect([r'oracle login:'], 300)
         s.send('son\n'); s.expect([r'Password:'], 60); s.send(PW + '\n')
-        s.expect([r'\$ $'], 60); s.sh('set -o pipefail', show=0)
+        if s.expect([r'\$ $', '❯'], 60)[0]: s.send('exec bash\n'); s.expect([r'\$ $'], 60)  # zsh + starship → bash for the checks
+        s.sh('set -o pipefail', show=0)
 
 def clean(t): return re.sub(r'\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\r', '', t).strip()
 def step(t): print(f'\n== {t}', flush=True)
@@ -207,6 +208,8 @@ ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and
 ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
 rc, out = vm.sh('pgrep -x wlsunset && pgrep -x swayidle && cat ~/.config/oracle/ghostty; pgrep -x fcitx5 || echo NO-IME')
 ok['Shell mode: night light, idle dimming, ghostty settings file, no Vietnamese IME'] = 'font-size' in out and 'NO-IME' in out
+rc, out = vm.sh('getent passwd son | cut -d: -f7; tmux display -p -t oracle:2 "#{pane_current_command}"; zsh -ic "type _pick_dir z; starship --version | head -n 1" 2>&1')
+ok['zsh: login shell, in tmux, Ctrl+G picker, zoxide, starship'] = out.count('zsh') >= 2 and '_pick_dir is a shell function' in out and 'starship ' in out
 rc, out = vm.sh('systemctl is-active oracle-lid; systemctl show -p Result --value oracle-battery; cat /etc/oracle/battery-limit')
 ok['lid watcher running, battery unit ok'] = re.search(r'^active$', out, re.M) and 'success' in out
 vm.mon('screendump /vm/shell.png -f png')

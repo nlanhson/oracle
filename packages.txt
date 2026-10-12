@@ -9,6 +9,12 @@ micro
 swayidle
 wlsunset
 brightnessctl
+# terminal: zsh, starship prompt, Ctrl+G folder picker (zoxide + fzf)
+zsh
+zsh-autosuggestions
+starship
+zoxide
+fzf
 # desktop = owner's dotfiles: Hyprland + waybar + fuzzel + swaync
 hyprland
 xdg-desktop-portal-hyprland

@@ -61,6 +61,15 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 
 Your terminal settings are in `~/.config/ghostty/mine`.
 
+## Typing commands (zsh)
+
+| Key | Does |
+|---|---|
+| `Tab` | Completion menu, move with the arrows |
+| `→` | Accept the grey suggestion (from your history) |
+| `Ctrl + G` | Pick a folder you've been to, type to filter, Enter goes there |
+| `z name` | Jump to the folder you use most that matches `name` |
+
 ## Change a key
 
 Open `~/.config/hypr/hyprland.lua` and add lines at the end. They load last, so they win:
