@@ -2,6 +2,7 @@
 # All options: ghostty +show-config --default --docs
 
 font-family = "JetBrainsMono Nerd Font"
+font-size = 18
 
 background-opacity = 0.85
 window-padding-x = 8
