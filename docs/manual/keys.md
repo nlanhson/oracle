@@ -50,6 +50,17 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 
+## Terminal (Ghostty)
+
+| Key | Does |
+|---|---|
+| `Ctrl + Shift + O` / `E` | Split right / down |
+| `Ctrl + Shift + J / L / I / K` | Move between splits |
+| `Ctrl + Alt + I / K` | Scroll up / down |
+| `Ctrl + Alt + L` | Clear the screen |
+
+Your terminal settings are in `~/.config/ghostty/mine`.
+
 ## Change a key
 
 Open `~/.config/hypr/hyprland.lua` and add lines at the end. They load last, so they win:

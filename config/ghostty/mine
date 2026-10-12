@@ -1,0 +1,24 @@
+# Your Ghostty settings, loaded last (they win). Colours come from Oracle's look; text size from Settings.
+# All options: ghostty +show-config --default --docs
+
+font-family = "JetBrainsMono Nerd Font"
+
+background-opacity = 0.85
+window-padding-x = 8
+window-padding-y = 8
+
+cursor-style = block
+cursor-style-blink = true
+
+scrollback-limit = 10000000
+confirm-close-surface = true
+
+# splits: Ctrl+Shift + i/j/k/l moves between them (Super + i/j/k/l moves between windows)
+keybind = ctrl+shift+j=goto_split:left
+keybind = ctrl+shift+l=goto_split:right
+keybind = ctrl+shift+i=goto_split:up
+keybind = ctrl+shift+k=goto_split:down
+keybind = ctrl+alt+l=clear_screen
+keybind = ctrl+alt+i=scroll_page_lines:-3
+keybind = ctrl+alt+k=scroll_page_lines:3
+unfocused-split-opacity = 0.35
