@@ -17,6 +17,7 @@ ascii.rest (MIT, github.com/bas3line/ascii) = visual recipe only. Web code, cann
 - Done = evidence (test output).
 - Light/fast like pure Arch. Every package justified.
 - Name "Oracle", never "Oracle OS". Batman's Oracle, machine = Batcomputer.
+- Any theme/colours (incl. configs the owner pastes, e.g. from Mac): always Oracle monochrome look (see Look). Drop their themes, map colours to Oracle greys, muted red only for errors.
 
 ## What
 Arch respin. Fresh Arch (any config) → run installer → Oracle.
