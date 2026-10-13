@@ -19,8 +19,8 @@ Named after Batman's Oracle: your machine is the Batcomputer.
 
 You need a UEFI computer, a USB stick, an internet connection and a disk you're happy to erase completely.
 
-1. Download the latest `oracle-*.iso` from [Releases](https://github.com/nlanhson/oracle/releases).
-2. Write it to the USB stick with [balenaEtcher](https://etcher.balena.io) or `caligula`.
+1. Download the latest `oracle-*.iso` and its `.sha256` from [Releases](https://github.com/nlanhson/oracle/releases). Check the download isn't damaged: `sha256sum -c oracle-*.iso.sha256` must say `OK`.
+2. Write it to the USB stick with [balenaEtcher](https://etcher.balena.io) or `caligula`. Both read the stick back afterwards and tell you if the copy is bad (a bad stick shows up here).
 3. Boot from the USB stick. The installer starts by itself and asks:
    - Wi-Fi network and password (only if you're not connected)
    - which disk to erase
