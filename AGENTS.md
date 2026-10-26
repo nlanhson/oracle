@@ -99,7 +99,7 @@ Done: lid closed → backlight off, keeps running (system/oracle-lid → /usr/lo
 1. Keep building (owner tweaks a lot). Repo stays PUBLIC while building. When done: owner plugs USB, copy, THEN flip private (needs: ISO carries whole repo, `gh auth login` once for `oracle update`).
 2. Owner's ideas next. Built 2026-10-11: rollback, file actions, more settings, clickable TUIs, firmware in update, Shell idle. Owner said NO for now: Shell-mode lock (idle dimming only), firewall (don't risk the server), personal-files backup (owner asks AI when needed).
 3. ISO → owner flashes USB.
-4. Move day on CachyOS: plug backup stick, `bash ~/Projects/oracle/server/server.sh backup /run/media/son/586D-16CB/oracle-migration-2026-10-10` (sudo: adds tailscale tarballs + photo top-up). Old full-history bundle: ~/Projects/oracle-history-backup-2026-10-11.bundle (copy to stick too).
+4. DONE 2026-10-26 (verified: 4243 photos sha256 OK, dump 2299 assets = live, tailscale tarballs). Installer USB = Kingmax 16G, flashed + read-back PASS. Was: Move day on CachyOS: plug backup stick, `bash ~/Projects/oracle/server/server.sh backup /run/media/son/586D-16CB/oracle-migration-2026-10-10` (sudo: adds tailscale tarballs + photo top-up). Old full-history bundle: ~/Projects/oracle-history-backup-2026-10-11.bundle (copy to stick too).
 5. Boot ISO → install → `oracle restore <stick folder>` → Immich Job Queues: thumbnails + transcode missing → phone check.
 
 ## Ideas (owner picks)
