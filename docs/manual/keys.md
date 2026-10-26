@@ -30,7 +30,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 
 | Key | Does |
 |---|---|
-| `Super + M` | Back to Shell mode |
+| `Super + M` | Back to Shell mode, and from there back to the desktop |
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |

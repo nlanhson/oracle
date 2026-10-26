@@ -29,3 +29,13 @@ hl.window_rule({
 
     no_focus = true,
 })
+
+hl.window_rule({
+    -- Oracle: Shell mode window (oracle shell), full screen on a hidden workspace over the desktop
+    name  = "oracle-shell",
+    match = { class = "^oracle\\.shell$" },
+
+    workspace  = "special:shell",
+    fullscreen = true,
+    force_rgbx = true, -- ignore ghostty's see-through background (config/ghostty/mine)
+})

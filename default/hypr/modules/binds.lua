@@ -22,7 +22,10 @@ hl.bind(Mod .. " + B", hl.dsp.exec_cmd(browser))
 hl.bind(Mod .. " + Space", hl.dsp.exec_cmd(launcher))
 hl.bind(Mod .. " + R", hl.dsp.exec_cmd(fileManager))
 hl.bind(Mod .. " + A", hl.dsp.exec_cmd("swaync-client -t"))
-hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle shell")) -- Oracle: back to Shell mode
+hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle shell")) -- Oracle: Shell mode, over the desktop (apps keep running)
+hl.define_submap("shell", function() -- Oracle: in Shell mode every key goes to the terminal, Super+M back
+  hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle gui"))
+end)
 hl.bind(Mod .. " + P", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.config/fuzzel/power-menu.sh"))
 
 -- Sleep/Idle

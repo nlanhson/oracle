@@ -8,6 +8,11 @@ MODE=$HOME/.local/state/oracle/mode
 SET=$HOME/.config/oracle/settings
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
+hypr() { # running desktop → its env (Shell-mode tmux started before it, so its own env is stale)
+  local l; l=$(hyprctl instances 2>/dev/null | awk '/^instance /{i=substr($2, 1, length($2) - 1)} /wl socket:/{print i, $3; exit}')
+  [[ -n $l ]] && export HYPRLAND_INSTANCE_SIGNATURE=${l% *} WAYLAND_DISPLAY=${l#* }
+}
+shown() { hyprctl monitors | grep -q 'special workspace: .*(special:shell)'; } # Shell mode over the desktop
 
 case ${1:-help} in
   update)
@@ -54,7 +59,7 @@ case ${1:-help} in
     say "rolled back ($d · ${t:0:40}). Restart now: systemctl reboot. Changed your mind? oracle rollback again, pick \"rollback $d\"" ;;
   backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
   restore) shift; exec bash "$DIR/install.sh" --restore "${1:?usage: oracle restore <backup folder>}" ;;
-  session) # tty1 login: shell (cage + ghostty + tmux) ⇄ gui (Hyprland). Same mode after exit = logout.
+  session) # tty1 login: shell (cage + ghostty + tmux) → gui (Hyprland, then Shell mode = full-screen window in it). Same mode after exit = logout.
     mkdir -p "${MODE%/*}"; echo shell >"$MODE"
     while :; do
       m=$(<"$MODE"); "$0" look
@@ -72,7 +77,7 @@ case ${1:-help} in
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
-    if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then setsid -f xdg-open "$f" >/dev/null 2>&1; exit; fi
+    if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
   pending) P=${MODE%/*} # Hyprland start: wallpaper, night light, file `oracle open` asked for
     "$0" wall; "$0" night
@@ -90,7 +95,7 @@ case ${1:-help} in
     tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
-  idle) pkill -x swayidle || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # Shell mode: dim at 5 min, screen off at 7. Never sleeps (server)
+  idle) pkill -x swayidle || true; [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0 # Shell mode (cage; Hyprland has hypridle): dim at 5 min, screen off at 7. Never sleeps (server)
     setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
       timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null ;;
   night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
@@ -105,10 +110,18 @@ case ${1:-help} in
       if [[ -w $L ]]; then echo "$2" >"$L"; else echo "$2" | sudo tee "$L" >/dev/null; sudo systemctl start oracle-battery.service; fi
     fi
     echo "battery stops charging at $(cat "$L" 2>/dev/null || echo 100)%" ;;
-  gui) echo gui >"$MODE"; pkill -x cage ;;
-  shell) echo shell >"$MODE"; hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
+  gui) if ! hypr; then echo gui >"$MODE"; pkill -x cage; exit; fi # first time: Hyprland replaces cage
+    hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null
+    if shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi ;;
+  shell) hypr || exit 0 # desktop stays running behind Shell mode, apps keep their state
+    if ! hyprctl clients | grep -q $'\tclass: oracle.shell$'; then
+      setsid -f ghostty --class=oracle.shell --gtk-single-instance=false -e bash -c 'oracle attach; oracle gui' &>/dev/null
+      for _ in {1..50}; do hyprctl clients | grep -q $'\tclass: oracle.shell$' && break; sleep 0.1; done
+    fi
+    if ! shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi
+    hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;;
   *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
-     echo "oracle shell         back to Shell (closes GUI apps). Super+M in GUI"
+     echo "oracle shell         back to Shell (GUI apps keep running). Super+M toggles"
      echo "oracle update        update everything: Oracle, all programs (pacman -Syu, AUR), firmware. Saves a rollback point first"
      echo "oracle rollback      take back an update (pick one from the list), then restart"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"

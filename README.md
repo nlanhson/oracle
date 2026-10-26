@@ -42,7 +42,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | Do this | To |
 |---|---|
 | `g` on the dashboard, or `oracle gui` | Open the desktop (Hyprland) |
-| `Super + M`, or `oracle shell` | Go back to Shell mode |
+| `Super + M`, or `oracle shell` | Go back to Shell mode (desktop apps stay open; `Super + M` again returns) |
 | `Super + Enter` | Terminal (in the desktop) |
 | `Super + B` | Brave Origin (in the desktop) |
 | `f` / `s` on the dashboard | Files / Settings |
