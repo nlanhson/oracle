@@ -228,6 +228,10 @@ if [[ $(readlink "$BIN") != "$DIR/bin/oracle" ]]; then
   if [[ -e $BIN ]]; then run mkdir -p "$BACKUP"; run mv "$BIN" "$BACKUP/"; fi
   run mkdir -p "${BIN%/*}"; run ln -s "$DIR/bin/oracle" "$BIN"
 fi
+say "Claude Code (updates itself)"
+if [[ -x $HOME/.local/bin/claude ]]; then say "  already installed"
+elif ((DRY)); then echo "   would install Claude Code (claude.ai/install.sh)"
+else curl -fsSL https://claude.ai/install.sh | bash || say "  Claude Code failed, later: curl -fsSL https://claude.ai/install.sh | bash"; fi
 M=$HOME/.local/state/oracle/migrations
 run mkdir -p "$M"
 for m in "$SRC"/migrations/*.sh; do [[ ! -f $m ]] || run touch "$M/${m##*/}"; done
