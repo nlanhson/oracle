@@ -1,5 +1,6 @@
 # one per line. aur: = AUR via yay
 git
+github-cli # gh: GitHub login for git push / oracle update once the repo is private
 base-devel
 # Shell mode
 ghostty
