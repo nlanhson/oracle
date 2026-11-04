@@ -64,6 +64,7 @@ snap-pac
 limine
 aur:limine-mkinitcpio-hook
 aur:limine-snapper-sync
+inotify-tools # limine-snapper-sync watcher needs it, else the service exits
 # server
 docker
 docker-compose
