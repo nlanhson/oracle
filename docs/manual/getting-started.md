@@ -66,7 +66,7 @@ Your terminal sessions keep running while you're in the desktop. Apps you opened
 
 ## Getting help
 
-Something feels off? Type `oracle doctor`. It checks the whole computer (services, disk space, disk unlock, boot menu, snapshots, network, updates, battery limit, home server) and prints one line per check:
+Something feels off? Type `oracle doctor`. It checks the whole computer (services, disk space, disk unlock, boot menu, snapshots, network, firewall, updates, battery limit, home server) and prints one line per check:
 
 - `ok`: working.
 - `!`: works, but worth a look. The line says what to type.
@@ -74,4 +74,8 @@ Something feels off? Type `oracle doctor`. It checks the whole computer (service
 
 It only looks, it never changes anything. It asks for your password once, to read the disk and boot settings.
 
-Type `oracle` to see all Oracle commands. See [Keys](keys.md) for shortcuts.
+Forgot a command? Press `m` on the dashboard, `Super + /` on the desktop, or type `oracle manual`. It lists every `oracle` command with what it does, when to use it and an example. Press `/` to search, Enter to run the selected one (risky ones like update, rollback and restore ask first), `q` to close. See [Keys](keys.md) for shortcuts.
+
+## AI helpers
+
+Claude Code (`claude`) and OpenCode (`opencode`) come installed. Type either one in a terminal.

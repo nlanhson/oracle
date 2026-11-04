@@ -39,3 +39,13 @@ hl.window_rule({
     fullscreen = true,
     force_rgbx = true, -- ignore ghostty's see-through background (config/ghostty/mine)
 })
+
+hl.window_rule({
+    -- Oracle: manual pop-up (Super+/), floating in the middle, q closes it
+    name  = "oracle-manual",
+    match = { class = "^oracle\\.manual$" },
+
+    float      = true,
+    center     = true,
+    force_rgbx = true,
+})

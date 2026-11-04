@@ -4,12 +4,14 @@ Oracle can run a small home server:
 
 | App | What it does | Address |
 |---|---|---|
-| Immich | Your photo library; phones back up to it | http://localhost:2283 |
-| Dockge | Dashboard for the server apps | http://localhost:5001 |
+| Immich | Your photo library; phones back up to it | http://localhost:2283 · phone: `https://<laptop>.<tailnet>.ts.net` |
+| Dockge | Dashboard for the server apps | http://localhost:5001 · phone: `https://<laptop>.<tailnet>.ts.net:8443` |
 | Tailscale | Reach your server from anywhere, no router setup | — |
 | VPN exit node | Route your phone's traffic through ProtonVPN | — |
 
-The dashboard shows whether each app is up.
+The dashboard shows whether each app is up. The apps only open on the laptop itself; your phone reaches them through Tailscale (turn Tailscale on in the phone). Nothing else from the network gets in: the firewall only lets Tailscale through.
+
+How it all fits together, updating the apps, and fixing things by hand: [Home server: the details](../server.md).
 
 **Closing the lid** turns the screen off and keeps everything running, so the laptop can sit closed on a shelf. Opening it brings the screen back.
 
@@ -46,5 +48,5 @@ In Immich, open **Administration → Job Queues** and run **Generate Thumbnails:
 ## Starting without a backup
 
 - **Immich:** open http://localhost:2283 and create an admin account.
-- **Tailscale:** run `sudo tailscale up` and log in.
+- **Tailscale:** run `sudo tailscale up --operator=$USER` and log in, then `oracle update`. For the phone addresses, turn on **MagicDNS** and **HTTPS Certificates** once at https://login.tailscale.com/admin/dns.
 - **VPN exit node:** add your ProtonVPN WireGuard key to `~/docker/vpn/.env` and a Tailscale auth key to `~/docker/vpn/ts.env`, then run `oracle update`.

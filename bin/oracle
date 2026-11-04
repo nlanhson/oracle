@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# oracle update | rollback | doctor | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell
-#        internal: home attach tabs session pending look night idle wall set get
+# oracle <command>: every command is listed (what, when, example) in bin/oracle-manual. test/manual.sh checks none is missing.
 set -euo pipefail
-DIR=$HOME/.local/share/oracle
+DIR=$HOME/.local/share/oracle ME=$(dirname "$(readlink -f "$0")")
 STATE=$HOME/.local/state/oracle/migrations
 MODE=$HOME/.local/state/oracle/mode
 SET=$HOME/.config/oracle/settings
@@ -77,6 +76,7 @@ case ${1:-help} in
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;
+  manual) exec "$ME/oracle-manual" ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
@@ -121,15 +121,5 @@ case ${1:-help} in
     fi
     if ! shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi
     hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;;
-  *) echo "oracle gui           switch to GUI (Hyprland). Shell keeps running in tmux"
-     echo "oracle shell         back to Shell (GUI apps keep running). Super+M toggles"
-     echo "oracle update        update everything: Oracle, all programs (pacman -Syu, AUR), firmware. Saves a rollback point first"
-     echo "oracle rollback      take back an update (pick one from the list), then restart"
-     echo "oracle doctor        health check: what works, what's broken, how to fix it"
-     echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
-     echo "oracle restore <dir> bring the server back from a backup"
-     echo "oracle battery [n]   show or set the charge limit (20-100%)"
-     echo "oracle files [dir]   file browser"
-     echo "oracle settings      settings (brightness, sound, wifi, bluetooth, battery, about)"
-     echo "oracle open <file>   open a file in the desktop" ;;
+  help | *) "$ME/oracle-manual" --list; echo; echo "more (what, when, examples): press Super+/ or type oracle manual" ;;
 esac

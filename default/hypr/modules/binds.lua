@@ -26,6 +26,7 @@ hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle shell")) -- Oracle: Shell mode, o
 hl.define_submap("shell", function() -- Oracle: in Shell mode every key goes to the terminal, Super+M back
   hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle gui"))
 end)
+hl.bind(Mod .. " + slash", hl.dsp.exec_cmd("ghostty --class=oracle.manual --gtk-single-instance=false --window-width=110 --window-height=34 -e oracle manual")) -- Oracle: manual pop-up
 hl.bind(Mod .. " + P", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.config/fuzzel/power-menu.sh"))
 
 -- Sleep/Idle

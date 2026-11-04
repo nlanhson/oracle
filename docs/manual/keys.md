@@ -10,6 +10,7 @@
 | `f` | Files |
 | `s` | Settings |
 | `u` | Run `oracle update` |
+| `m` | Manual: every `oracle` command, what it does, run it from there |
 
 ## Terminal sessions (tmux)
 
@@ -31,6 +32,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | Key | Does |
 |---|---|
 | `Super + M` | Back to Shell mode, and from there back to the desktop |
+| `Super + /` | Manual (pop-up): every `oracle` command, what it does, run it from there |
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
