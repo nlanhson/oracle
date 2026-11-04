@@ -99,20 +99,26 @@ case ${1:-help} in
   idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7. Never sleeps (server)
     sw() { setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
       timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null; }
+    # Panel off = ghostty shrinks to a tiny window; pin tmux windows at their size so the dashboard isn't squashed and reflowed on open
+    pin() { tmux list-windows -a -F '#{window_id} #{window_width} #{window_height}' 2>/dev/null | while read -r i w h; do tmux resize-window -t "$i" -x "$w" -y "$h"; done; }
+    unpin() { tmux list-windows -a -F '#{window_id}' 2>/dev/null | while read -r i; do tmux set -uw -t "$i" window-size; done; }
     if [[ ${2:-} == lid ]]; then # lid shut → panel off (AMD backlight 0 still glows). Pauses swayidle so it can't relight or save 0
       o=$(wlr-randr --json | jq -r '[.[] | select(.name | startswith("eDP"))][0].name // empty') || exit 0; [[ -n $o ]] || exit 0
       p=open
       while pgrep -x cage >/dev/null; do
         s=open; grep -qs closed /proc/acpi/button/lid/*/state && s=closed
         if [[ $s != "$p" ]]; then
-          if [[ $s == closed ]]; then pkill -x swayidle || true; wlr-randr --output "$o" --off || true
-          else wlr-randr --output "$o" --on --preferred || true; sw; fi
+          if [[ $s == closed ]]; then pkill -x swayidle || true; pin; wlr-randr --output "$o" --off || true
+          else wlr-randr --output "$o" --on --preferred || true
+            for _ in {1..25}; do # wait (max 5s) for ghostty to be full size again before tmux follows it
+              (($(tmux list-clients -F '#{client_width}' | head -1) >= $(tmux display -p -t oracle '#{window_width}'))) 2>/dev/null && break; sleep 0.2
+            done; unpin; sw; fi
           p=$s
         fi
         sleep 2
-      done; exit 0
+      done; unpin; exit 0
     fi
-    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true
+    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true; unpin
     [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0
     sw; command -v wlr-randr >/dev/null && setsid -f "$0" idle lid &>/dev/null ;;
   night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
