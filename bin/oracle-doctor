@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# oracle doctor: read-only health check. One line per check: ok / ! (worth a look) / x (broken) + what to do. Exit 1 if anything is broken.
+DIR=$HOME/.local/share/oracle
+# shellcheck disable=SC1091
+source "$DIR/default/home/theme.sh"
+BAD=0 WARN=0
+sec() { printf "\n${D}── ${W}%s ${D}%s${N}\n" "$1" "$(rep ─ $((54 - ${#1})))"; }
+ok() { printf "  ${C}ok ${W}%-22s${D}%s${N}\n" "$1" "${2:-}"; }
+warn() { printf "  ${W}!  %-22s${W}%s${N}\n" "$1" "$2"; WARN=$((WARN + 1)); }
+bad() { printf "  ${R}x  %-22s%s${N}\n" "$1" "$2"; BAD=$((BAD + 1)); }
+skip() { printf "  ${F}-  %-22s%s${N}\n" "$1" "${2:-not here}"; }
+has() { command -v "$1" >/dev/null; }
+on() { systemctl is-active -q "$1" 2>/dev/null; }
+unit() { # unit <label> <service> <fix>
+  if on "$2"; then ok "$1" "$2 running"
+  elif systemctl cat "$2" &>/dev/null; then bad "$1" "$2 not running: ${3:-sudo systemctl restart $2}"
+  else skip "$1" "$2 not installed"; fi
+}
+ROOT=1; S() { ((ROOT)) && sudo -n "$@" 2>/dev/null; }
+if ! sudo -n true 2>/dev/null; then
+  if [[ -t 0 ]]; then echo "doctor reads a few system files (disk, boot menu, snapshots): password please"; sudo -v 2>/dev/null || ROOT=0
+  else ROOT=0; fi
+fi
+
+sec system
+mapfile -t FAIL < <(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}')
+if ((${#FAIL[@]})); then bad "services" "failed: ${FAIL[*]} (see: systemctl status ${FAIL[0]})"; else ok "services" "none failed"; fi
+mapfile -t FAIL < <(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print $1}')
+((${#FAIL[@]})) && warn "your services" "failed: ${FAIL[*]} (see: systemctl --user status ${FAIL[0]})"
+p=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+if ((p >= 95)); then bad "disk space" "$p% full: empty the trash, then: sudo pacman -Sc"
+elif ((p >= 85)); then warn "disk space" "$p% full"; else ok "disk space" "$p% used"; fi
+if [[ -d /usr/lib/modules/$(uname -r) ]]; then ok "kernel" "$(uname -r)"; else warn "kernel" "updated, running the old one: restart"; fi
+if [[ -e /var/lib/pacman/db.lck ]] && ! pgrep -x pacman >/dev/null; then bad "pacman" "stuck lock: sudo rm /var/lib/pacman/db.lck"; else ok "pacman" "free"; fi
+
+sec "disk + boot"
+if lsblk -rno TYPE | grep -qx crypt; then
+  ok "encryption" "disk is encrypted"
+  dev=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}')
+  if ((!ROOT)); then skip "unlock at boot" "needs your password"
+  elif S cryptsetup luksDump "$dev" | grep -q systemd-tpm2 && grep -q tpm2-device /etc/crypttab; then ok "unlock at boot" "TPM, no password"
+  else warn "unlock at boot" "TPM not set up (asks for the password): rerun bash $DIR/install.sh"; fi
+  if ((ROOT)) && ! S cryptsetup luksDump "$dev" | grep -q systemd-recovery; then warn "recovery key" "none on the disk: sudo systemd-cryptenroll --recovery-key $dev"; fi
+else warn "encryption" "disk is not encrypted"; fi
+if ((!ROOT)); then skip "boot menu" "needs your password"
+elif S test -f /boot/limine.conf; then
+  if S grep -q '^editor_enabled: no' /boot/limine.conf; then ok "boot menu" "Limine, editing locked"; else warn "boot menu" "boot line can be edited: rerun bash $DIR/install.sh"; fi
+else skip "boot menu" "not Limine"; fi
+if ! has snapper; then warn "snapshots" "snapper missing (no rollback): rerun bash $DIR/install.sh"
+elif ((!ROOT)); then skip "snapshots" "needs your password"
+else
+  n=$(S snapper -c root --csvout list --columns number 2>/dev/null | tail -n +3 | wc -l)
+  if ((n > 0)); then ok "snapshots" "$n saved (rollback ready)"; else warn "snapshots" "none yet (made by the next oracle update)"; fi
+  systemctl cat limine-snapper-sync.service &>/dev/null && unit "snapshot boot menu" limine-snapper-sync.service
+fi
+grep -q '/\.snapshots/' /proc/cmdline && warn "booted" "an old snapshot: oracle rollback keeps it, restart goes back"
+
+sec network
+unit "network" NetworkManager.service
+unit "dns" systemd-resolved.service
+if [[ $(readlink /etc/resolv.conf) == */systemd/resolve/stub-resolv.conf ]]; then ok "resolv.conf" "systemd-resolved"
+else warn "resolv.conf" "not systemd-resolved: sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf"; fi
+if curl -sI -m 5 -o /dev/null https://github.com; then NET=1; ok "internet" "online"; else NET=0; bad "internet" "offline: nmtui (or settings → wifi)"; fi
+
+sec oracle
+if [[ ! -d $DIR/.git ]]; then bad "oracle" "$DIR missing: rerun the installer"
+elif has git; then
+  ch=$(git -C "$DIR" status --porcelain 2>/dev/null | wc -l)
+  ((ch)) && warn "local changes" "$ch file(s) changed in $DIR: oracle update can't pull (git -C $DIR status)"
+  if ((NET)) && git -C "$DIR" fetch -q 2>/dev/null; then
+    b=$(git -C "$DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)
+    if ((b)); then warn "version" "$b new change(s): oracle update"; else ok "version" "up to date ($(git -C "$DIR" log -1 --format=%cs))"; fi
+  else ok "version" "$(git -C "$DIR" log -1 --format=%cs) (didn't check for newer)"; fi
+  n=0; for m in "$DIR"/migrations/*.sh; do [[ -f $m && ! -f $HOME/.local/state/oracle/migrations/${m##*/} ]] && n=$((n + 1)); done
+  ((n)) && warn "migrations" "$n waiting: oracle update"
+fi
+L=$(cat /etc/oracle/battery-limit 2>/dev/null) T=$(cat /sys/class/power_supply/BAT*/charge_control_end_threshold 2>/dev/null | head -1)
+if [[ -z $T ]]; then skip "battery limit" "no battery limit here"
+elif [[ ${L:-100} == "$T" ]]; then ok "battery limit" "stops at $T%"
+else warn "battery limit" "set $L%, battery says $T%: sudo systemctl restart oracle-battery.service"; fi
+unit "lid" oracle-lid.service
+
+sec server
+unit "docker" docker.service
+unit "tailscale" tailscaled.service
+if on tailscaled.service; then
+  ip=$(tailscale ip -4 2>/dev/null | head -1)
+  if [[ -n $ip ]]; then ok "tailnet" "$ip"; else warn "tailnet" "logged out: oracle restore <backup>, or sudo tailscale up"; fi
+fi
+if on docker.service; then
+  for c in immich:immich_server:docker/immich dockge:dockge:dockge vpn-exit:gluetun:docker/vpn; do
+    IFS=: read -r l n d <<<"$c"; st=$(docker inspect -f '{{.State.Status}}' "$n" 2>/dev/null)
+    if [[ $st == running ]]; then ok "$l" "up"
+    elif [[ -z $st ]]; then skip "$l" "not set up (oracle restore <backup>)"
+    else bad "$l" "$st: cd ~/$d && docker compose up -d"; fi
+  done
+fi
+systemctl is-enabled -q oracle-firstboot.service 2>/dev/null && warn "first boot" "server setup not finished yet (waits for internet)"
+
+echo
+if ((BAD)); then printf "${R}%d broken${N}${D}, %d worth a look${N}\n" "$BAD" "$WARN"; exit 1
+elif ((WARN)); then printf "${W}all working${D}, %d worth a look${N}\n" "$WARN"
+else printf '%sall good%s\n' "$C" "$N"; fi

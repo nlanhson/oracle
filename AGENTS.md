@@ -103,4 +103,5 @@ Done: lid closed → backlight off, keeps running (system/oracle-lid → /usr/lo
 5. Boot ISO → install → `oracle restore <stick folder>` → Immich Job Queues: thumbnails + transcode missing → phone check.
 
 ## Ideas (owner picks)
-Secure Boot own keys (sbctl) + UKI (closes TPM gap); dashboard settings file + file navigator + settings screen + keybind editor; one theme colors file applied to all apps; website/download page; `oracle doctor` health check.
+Secure Boot own keys (sbctl) + UKI (closes TPM gap); dashboard settings file + file navigator + settings screen + keybind editor; one theme colors file applied to all apps; website/download page.
+Done: `oracle doctor` (bin/oracle-doctor, read-only, sudo -v once, ok/!/x + fix per line, exit 1 if broken): failed units, disk %, kernel reboot, pacman lock, LUKS + TPM token + recovery key, limine editor, snapshots, NM/resolved/stub/internet, repo dirty/behind/migrations, battery limit vs sysfs, lid, docker/tailscale/containers, firstboot pending.
