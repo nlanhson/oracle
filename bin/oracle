@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# oracle update | rollback | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell
+# oracle update | rollback | doctor | backup <dir> | restore <dir> | battery [n] | files | settings | open <file> | gui | shell
 #        internal: home attach tabs session pending look night idle wall set get
 set -euo pipefail
 DIR=$HOME/.local/share/oracle
@@ -76,6 +76,7 @@ case ${1:-help} in
   home) exec "$DIR/bin/oracle-home" ;;
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
+  doctor) exec "$DIR/bin/oracle-doctor" ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
@@ -124,6 +125,7 @@ case ${1:-help} in
      echo "oracle shell         back to Shell (GUI apps keep running). Super+M toggles"
      echo "oracle update        update everything: Oracle, all programs (pacman -Syu, AUR), firmware. Saves a rollback point first"
      echo "oracle rollback      take back an update (pick one from the list), then restart"
+     echo "oracle doctor        health check: what works, what's broken, how to fix it"
      echo "oracle backup <dir>  server backup (photos, db, settings, tailscale)"
      echo "oracle restore <dir> bring the server back from a backup"
      echo "oracle battery [n]   show or set the charge limit (20-100%)"
