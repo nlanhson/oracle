@@ -8,6 +8,7 @@ cage
 tmux
 micro
 swayidle
+wlr-randr
 wlsunset
 brightnessctl
 # terminal: zsh, starship prompt, Ctrl+G folder picker (zoxide + fzf)

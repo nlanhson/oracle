@@ -96,9 +96,25 @@ case ${1:-help} in
     tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
-  idle) pkill -x swayidle || true; [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0 # Shell mode (cage; Hyprland has hypridle): dim at 5 min, screen off at 7. Never sleeps (server)
-    setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
-      timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null ;;
+  idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7. Never sleeps (server)
+    sw() { setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
+      timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null; }
+    if [[ ${2:-} == lid ]]; then # lid shut → panel off (AMD backlight 0 still glows). Pauses swayidle so it can't relight or save 0
+      o=$(wlr-randr --json | jq -r '[.[] | select(.name | startswith("eDP"))][0].name // empty') || exit 0; [[ -n $o ]] || exit 0
+      p=open
+      while pgrep -x cage >/dev/null; do
+        s=open; grep -qs closed /proc/acpi/button/lid/*/state && s=closed
+        if [[ $s != "$p" ]]; then
+          if [[ $s == closed ]]; then pkill -x swayidle || true; wlr-randr --output "$o" --off || true
+          else wlr-randr --output "$o" --on --preferred || true; sw; fi
+          p=$s
+        fi
+        sleep 2
+      done; exit 0
+    fi
+    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true
+    [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0
+    sw; command -v wlr-randr >/dev/null && setsid -f "$0" idle lid &>/dev/null ;;
   night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
     [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0
     case $("$0" get nightlight off) in
