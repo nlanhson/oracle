@@ -1,5 +1,7 @@
 # Oracle: tty1 login → oracle session (Shell, GUI on demand)
 [[ :$PATH: == *:$HOME/.local/bin:* ]] || export PATH=$HOME/.local/bin:$PATH
+export NPM_CONFIG_USERCONFIG=$HOME/.config/npm/npmrc # npm -g installs to ~/.npm-global, no sudo
+[[ :$PATH: == *:$HOME/.npm-global/bin:* ]] || export PATH=$PATH:$HOME/.npm-global/bin
 if [[ -z ${WAYLAND_DISPLAY:-} && ${XDG_VTNR:-} == 1 && -x ~/.local/bin/oracle ]]; then
   exec ~/.local/bin/oracle session
 fi

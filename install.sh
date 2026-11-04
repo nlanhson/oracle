@@ -191,11 +191,14 @@ else
   run mkdir -p "$(dirname "$CFG")"; run cp "$SRC/config/hypr/hyprland.lua" "$CFG"
 fi
 
-say "desktop config = owner's dotfiles (waybar, fuzzel, notifications, idle, lock, gtk)"
+say "desktop config = owner's dotfiles (waybar, fuzzel, notifications, idle, lock, gtk, btop, fastfetch, git, home folders)"
 while IFS= read -r f; do
   f=${f#"$SRC/config/"}; [[ $f == hypr/hyprland.lua ]] && continue
   if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm"$([[ $f == *.sh ]] && echo 755 || echo 644)" "$SRC/config/$f" "$HOME/.config/$f"; fi
 done < <(find "$SRC/config" -type f | sort)
+run mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Public,Templates,Videos} # folders named in ~/.config/user-dirs.dirs
+B=$HOME/.config/gtk-3.0/bookmarks # Files (Nautilus) sidebar
+if [[ -e $B ]]; then say "  kept your $B"; else run mkdir -p "${B%/*}"; ((DRY)) || printf 'file://%s/Downloads Downloads\nfile://%s/.config .config\n' "$HOME" "$HOME" >"$B"; fi
 
 say "ghostty + tmux config"
 ucfg() { # ucfg <file> <include line>: user file with include, only if missing
