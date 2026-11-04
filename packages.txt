@@ -57,6 +57,7 @@ pipewire
 pipewire-pulse
 wireplumber
 fwupd
+ufw # firewall: only Tailscale gets in (system/oracle-firewall)
 # rollback: snapshots + Limine boot menu
 snapper
 snap-pac

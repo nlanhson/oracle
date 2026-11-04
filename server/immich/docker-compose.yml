@@ -3,14 +3,14 @@ name: immich
 services:
   immich-server:
     container_name: immich_server
-    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v3}
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-v3.3.5}
     volumes:
       - ${UPLOAD_LOCATION}:/data
       - /etc/localtime:/etc/localtime:ro
     env_file:
       - .env
     ports:
-      - '2283:2283'
+      - '127.0.0.1:2283:2283' # this laptop only; phone: tailscale serve
     depends_on:
       - redis
       - database
@@ -20,7 +20,7 @@ services:
 
   immich-machine-learning:
     container_name: immich_machine_learning
-    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v3}
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-v3.3.5}
     volumes:
       - model-cache:/cache
     env_file:

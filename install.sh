@@ -231,10 +231,12 @@ if [[ $(readlink "$BIN") != "$DIR/bin/oracle" ]]; then
   if [[ -e $BIN ]]; then run mkdir -p "$BACKUP"; run mv "$BIN" "$BACKUP/"; fi
   run mkdir -p "${BIN%/*}"; run ln -s "$DIR/bin/oracle" "$BIN"
 fi
-say "Claude Code (updates itself)"
-if [[ -x $HOME/.local/bin/claude ]]; then say "  already installed"
+say "AI tools: Claude Code (updates itself) + OpenCode (pacman, updates with oracle update). Optional: a failure doesn't stop the install"
+if [[ -x $HOME/.local/bin/claude ]]; then say "  Claude Code: already installed"
 elif ((DRY)); then echo "   would install Claude Code (claude.ai/install.sh)"
 else curl -fsSL https://claude.ai/install.sh | bash || say "  Claude Code failed, later: curl -fsSL https://claude.ai/install.sh | bash"; fi
+if command -v opencode >/dev/null; then say "  OpenCode: already installed"
+else run sudo pacman -S --needed --noconfirm opencode || say "  OpenCode failed, later: sudo pacman -S opencode"; fi
 M=$HOME/.local/state/oracle/migrations
 run mkdir -p "$M"
 for m in "$SRC"/migrations/*.sh; do [[ ! -f $m ]] || run touch "$M/${m##*/}"; done
@@ -278,6 +280,9 @@ for s in systemd-networkd iwd dhcpcd netctl; do
 done
 STUB=../run/systemd/resolve/stub-resolv.conf
 [[ $(readlink /etc/resolv.conf) == "$STUB" ]] || run sudo ln -sf "$STUB" /etc/resolv.conf || say "  /etc/resolv.conf busy (container?), skipped"
+
+say "firewall: nothing gets in except Tailscale. LLMNR off"
+run sudo bash "$SRC/system/oracle-firewall" "${N[@]}"
 
 say "bluetooth"
 run sudo systemctl enable bluetooth.service

@@ -60,6 +60,18 @@ unit "network" NetworkManager.service
 unit "dns" systemd-resolved.service
 if [[ $(readlink /etc/resolv.conf) == */systemd/resolve/stub-resolv.conf ]]; then ok "resolv.conf" "systemd-resolved"
 else warn "resolv.conf" "not systemd-resolved: sudo ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf"; fi
+if ! has ufw; then bad "firewall" "missing: sudo pacman -S ufw && sudo bash $DIR/system/oracle-firewall --now"
+elif ! grep -q '^ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null; then bad "firewall" "off: sudo bash $DIR/system/oracle-firewall --now"
+elif ((ROOT)); then
+  fw=$(S ufw status)
+  if [[ $fw != *"Status: active"* ]]; then bad "firewall" "not running: sudo bash $DIR/system/oracle-firewall --now"
+  elif [[ $fw != *tailscale0* ]]; then warn "firewall" "Tailscale not let in (phone can't reach the server): sudo bash $DIR/system/oracle-firewall --now"
+  else ok "firewall" "on, only Tailscale gets in"; fi
+else ok "firewall" "on"; fi
+if on systemd-resolved.service; then
+  if resolvectl status 2>/dev/null | grep -m1 'Protocols:' | grep -q -- '-LLMNR'; then ok "LLMNR" "off"
+  else warn "LLMNR" "on (answers names to the local network): sudo bash $DIR/system/oracle-firewall --now"; fi
+fi
 if curl -sI -m 5 -o /dev/null https://github.com; then NET=1; ok "internet" "online"; else NET=0; bad "internet" "offline: nmtui (or settings → wifi)"; fi
 
 sec oracle
@@ -86,6 +98,14 @@ unit "tailscale" tailscaled.service
 if on tailscaled.service; then
   ip=$(tailscale ip -4 2>/dev/null | head -1)
   if [[ -n $ip ]]; then ok "tailnet" "$ip"; else warn "tailnet" "logged out: oracle restore <backup>, or sudo tailscale up"; fi
+  if [[ -n $ip ]]; then
+    sv=$(tailscale serve status 2>/dev/null || S tailscale serve status)
+    for c in immich:2283:443 dockge:5001:8443; do
+      IFS=: read -r l p o <<<"$c"
+      if [[ $sv == *"127.0.0.1:$p"* ]]; then ok "$l from phone" "tailscale serve :$o"
+      else warn "$l from phone" "not shared: oracle update (needs HTTPS Certificates on in Tailscale admin → DNS)"; fi
+    done
+  fi
 fi
 if on docker.service; then
   for c in immich:immich_server:docker/immich dockge:dockge:dockge vpn-exit:gluetun:docker/vpn; do

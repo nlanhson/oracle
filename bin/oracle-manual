@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# oracle manual: every oracle command, what it does, when to use it, an example. Same look + keys as settings.
+# ↑↓ move · enter run (risky ones ask first) · / search · q back. Mouse: click = select, again = run, wheel, right click = back.
+# oracle-manual --names (test/manual.sh) | --list (oracle help)
+# THE command list. test/manual.sh fails if a command in bin/oracle is missing here.
+# name|usage|kind|what it does|when to use it|example     kind: go = run · ask = "are you sure?" first · tui = full screen · auto = Oracle runs it itself
+CMDS=(
+"manual|oracle manual|tui|Every oracle command, what it does and when to use it, on one screen. Enter runs the selected one.|You forgot a command. On the desktop press Super+/, on the dashboard press m.|oracle manual"
+"help|oracle help|go|Short list of all commands, right in the terminal.|Quick reminder without leaving what you're doing.|oracle help"
+"update|oracle update|ask|Updates everything: Oracle itself, all programs (pacman + AUR), firmware. Saves a rollback point first.|Once a week or so. If it says the kernel changed, restart after.|oracle update"
+"rollback|oracle rollback|ask|Takes back an update: pick one from the list, the system files go back to before it, then restart. Your own files are never touched. Started an old snapshot from the boot menu? It keeps that one for good.|An update broke something.|oracle rollback"
+"doctor|oracle doctor|go|Health check: one line per thing (services, disk, disk unlock, boot menu, snapshots, network, firewall, updates, battery, server) with how to fix it. Changes nothing.|Something feels off, or before asking for help.|oracle doctor"
+"backup|oracle backup <folder>|ask|Backs up the home server: photos (each one checked), a fresh photo database, server settings and the Tailscale login. Only copies what's new.|Every so often onto a USB drive, and always before a reinstall.|oracle backup /run/media/\$USER/stick/oracle-backup"
+"restore|oracle restore <folder>|ask|Brings the home server back from a backup: photos, albums, accounts, apps and the same Tailscale address.|Right after a fresh install.|oracle restore /run/media/\$USER/stick/oracle-backup"
+"battery|oracle battery [20-100]|go|Shows or sets where the battery stops charging.|Plugged in all day: 50 keeps the battery healthy. Trip coming up: 100.|oracle battery 80"
+"files|oracle files [folder]|tui|File browser: folders open in place, copy, move, rename, trash, search.|Find, open or tidy files without the desktop.|oracle files ~/Downloads"
+"settings|oracle settings|tui|Settings screen: brightness, night light, text size, sound, wifi, bluetooth, battery, time zone, keyboard, accent, wallpaper.|Change how the computer looks or behaves.|oracle settings"
+"open|oracle open <file>|go|Opens a file in its desktop app (pictures, PDFs, web pages). From Shell mode it switches to the desktop first.|A file needs a real window.|oracle open ~/Pictures/photo.jpg"
+"gui|oracle gui|go|Switches to the desktop (Hyprland). Shell mode keeps running.|You need the browser or another window app.|oracle gui"
+"shell|oracle shell|go|Back to Shell mode, full screen over the desktop. Desktop apps keep running. Super+M does the same.|Back to the dashboard and terminals.|oracle shell"
+"home|oracle home|auto|The dashboard: clock, calendar, system, controls, Claude usage, server. Lives in workspace 1.|Runs by itself. Alt+1 goes there.|oracle home"
+"attach|oracle attach|auto|Joins the Shell-mode terminal session (tmux), workspaces 1-4.|Runs by itself when Shell mode starts.|oracle attach"
+"tabs|oracle tabs|auto|Brings back workspaces 1-4 if one was closed.|Runs by itself.|oracle tabs"
+"session|oracle session|auto|The login loop: starts Shell mode, then the desktop when asked.|Runs by itself when you log in on the first screen.|oracle session"
+"pending|oracle pending|auto|Desktop start: wallpaper, night light, dark theme, and the file oracle open asked for.|Runs by itself when the desktop starts.|oracle pending"
+"look|oracle look|auto|Applies text size and accent colour to the terminal.|Runs by itself after a settings change.|oracle look"
+"night|oracle night|auto|Turns the night light on or off, as set in settings.|Runs by itself.|oracle night"
+"idle|oracle idle|auto|Shell mode: dims the screen after 5 minutes, off after 7. Never sleeps (the server stays up).|Runs by itself.|oracle idle"
+"wall|oracle wall|auto|Sets the desktop wallpaper from settings (black if none).|Runs by itself.|oracle wall"
+"set|oracle set <key> [value]|auto|Saves a setting in ~/.config/oracle/settings. No value = back to default. Keys: nightlight textsize scale keyboard accent wallpaper.|Settings uses it. By hand only if you know the key.|oracle set accent cyan"
+"get|oracle get <key> [default]|auto|Reads a setting from ~/.config/oracle/settings.|Settings and scripts use it.|oracle get textsize 12"
+)
+case ${1:-} in
+  --names) for c in "${CMDS[@]}"; do echo "${c%%|*}"; done; exit ;;
+  --list) for c in "${CMDS[@]}"; do IFS='|' read -r _ u k w _ <<<"$c"; w=${w%%: *}; w=${w%%. *}; [[ $k == auto ]] || printf '%-28s %s\n' "$u" "${w%.}"; done; exit ;;
+esac
+
+H=$(dirname "$(readlink -f "$0")")/../default/home
+# shellcheck disable=SC1091
+source "$H/theme.sh"
+SEL=0 TOP=0 Q='' SEARCH=0 MSG='' V=()
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H%s" "$NOMOUSE"' EXIT
+
+filter() { # name matches first, then the text
+  local c o=(); V=(); for c in "${CMDS[@]}"; do if [[ ${c%%|*} == *"${Q,,}"* ]]; then V+=("$c"); elif [[ ${c,,} == *"${Q,,}"* ]]; then o+=("$c"); fi; done; V+=("${o[@]}")
+  ((SEL >= ${#V[@]})) && SEL=$((${#V[@]} - 1)); ((SEL < 0)) && SEL=0; }
+wrap() { fold -s -w "$1" <<<"$2" | sed 's/ *$//'; } # wrap <width> <text>
+draw() {
+  local i r name u k w when ex R=() n
+  read -r ROWS COLS < <(stty size)
+  BW=$((COLS - 4)); ((BW > 104)) && BW=104; ((BW < 50)) && BW=50
+  LW=20 RW=$((BW - LW - 7)) n=$((ROWS - 6)); ((n < 6)) && n=6
+  if ((${#V[@]})); then
+    IFS='|' read -r name u k w when ex <<<"${V[SEL]}"
+    R=("$C$u$N" '')
+    while IFS= read -r i; do R+=("$W$i$N"); done < <(wrap "$RW" "$w")
+    R+=('' "${D}when$N"); while IFS= read -r i; do R+=("$W$i$N"); done < <(wrap "$RW" "$when")
+    R+=('' "${D}example$N" "$C\$ $W$ex$N" '')
+    case $k in ask) R+=("${D}enter: runs it, asks first$N") ;; auto) R+=("${D}Oracle runs this by itself$N") ;; *) R+=("${D}enter: runs it$N") ;; esac
+  else R=("${D}no command matches \"$Q\"$N"); fi
+  ((n > ${#V[@]} + 1 && n > ${#R[@]})) && { n=$((${#V[@]} + 1)); ((n < ${#R[@]})) && n=${#R[@]}; }
+  ((SEL < TOP)) && TOP=$SEL; ((SEL >= TOP + n - 1)) && TOP=$((SEL - n + 2))
+  LINES=('') ROWOF=()
+  for ((r = 0; r < n; r++)); do
+    i=$((TOP + r)) name=''
+    if ((r < n - 1 && i < ${#V[@]})); then
+      name=${V[i]%%|*}; ROWOF[${#LINES[@]}]=$i
+      if ((i == SEL)); then name="$C> $(printf '%-*s' $((LW - 2)) "$name")$N"
+      elif [[ ${V[i]} == *'|auto|'* ]]; then name="$F  $(printf '%-*s' $((LW - 2)) "$name")$N"
+      else name="$W  $(printf '%-*s' $((LW - 2)) "$name")$N"; fi
+    elif ((r == n - 1 && (SEARCH || ${#Q}))); then name="$D/ $W$(printf '%-*s' $((LW - 3)) "${Q:0:LW-3}")$( ((SEARCH)) && printf "$C▏" || printf ' ')$N"
+    else name=$(printf '%*s' "$LW" ''); fi
+    LINES+=("$name$D │$N ${R[r]:-}")
+  done
+  LINES+=('')
+  BX=$(((COLS - BW) / 2 + 1)) BY=$(((ROWS - ${#LINES[@]} - 2) / 2 + 1)); ((BY < 1)) && BY=1
+  local f="↑↓ move · enter run · / search · q back"; ((SEARCH)) && f="type to search · enter done · esc clear"
+  printf '\e[?2026h\e[H\e[2J%s' "$MOUSE"; box manual "${MSG:-$f}"; printf '\e[?2026l'; MSG=''
+}
+confirm() { MSG="$1: are you sure? y = yes"; draw; while key; do [[ $KEY == mouse ]] || break; done; [[ $KEY == y ]]; }
+run() { # enter on the selected command: ask for its arguments, confirm risky ones, run it full screen, come back
+  local name u k A=() r
+  IFS='|' read -r name u k _ <<<"${V[SEL]}"
+  [[ $k == auto ]] && { MSG="oracle $name runs by itself"; return; }
+  if [[ $u == *[\<\[]* ]]; then
+    printf '\e[%d;%dH%s%s\e[?25h' $((BY + ${#LINES[@]} + 2)) $((BX + 2)) "$NOMOUSE" "$W${u#oracle } (enter = cancel): oracle $name $N"
+    read -re r; printf '\e[?25l'; read -ra A <<<"${r/#\~/$HOME}"
+    [[ $u == *'<'* && ${#A[@]} -eq 0 ]] && { MSG="cancelled"; return; }
+  fi
+  [[ $k == ask ]] && { confirm "oracle $name${A[*]:+ ${A[*]}}" || { MSG="cancelled"; return; }; }
+  printf '\e[?25h\e[2J\e[H%s' "$NOMOUSE"
+  oracle "$name" "${A[@]}"; r=$?
+  [[ $k == tui ]] || read -rp $'\n'"enter: back to the manual " _
+  printf '\e[?25l'; ((r)) && MSG="oracle $name stopped with an error ($r)"
+}
+filter
+while :; do
+  draw
+  key || exit
+  if ((SEARCH)); then
+    case $KEY in
+      enter) SEARCH=0 ;; esc) SEARCH=0 Q='' ;; backspace) Q=${Q%?} ;; space) Q+=' ' ;;
+      up) ((SEL--)) ;; down | tab) ((SEL++)) ;; click | mouse | back) SEARCH=0 ;;
+      ?) Q+=$KEY ;;
+    esac
+    filter; continue
+  fi
+  case $KEY in
+    up | k) ((SEL > 0)) && ((SEL--)) ;;
+    down | j | tab) ((SEL < ${#V[@]} - 1)) && ((SEL++)) ;;
+    /) SEARCH=1 ;;
+    enter | space) ((${#V[@]})) && run ;;
+    click) r=$((MY - BY - 1)); [[ -n ${ROWOF[r]:-} && $((MX - BX)) -le $((LW + 2)) ]] && { if ((ROWOF[r] == SEL)); then run; else SEL=${ROWOF[r]}; fi; } ;;
+    esc) if [[ -n $Q ]]; then Q=''; filter; else exit; fi ;;
+    q | back) exit ;;
+  esac
+done

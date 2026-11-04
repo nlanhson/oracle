@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Oracle home server: docker + tailscale + stacks in ~/dockge, ~/docker/<app>. Re-runnable.
 # server.sh [--dry-run] [--restore <backup>]   setup → restore → start apps whose secrets exist
-# server.sh start                              start apps only (oracle-firstboot unit after a USB install)
+# server.sh start                              start apps + tailscale serve (oracle-firstboot unit after a USB install, migrations)
+# Apps listen on 127.0.0.1 only (docker skips the firewall); the phone gets in over Tailscale: Immich :443, Dockge :8443. Guide: docs/server.md
 # server.sh backup <dir> [--dry-run]           fresh DB dump + photos + configs + tailscale state → <dir>, verified
 set -euo pipefail
 
@@ -128,6 +129,21 @@ restore() {
   todo "Immich: open http://localhost:2283 → Administration → Job Queues → run 'Generate Thumbnails: Missing' and 'Transcode Videos: Missing'."
 }
 
+serve() { # phone → apps over Tailscale only (HTTPS, tailnet devices only). Needs MagicDNS + HTTPS Certificates on (admin → DNS)
+  tailscale status &>/dev/null || return 0
+  local s p port name; s=$(tailscale serve status 2>/dev/null || sudo -n tailscale serve status 2>/dev/null || true)
+  for p in 443:2283:Immich 8443:5001:Dockge; do
+    IFS=: read -r p port name <<<"$p"
+    [[ $s == *"127.0.0.1:$port"* ]] && continue
+    say "  tailscale serve: $name on :$p"
+    ((DRY)) && continue
+    timeout 30 tailscale serve --bg --yes --https="$p" "$port" &>/dev/null || timeout 30 sudo -n tailscale serve --bg --yes --https="$p" "$port" &>/dev/null \
+      || todo "$name from the phone: turn on MagicDNS + HTTPS Certificates at https://login.tailscale.com/admin/dns, then: sudo tailscale serve --bg --https=$p $port"
+  done
+  name=$(tailscale status --json 2>/dev/null | tr -d ' \t\n' | sed -n 's/.*"CertDomains":\["\([^"]*\)".*/\1/p')
+  [[ -z $name ]] || say "  phone: Immich https://$name · Dockge https://$name:8443"
+}
+
 up() { say "  start ${1##*/}"; if ((DRY)); then echo "   would run: docker compose up -d in $1"; else (cd "$1" && "${DK[@]}" compose up -d --quiet-pull); fi; }
 
 start() {
@@ -154,16 +170,17 @@ WantedBy=multi-user.target"
   fi
   [[ -d $HOME/dockge/data ]] || todo "Dockge: open http://localhost:5001 and create a login."
   up "$HOME/dockge"
-  if [[ -f $I/.env ]]; then up "$I" || todo "Immich didn't start: check 'docker logs immich_server'."; else todo "Immich: no backup given. Rerun with --restore <backup folder>, or start empty (homeserver README step 4)."; fi
+  if [[ -f $I/.env ]]; then up "$I" || todo "Immich didn't start: check 'docker logs immich_server'."; else todo "Immich: no backup given. Rerun with --restore <backup folder>, or start empty (docs/server.md)."; fi
   if grep -q '^WIREGUARD_PRIVATE_KEY=..' "$D/vpn/.env" 2>/dev/null && ! grep -q CHANGE_ME "$D/vpn/.env" \
     && { [[ -f $D/vpn/ts.env ]] || sudo test -e "$D/vpn/tailscale/tailscaled.state"; }; then
     up "$D/vpn" || todo "VPN didn't start: check 'docker logs gluetun' (ProtonVPN key ok?)."
   else
-    todo "VPN exit node: put the ProtonVPN key in ~/docker/vpn/.env and a Tailscale auth key in ~/docker/vpn/ts.env (homeserver README step 5), then rerun."
+    todo "VPN exit node: put the ProtonVPN key in ~/docker/vpn/.env and a Tailscale auth key in ~/docker/vpn/ts.env (docs/server.md), then rerun."
   fi
   if ! done_ tailscale-host && ! tailscale status &>/dev/null; then
-    todo "Tailscale: run 'sudo tailscale up --operator=$U', open the link, log in. Then point the phone's Immich app at the new IP (sign out + in)."
+    todo "Tailscale: run 'sudo tailscale up --operator=$U', open the link, log in, then: oracle update (sets up the phone addresses)."
   fi
+  serve
 }
 
 backup() {

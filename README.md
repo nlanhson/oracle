@@ -12,7 +12,7 @@ Named after Batman's Oracle: your machine is the Batcomputer.
 - **Text first.** You land on a dashboard and a terminal. Hyprland starts only when you ask for it.
 - **Home-server ready.** Docker, Immich, Tailscale and a VPN exit node, set up for you, with backup and restore built in.
 - **Rollback for updates.** A snapshot before every update; `oracle rollback` takes it back, and the boot menu can start an older snapshot.
-- **Secure by default.** Full-disk encryption that unlocks itself through the TPM chip, so the machine comes back on its own after a power cut.
+- **Secure by default.** Full-disk encryption that unlocks itself through the TPM chip, so the machine comes back on its own after a power cut. A firewall that only lets Tailscale in.
 - **Yours to change.** Your settings live in your own files. Updates never overwrite them.
 
 ## Install
@@ -46,6 +46,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 | `Super + Enter` | Terminal (in the desktop) |
 | `Super + B` | Brave Origin (in the desktop) |
 | `f` / `s` on the dashboard | Files / Settings |
+| `m` on the dashboard, `Super + /`, or `oracle manual` | Every `oracle` command: what it does, when to use it, run it from there |
 | `oracle update` | Update everything: Oracle, all programs, firmware |
 | `oracle rollback` | Take back an update that broke something |
 | `oracle backup <folder>` | Back up the home server (photos, database, settings) |
@@ -57,7 +58,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 - [Getting started](docs/manual/getting-started.md)
 - [Keys](docs/manual/keys.md)
 - [Updating](docs/manual/updating.md)
-- [Backup and home server](docs/manual/backup.md)
+- [Backup and home server](docs/manual/backup.md) ([the details](docs/server.md))
 
 ## Your settings
 
