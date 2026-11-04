@@ -107,8 +107,8 @@
 
 "custom/logout": {
 	"format": "⏻",
-	"tooltip": "Logout",
+	"tooltip": "Power menu",
 	"interval": 0,
-	"on-click": "systemctl poweroff" /*Use "hyprctl dispatch exit" for exit Hyprland session*/
+	"on-click": "bash ~/.config/fuzzel/power-menu.sh"
 }
 }

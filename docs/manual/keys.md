@@ -36,7 +36,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + R` | Files (Nautilus) |
 | `Super + Space` | App launcher |
 | `Super + A` | Notifications |
-| `Super + P` | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
+| `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
 | `Super + W` | Restart the top bar |
 | `Super + Q` | Close window |
@@ -69,6 +69,8 @@ Your terminal settings are in `~/.config/ghostty/mine`.
 | `→` | Accept the grey suggestion (from your history) |
 | `Ctrl + G` | Pick a folder you've been to, type to filter, Enter goes there |
 | `z name` | Jump to the folder you use most that matches `name` |
+
+Shortcuts: `ff` shows system info, `btop` shows what's using the computer, `i <name>` installs a package.
 
 ## Change a key
 
