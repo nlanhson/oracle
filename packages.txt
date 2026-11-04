@@ -34,6 +34,8 @@ nautilus
 mousepad
 loupe
 btop
+fastfetch # ff: system info with the Batman emblem
+xsettingsd # dark theme for older (X11) apps
 wl-clipboard
 xdg-utils
 gnome-themes-extra

@@ -25,4 +25,6 @@ _pick_dir() {
 zle -N _pick_dir
 bindkey '^G' _pick_dir
 
+alias ff=fastfetch i='sudo pacman -S' # system info, install a package
+
 eval "$(starship init zsh)"

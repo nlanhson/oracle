@@ -1,0 +1,48 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  // other emblems in ~/.config/fastfetch/logos/
+  "logo": {
+    "type": "file",
+    "source": "~/.config/fastfetch/logos/batman-beyond-small.txt",
+    "color": { "1": "white" }
+  },
+  "display": { "color": "white" },
+  "modules": [
+	"title",
+	"break",
+	"host",
+	"os",
+	"kernel",
+	"wm",
+	"shell",
+	"terminal",
+	"packages",
+	"separator",
+	
+	"display",
+	"cpu",
+	"gpu",
+	"disk",
+	"memory",
+	"separator",
+	
+	"localip",
+	"uptime",
+	"break",
+	"colors",
+
+	/*
+	"de",
+	"wmtheme",
+	"font",
+	"cursor",
+	"theme",
+	"icons",
+	"terminalfont",
+	"swap",
+	"battery",
+	"poweradapter",
+	"locale",
+	*/
+  ]
+}
