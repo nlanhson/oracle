@@ -108,3 +108,8 @@ Done: lid closed → backlight off, keeps running. AMD backlight 0 still glows, 
 ## Ideas (owner picks)
 Secure Boot own keys (sbctl) + UKI (closes TPM gap); dashboard settings file + file navigator + settings screen + keybind editor; one theme colors file applied to all apps; website/download page.
 Done: `oracle doctor` (bin/oracle-doctor, read-only, sudo -v once, ok/!/x + fix per line, exit 1 if broken): failed units, disk %, kernel reboot, pacman lock, LUKS + TPM token + recovery key, limine editor, snapshots, NM/resolved/stub/internet, repo dirty/behind/migrations, battery limit vs sysfs, lid, docker/tailscale/containers, firstboot pending.
+
+## Feel (2026-11-10, not started)
+Push toward macOS-level look/feel. Brief + rules: `~/ai-memory/agents/fable-oracle-kickoff.md` (Prompt section). Owner says "go Oracle Feel" (or similar) → read it, follow it. Not part of other tasks unless asked.
+- Spec: not written (slice 0 = `docs/feel.md`, owner approves before any build)
+- Done: none · Next: slice 0 · Parked branches: none
