@@ -9,6 +9,7 @@ ck() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; fail=1; fi; }
 bash "$O" look
 ck "oracle look writes colors.css launcher.css hyprlock.conf tokens.lua" '[[ -s $L/colors.css && -s $L/launcher.css && -s $L/hyprlock.conf && -s $L/tokens.lua ]]'
 ck "tokens.lua is valid Lua" '! command -v lua >/dev/null || LL=$L/tokens.lua lua -e "os.exit(assert(loadfile(os.getenv(\"LL\")))().r_l == 14 and 0 or 1)" </dev/null'
+ck "launcher.css has no unfilled %token% left" '! grep -qE "%[a-z_]+%px" "$L/launcher.css"'
 i=$(stat -c %i "$L/colors.css"); bash "$O" look
 ck "second run writes nothing (files unchanged)" '[[ $i == $(stat -c %i "$L/colors.css") && -z $(ls "$L"/*.new 2>/dev/null) ]]'
 printf 'text=ff00ff\nr_l=20\n' >"$HOME/.config/oracle/tokens"; bash "$O" look
