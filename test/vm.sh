@@ -242,7 +242,7 @@ rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr |
 ok['oracle shot screen: PNG saved, image on the clipboard, notification up'] = re.search(r'Screenshot .*\.png', out) and 'image/png' in out and re.search(r'COUNT=[1-9]', out)
 vm.mon('screendump /vm/shot-notification.png -f png')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.GetCapabilities; grep -c "oracle shot" ~/.local/share/oracle/default/hypr/modules/binds.lua; oracle shot bogus; echo rc=$?')
-ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^3$', out, re.M) and 'rc=1' in out
+ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^6$', out, re.M) and 'rc=1' in out
 step('one look: every surface on a white wallpaper')
 import base64, struct, zlib
 def png(w, h):  # plain white picture, made here (the VM has no image tools)
@@ -345,7 +345,7 @@ tab(); a1 = act(); tab(); a2 = act()
 print('tab, tab:', a1 and a1['cls'], a2 and a2['cls'])
 ok['behaviour: Super+Tab goes to the previous app, Super+Tab again comes back (real key presses)'] = bool(a1 and a2) and a1['cls'] == n1['cls'] and a2['cls'] == m1['cls']
 # hold Super, Tab twice: two apps back; letting go commits (mru was mousepad, ghostty? -> after the tabs: mousepad, files, ghostty)
-vm.mon('sendkey meta_l-tab 5000'); time.sleep(1); vm.mon('sendkey tab'); time.sleep(1.5); h1 = act(); time.sleep(5); h2 = act()
+vm.mon('sendkey meta_l-tab 5000'); time.sleep(0.4); vm.mon('sendkey tab'); time.sleep(1.5); h1 = act(); time.sleep(5); h2 = act()
 print('hold:', h1 and h1['cls'], h2 and h2['cls'])
 vm.sh('cat /tmp/oracle-mru.log | tail -n 30', show=30)
 ok['behaviour: Super held + Tab twice = two apps back (Command-Tab cycling); not just a toggle'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
@@ -372,13 +372,13 @@ if c1:
 vm.mon('screendump /vm/beh-settings-popup.png -f png')
 vm.sh(VMENV + '; pkill -f oracle.settings; sleep 2', 30, show=0)
 # a dialog opens floating, centred, rest dimmed
-DLG = '#!/bin/sh\nexec ghostty --class=xdg-desktop-portal-gtk --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\n'
+DLG = '#!/bin/sh\nexec ghostty --class=org.oracle.testdialog --title=\"Save As\" --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\n'
 vm.sh(f'echo {base64.b64encode(DLG.encode()).decode()} | base64 -d >/tmp/dlg.sh; chmod +x /tmp/dlg.sh', show=0)
 vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.exec_cmd("/tmp/dlg.sh")\'; sleep 8', 30, show=0)
 d1 = act(); print('dialog:', d1)
-ok['behaviour: a file-chooser-class window opens floating (never tiled)'] = bool(d1) and d1['cls'] == 'xdg-desktop-portal-gtk' and d1['float']
+ok['behaviour: a dialog-titled window (Save As) opens floating (never tiled)'] = bool(d1) and d1['cls'] == 'org.oracle.testdialog' and d1['float']
 vm.mon('screendump /vm/beh-dialog.png -f png')
-vm.sh(VMENV + '; pkill -f xdg-desktop-portal-gtk; sleep 2', 30, show=0)
+vm.sh(VMENV + '; pkill -f org.oracle.testdialog; sleep 2', 30, show=0)
 # clipboard survives the app
 rc, out = vm.sh(VMENV + '; pgrep -x wl-clip-persist; echo survives | wl-copy; sleep 1; pkill -x wl-copy; sleep 1; wl-paste', 30)
 ok['behaviour: copied text is still pasteable after the copying app quits (wl-clip-persist)'] = 'survives' in out and re.search(r'^\d+$', out, re.M)

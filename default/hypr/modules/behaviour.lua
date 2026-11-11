@@ -54,13 +54,16 @@ hl.on("workspace.special_active", function(ws)
 end)
 
 -- Command-Tab: apps (by window class) in order of last use. Hold Super, Tab goes one further back, letting go of Super commits.
-local mru, last, snap, idx, cycling, timer = {}, {}, {}, 0, false, nil
+local mru, last, snap, idx, cycling, lastt = {}, {}, {}, 0, false, 0
 local function app(w) return w and w.class and w.class ~= "" and w.class ~= "oracle.shell" and w.class end
 local function touch(c, a) -- c to the front of the list
   for i, x in ipairs(mru) do if x == c then table.remove(mru, i) break end end
   table.insert(mru, 1, c); last[c] = a or last[c]
 end
-hl.on("window.active", function(w) if not cycling and app(w) then touch(w.class, w.address) end end)
+hl.on("window.active", function(w)
+  if cycling and os.time() - (lastt or 0) >= 2 then cycling = false end -- the Tab walk is over
+  if not cycling and app(w) then touch(w.class, w.address) end
+end)
 local function live() -- classes that have a window now, most recently used first
   local seen, list = {}, {}
   for _, w in ipairs(hl.get_windows()) do if app(w) then seen[w.class] = true end end
@@ -73,18 +76,16 @@ local function newest(c) -- that app's most recently used window
   for _, w in ipairs(all) do if w.address == last[c] then return w end end
   for _, w in ipairs(all) do if w.class == c then return w end end
 end
-local function held() return hl.is_key_down("Super_L") or hl.is_key_down("Super_R") end
-local function commit() -- Super let go: the app you stopped on is now the most recent
-  local h = held(); dbg('poll held=' .. tostring(h)); if h then return end
-  timer:set_enabled(false); cycling = false
-  local a = hl.get_active_window(); if app(a) then touch(a.class, a.address) end
-end
-local function dbg(m) local f = io.open("/tmp/oracle-mru.log", "a"); if f then f:write(m, "\n"); f:close() end end -- TEMP: VM proof of the hold logic
+-- Letting go of Super is not visible to Lua (hl.timer + hl.is_key_down never reported it), so: Tabs less than ~1.5 s apart
+-- keep walking back through the apps (hold Super, tap Tab); a pause starts over from the app you stopped on.
+local function dbg(m) local f = io.open("/tmp/oracle-mru.log", "a"); if f then f:write(m, "\n"); f:close() end end
 local function switch(d)
+  local now = os.time()
+  if cycling and now - lastt >= 2 then cycling = false; local a = hl.get_active_window(); if app(a) then touch(a.class, a.address) end end
+  lastt = now
   if not cycling then
     snap = live(); if #snap < 2 then return end
     cycling, idx = true, 0
-    if timer then timer:set_enabled(true) else timer = hl.timer(commit, { timeout = 60, type = "repeat" }) end -- made on first use (hl.timer crashes --verify-config)
   end
   idx = (idx + d) % #snap; dbg('step ' .. d .. ' idx=' .. idx .. ' -> ' .. snap[idx + 1])
   local w = newest(snap[idx + 1]); if w then hl.dispatch(hl.dsp.focus({ window = w })) end
