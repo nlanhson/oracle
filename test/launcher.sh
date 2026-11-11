@@ -34,5 +34,11 @@ ck IMG_00 "file${T_}IMG_0042.jpg"
 ck sleep "power${T_}Sleep"
 hid=$(python3 "$R/bin/oracle-launcher" --query tax-hidden); [[ -z $hid ]] && echo "PASS hidden folders are not searched" || { echo "FAIL hidden file found: $hid"; fail=1; }
 n=$(python3 "$R/bin/oracle-launcher" --query 2024); [[ -z $n ]] && echo "PASS a bare number is not a sum" || { echo "FAIL bare number: $n"; fail=1; }
+# it learns: what you pick after "l" comes first next time
+printf '[Desktop Entry]\nType=Application\nName=Libre Writer\nExec=true\n' >"$T/libre.desktop"; mkdir -p "$T/apps2/applications"; cp "$T/libre.desktop" "$T/apps2/applications/libre.desktop"
+export XDG_DATA_DIRS=$R/test/fixtures/launcher:$T/apps2
+for i in 1 2 3; do python3 "$R/bin/oracle-launcher" --pick l app:loupe.desktop; done; ck l "app${T_}Loupe"
+for i in 1 2 3 4 5; do python3 "$R/bin/oracle-launcher" --pick l app:libre.desktop; done; ck l "app${T_}Libre Writer"
+ck li "app${T_}Libre Writer"
 ((fail)) && echo "launcher: FAILED" || echo "launcher ok"
 exit $fail

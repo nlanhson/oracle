@@ -25,9 +25,9 @@ ck "migration: edited lock screen untouched, one plain line says so" 'cmp -s "$C
 ck "migration: bar clock now 12 hours with AM/PM" 'grep -q "%-I:%M %p %a" "$C/waybar/config.jsonc"'
 cp "$F/fuzzel-v2.ini" "$C/fuzzel/fuzzel.ini"; cp "$F/hyprlock-v1.conf" "$C/hypr/hyprlock.conf"; out=$(bash "$R/migrations/1794366900.sh" 2>&1)
 ck "migration: second Oracle version of a file also recognised, rerun is quiet" 'grep -q "^source = $HOME/.config/oracle/look" "$C/hypr/hyprlock.conf" && [[ -z $out ]]'
-cp "$F/power-menu-v1.sh" "$C/fuzzel/power-menu.sh"; printf '"on-click": "bash ~/.config/fuzzel/power-menu.sh"\n' >>"$C/waybar/config.jsonc"
+cp "$F/power-menu-v1.sh" "$C/fuzzel/power-menu.sh"
 bash "$R/migrations/1794390000.sh"
-ck "migration: old power menu script and bar button open the launcher" 'grep -q "oracle launcher power" "$C/fuzzel/power-menu.sh" && grep -q "\"on-click\": \"oracle launcher power\"" "$C/waybar/config.jsonc"'
+ck "migration: old power menu script opens the launcher" 'grep -q "oracle launcher power" "$C/fuzzel/power-menu.sh"'
 echo '# mine' >>"$C/fuzzel/power-menu.sh"; bash "$R/migrations/1794390000.sh"
 ck "migration: an edited power menu script is left alone" 'grep -q "# mine" "$C/fuzzel/power-menu.sh"'
 ((fail)) && echo "look: FAILED" || echo "look ok"

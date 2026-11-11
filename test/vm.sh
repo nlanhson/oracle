@@ -277,6 +277,22 @@ rc, out = vm.sh('bash ~/.local/share/oracle/test/launcher.sh | tail -n 30', 120)
 ok['launcher: 20+ scripted queries, expected top row (test/launcher.sh)'] = rc == 0 and 'launcher ok' in out
 rc, out = vm.sh('for q in gho upd shut "12*7" quarterly; do python3 ~/.local/share/oracle/bin/oracle-launcher --query "$q" | head -n 1; done')
 ok['launcher: real apps, ranked top rows'] = re.search(r'app\tGhostty', out) and re.search(r'cmd\toracle update', out) and re.search(r'power\tShut Down', out) and 'sum\t84' in out and 'Quarterly-report-2026.pdf' in out
+LB = 'python3 ~/.local/share/oracle/bin/oracle-launcher'
+vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('shut'); time.sleep(1); vm.mon('sendkey ret'); time.sleep(1.5)
+vm.mon('screendump /vm/launcher-confirm.png -f png'); vm.mon('sendkey ret'); time.sleep(1.5)
+rc, out = vm.sh('echo alive; ' + VMENV + '; hyprctl layers | grep -c "namespace: launcher"; pgrep -c Hyprland')
+ok['launcher: Shut Down asks first (Cancel is the default, machine still up after Enter)'] = 'alive' in out and out.split()[-2:] == ['1', '1']
+vm.mon('sendkey esc'); time.sleep(1)
+rc, out = vm.sh(f'for l in b c d f g l m n p s v h; do {LB} --query $l | head -n 2 | cut -f1 | paste -sd, | grep -qx app,app && {{ echo LEARN $l; {LB} --query $l | sed -n 2p | cut -f2; break; }}; done')
+m = re.search(r'LEARN (\w)\n(.+)', out)
+if m:
+    for _ in range(3):
+        vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys(m[1]); time.sleep(1); vm.mon('sendkey down'); time.sleep(0.5); vm.mon('sendkey ret'); time.sleep(5)
+        vm.sh(VMENV + '; for w in $(hyprctl clients -j | jq -r ".[].pid"); do kill $w; done; sleep 2', 30, show=0)
+    rc, out2 = vm.sh(f'{LB} --query {m[1]} | head -n 1 | cut -f2')
+    ok['launcher: it learns (3 picks of the 2nd app after one letter make it the top hit)'] = out2.splitlines()[0].strip() == m[2].strip()
+else:
+    ok['launcher: it learns (3 picks of the 2nd app after one letter make it the top hit)'] = False
 vm.sh(VMENV + '; oracle set wallpaper /tmp/white.png; oracle wall; sleep 3', 30, show=0)
 vm.sh('for i in 1 2; do notify-send "Test notification $i" "Tiếng Việt: Xin chào, đã lưu ảnh. 4,243 photos synced, this line is longer to see wrapping."; done; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-notify.png -f png')
