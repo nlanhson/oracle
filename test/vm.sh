@@ -249,7 +249,7 @@ def lshot(text, name, wait=1.5):  # open the launcher, type, picture, Esc
     vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys(text); time.sleep(wait)
     vm.mon(f'screendump /vm/{name}.png -f png'); vm.mon('sendkey esc'); time.sleep(1)
 vm.sh('pkill -f oracle.manual; mkdir -p ~/Documents; touch ~/Documents/Quarterly-report-2026.pdf', 30, show=0)
-rc, out = vm.sh(LENV + '; rm -f $XDG_RUNTIME_DIR/oracle-launcher.timing; oracle launcher daemon; sleep 5; pgrep -fc "python3.*oracle-launcher"')
+rc, out = vm.sh(LENV + '; pkill -f oracle-launcher; sleep 1; rm -f $XDG_RUNTIME_DIR/oracle-launcher.timing; setsid -f oracle launcher daemon &>/dev/null; sleep 5; pgrep -fc "python3.*oracle-launcher"')
 ok['launcher: daemon starts at login (one process)'] = rc == 0 and out.split()[-1] == '1'
 lshot('gho', 'launcher-white')  # white wallpaper: contrast
 rc, out = vm.sh(LENV + '; oracle launcher; sleep 1.5; hyprctl layers | grep -c "namespace: launcher"; oracle launcher; sleep 1; hyprctl layers | grep -c "namespace: launcher"')

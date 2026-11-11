@@ -2,7 +2,7 @@
 # oracle launcher (Super+Space): one box, ranked: sums, apps, oracle commands, power, files. Stays running; the key shows/hides it.
 # Look: ~/.config/oracle/look/launcher.css (generated from tokens by `oracle look`; template default/launcher/style.css).
 # Test without a screen: oracle-launcher --query "gho"   (prints the ranked rows: kind, title, subtitle)
-import ast, json, math, os, re, shutil, subprocess, sys, threading, time
+import ast, json, math, os, re, shlex, shutil, subprocess, sys, threading, time
 from gi.repository import Gio, GLib
 
 HOME = os.path.expanduser("~")
@@ -45,7 +45,7 @@ def match(q, text, fuzzy=True):
     if t.startswith(q): return 90
     if re.search(r"(^|[\s._/-])" + re.escape(q), t): return 75
     if q in t: return 60
-    if fuzzy and len(q) >= 3:
+    if fuzzy and len(q) >= 4:
         i = 0
         for c in t:
             if i < len(q) and c == q[i]: i += 1
@@ -190,9 +190,10 @@ def spawn(argv, **kw):
 def activate(it):
     k = it["kind"]
     if k == "sum": spawn(["wl-copy", it["title"]])
-    elif k == "app":
-        a = it["app"]
-        if isinstance(a, Gio.DesktopAppInfo) and a.get_boolean("Terminal"): spawn(["ghostty", "-e", a.get_commandline().split()[0]])
+    elif k == "app":  # the .desktop Exec line without its %f/%U field codes, in its own session
+        a = it["app"]; argv = shlex.split(re.sub(r"%[a-zA-Z%]", "", a.get_commandline() or ""))
+        if isinstance(a, Gio.DesktopAppInfo) and a.get_boolean("Terminal"): argv = ["ghostty", "-e"] + argv
+        if argv: spawn(argv)
         else: a.launch([], None)
     elif k == "cmd":
         spawn(["ghostty", "--class=oracle.manual", "--gtk-single-instance=false", "--window-width=110", "--window-height=34",
