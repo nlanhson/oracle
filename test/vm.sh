@@ -344,7 +344,7 @@ vm.sh(VMENV + '; oracle panel; oracle panel dnd false; oracle panel night false;
 vm.mon('screendump /vm/cc-cyan.png -f png')
 vm.sh(VMENV + '; oracle panel; oracle set accent; oracle look; sleep 1', 30, show=0)
 rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; hyprctl layers | grep -c "namespace: oracle-panel"; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"; which wtype')
-ok['control center: Esc closes it'] = ''.join(out.split())[-2:] == '10'
+ok['control center: Esc closes it'] = bool(re.search(r'^1\s*\n0\s*\n', out, re.M))
 vm.sh(VMENV + '; oracle panel close; sleep 1', 30, show=0)
 rc, out = vm.sh(VMENV + '; P=$(pgrep -x "qs|quickshell" | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x "qs|quickshell" >/dev/null && echo ALIVE', 90)
 print(out)
