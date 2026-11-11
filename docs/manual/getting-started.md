@@ -11,6 +11,19 @@ You land in **Shell mode**:
 
 The bar at the top shows the workspaces. The one you're on shows its name, like `2 terminal`, or the program running in it, like `2 claude`. Switch with `Alt + 1` to `Alt + 4`, or click a number. If you close a terminal, a fresh one takes its place.
 
+## First run
+
+The first time you log in after a fresh install, a short **welcome guide** opens before the dashboard. It takes about a minute, one choice per screen:
+
+1. **Welcome.** What this is.
+2. **Wi-Fi.** Only if you're offline: pick a network.
+3. **Look.** Accent colour and text size. You see the change as you make it.
+4. **Wallpaper.** Black, or a picture from `~/Pictures`, for the desktop.
+5. **Keys to know.** The handful of shortcuts that matter.
+6. **You're set.** Where to change things later.
+
+Every step has **skip**, **back** works (`Esc`, or right click), and nothing it sets is permanent: it all lives in settings (`s`). `Esc` on the first screen skips the whole guide. It runs by itself only once. Run it again any time with `oracle welcome`. It does not start by itself after `oracle update` on an existing install.
+
 ## Files
 
 Press `f` on the dashboard (or type `oracle files`). Folders open and close in place, like a tree. Pick a file and Oracle asks what to do:

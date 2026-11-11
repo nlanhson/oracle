@@ -72,7 +72,10 @@ case ${1:-help} in
       tmux list-windows -t oracle -F '#I' 2>/dev/null | grep -qx "$i" && continue
       if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
     done 2>/dev/null || true ;;
-  home) exec "$DIR/bin/oracle-home" ;;
+  home) W=${MODE%/*}/done/welcome # the first start after a fresh install shows the welcome guide once; if it fails the dashboard still comes up
+    [[ -f $W ]] || { mkdir -p "${W%/*}"; touch "$W"; "$ME/oracle-welcome" || true; }
+    exec "$DIR/bin/oracle-home" ;;
+  welcome) exec "$ME/oracle-welcome" ;;
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;

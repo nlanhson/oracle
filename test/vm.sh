@@ -201,10 +201,22 @@ rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale
                 ' oracle set keyboard; oracle set scale; grep -c oracle/ghostty ~/.config/ghostty/config')
 ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
 vm.sh('oracle set nightlight always; oracle set wallpaper $(ls /usr/share/hypr/*.png | head -1)')
-step('tty1 login via monitor sendkey')
+step('tty1 login via monitor sendkey (fresh state: welcome guide first)')
+vm.sh('rm -f ~/.local/state/oracle/done/welcome; ls ~/.local/state/oracle/migrations | grep -c .')
 vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
-rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
-ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
+rc, out = vm.sh('pgrep -a cage; pgrep -f oracle-welcome >/dev/null && echo WELCOME-RUNNING; tmux capture-pane -p -t oracle:1 | grep "welcome .* 1 of"; ls ~/.local/state/oracle/done')
+ok['fresh install: first Shell-mode start shows the welcome guide'] = rc == 0 and 'ghostty' in out and 'WELCOME-RUNNING' in out and re.search(r'welcome . 1 of', out)
+vm.sh('tmux send-keys -t oracle:1 Escape; sleep 4')
+rc, out = vm.sh('pgrep -f oracle-welcome >/dev/null && echo WELCOME-RUNNING || echo NO-WELCOME; pgrep -af oracle-home; ls ~/.local/state/oracle/done')
+ok['Esc skips it: dashboard comes up, marked done'] = 'NO-WELCOME' in out and 'oracle-home' in out and re.search(r'^welcome$', out, re.M)
+vm.sh('tmux kill-window -t oracle:1; sleep 5')
+rc, out = vm.sh('pgrep -f oracle-welcome >/dev/null && echo WELCOME-RUNNING || echo NO-WELCOME; pgrep -af oracle-home; tmux list-windows -t oracle')
+ok['second start goes straight to the dashboard'] = 'NO-WELCOME' in out and 'oracle-home' in out
+vm.sh('rm ~/.local/state/oracle/done/welcome; bash ~/.local/share/oracle/migrations/1793900000.sh; ls ~/.local/state/oracle/done; tmux kill-window -t oracle:1; sleep 5')
+rc, out = vm.sh('pgrep -f oracle-welcome >/dev/null && echo WELCOME-RUNNING || echo NO-WELCOME; pgrep -af oracle-home; tmux list-windows -t oracle')
+ok['existing install (after the update migration): no welcome, dashboard'] = 'NO-WELCOME' in out and 'oracle-home' in out
+rc, out = vm.sh('pgrep -a cage; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
+ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'home' in out
 ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
 rc, out = vm.sh('pgrep -x wlsunset && pgrep -x swayidle && cat ~/.config/oracle/ghostty; pgrep -x fcitx5 || echo NO-IME')
 ok['Shell mode: night light, idle dimming, ghostty settings file, no Vietnamese IME'] = 'font-size' in out and 'NO-IME' in out
