@@ -38,8 +38,10 @@ fi
 A=() # alerts found this run: "key|title|body[|url]"
 p=$(df --output=pcent / | tail -1 | tr -dc 0-9)
 ((p > FULL)) && A+=("disk|Disk almost full|Disk is $p% full. Free some space: oracle files")
-for u in $(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}') $(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print $1}'); do
-  [[ $u == oracle-watch.service ]] || A+=("unit $u|Something stopped working|The service ${u%.service} stopped working. Check it with: oracle doctor")
+for u in $(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}') $(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print "user:" $1}'); do
+  n=${u#user:}; n=${n%.service}
+  [[ $u == user:* ]] && pgrep -x "$n" >/dev/null && continue # e.g. swaync: its unit failed at login, the desktop started it anyway
+  [[ $n == oracle-watch ]] || A+=("unit $n|Something stopped working|The service $n stopped working. Check it with: oracle doctor")
 done
 last=$(sed -n 's/^crash-check=//p' "$SENT" 2>/dev/null); last=${last:-$((NOW - 300))}
 while read -r c; do

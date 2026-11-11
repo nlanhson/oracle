@@ -143,3 +143,19 @@ Open choices are made inside their slice and shown to you before building: the l
 | 2 One look | Built on `feel/look`, waiting for the feel check |
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
 | 8 Welcome | Built on `feel/welcome`, waiting for feel check |
+| 7 System logic | Built on `feel/system`, waiting for feel check. Power button, battery rules, idle by power source, quiet update check, plain-word alerts, doctor lines. Boot time measured below |
+
+## Boot time (slice 7)
+
+Measured in the VM (`systemd-analyze`, after the first-boot setup had finished, TPM unlock, no password):
+
+| | Firmware | Loader | Kernel | Initrd | Userspace | Total |
+|---|---|---|---|---|---|---|
+| Before slice 7 | 2.0 s | 3.4 s | 0.76 s | 2.3 s | 3.87 s | 12.4 s |
+| After slice 7 | 2.0 s | 3.4 s | 0.78 s | 2.3 s | 4.00 s | 12.4 s |
+
+Userspace is already lean: the slowest path is NetworkManager → wait-online (0.15 s) → docker (0.9 s) → multi-user.
+Nothing there is waste the server can do without, so nothing was cut (the 0.1 s difference is noise between runs).
+On the G14, Wi-Fi can make wait-online take a few seconds, but that only delays docker, not the login screen.
+Loader, kernel and initrd belong to slice 5 (silent boot).
+

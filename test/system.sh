@@ -69,8 +69,12 @@ ck "alert: Wi-Fi sign-in, click opens the browser" '[[ $(seen "-A|default=Open|T
 n=$(grep -c . "$N"); ORACLE_DISK_ALERT=0 bash "$W"; sleep 1
 ck "second run: no repeats (once a day), dashboard lines kept" '[[ $(grep -c . "$N") == "$n" && $(grep -c . "$S/alerts") == 4 ]]'
 ck "wording: sentence case, no exclamation marks" '! grep -q "!" "$N" "$S/alerts"'
-fake systemctl 'exit 0'; fake nmcli 'echo full'; fake coredumpctl 'exit 0'; bash "$W"
-ck "all fine again: dashboard lines gone" '[[ ! -s $S/alerts ]]'
+out=$(H=$R/default/home; RW=80; source "$H/theme.sh"; source "$H/alerts.sh"; w_alerts)
+ck "dashboard: alert lines at the top" '[[ $out == *"Disk is "*"% full. Free some space: oracle files"* ]]'
+fake systemctl '[[ $* == *--user*--failed* ]] && echo "swaync.service loaded failed failed Notifications"; exit 0'; fake pgrep '[[ $* == *swaync* ]]'
+fake nmcli 'echo full'; fake coredumpctl 'exit 0'; bash "$W"; fake pgrep 'exit 1'
+ck "all fine again (a failed unit whose program runs anyway is not an alert): dashboard lines gone" '[[ ! -s $S/alerts ]]'
+out=$(H=$R/default/home; RW=80; source "$H/theme.sh"; source "$H/alerts.sh"; w_alerts); ck "dashboard: no alert rows when all is well" '[[ -z $out ]]'
 
 # idle steps: on AC the battery timers do nothing; on battery dim → off → wake, each once
 : >"$T/bright"; export ORACLE_POWER_SUPPLY=$PS; set_b 50 Charging 1

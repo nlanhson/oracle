@@ -12,8 +12,5 @@ w_server() { # docker, tailscale and wifi are asked every 10 s, not every refres
     SRV=$(svc immich immich_server; svc dockge dockge; svc vpn-exit gluetun; echo
       printf "${W}%-12s${C}%-30s${W}%-12s${C}%s${N}\n" tailscale "${ip:-off}" wifi "${wifi:-off}") SRV_AT=$SECONDS
   fi
-  printf '%s\n' "$SRV"
-  local l; { cat /run/oracle/battery ~/.local/state/oracle/alerts 2>/dev/null || true; } | head -3 | while IFS= read -r l; do # plain-word alerts (oracle watch, battery)
-    [[ -n $l ]] && printf "${R}!${W} %s${N}\n" "${l:0:$((RW - 2))}"; done
-  echo
+  printf '%s\n\n' "$SRV"
 }
