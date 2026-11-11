@@ -37,6 +37,8 @@ hl.animation({ leaf = "zoomFactor",       enabled = true, speed = 2.5, bezier = 
 
 -- Volume / brightness pop-up: fades, never slides (it answers a key press)
 hl.layer_rule({ match = { namespace = "^(swayosd)$" }, animation = "fade" })
+-- Notifications come in from the right edge, where they live (as on macOS Sequoia)
+hl.layer_rule({ match = { namespace = "^(swaync-notification-window)$" }, animation = "slide right" })
 
 -- Touchpad. 3 fingers sideways = workspaces (input.lua). A short flick is enough to switch.
 hl.config({ gestures = { workspace_swipe_cancel_ratio = 0.3, workspace_swipe_create_new = false } })

@@ -84,6 +84,7 @@ case ${1:-help} in
     "$0" wall; "$0" night
     gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true # GTK apps: dark, grey accent (monochrome)
     gsettings set org.gnome.desktop.interface accent-color slate 2>/dev/null || true
+    [[ ! -f $HOME/.local/share/icons/Oracle/index.theme ]] || gsettings set org.gnome.desktop.interface icon-theme Oracle 2>/dev/null || true # grey folders
     gsettings set org.gnome.desktop.interface font-name 'Inter 11' 2>/dev/null || true # UI font (token font_ui); monospace stays JetBrains Mono
     [[ -f $P/open ]] && { f=$(<"$P/open"); rm -f "$P/open"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
   set) mkdir -p "${SET%/*}"; touch "$SET" # set <key> [value]: ~/.config/oracle/settings (settings screen)
@@ -116,6 +117,14 @@ case ${1:-help} in
         size_small size_body size_title size_display weight_normal weight_bold border cursor_theme cursor_size icon_theme; do
         v=${!k}; v=${v//\"/}; if [[ $v =~ ^[0-9.]+$ && ${#v} -lt 6 ]]; then echo "  $k = $v,"; else echo "  $k = \"$v\","; fi; done
       echo "}"; } | put tokens.lua
+    I=$HOME/.local/share/icons/Oracle P=/usr/share/icons/Papirus # grey folders: Papirus's own grey set under a small theme of ours (no package)
+    if [[ -d $P && ! -f $I/index.theme ]]; then
+      for z in 22 24 32 48 64; do mkdir -p "$I/${z}x$z/places"
+        for f in "$P/${z}x$z"/places/{folder,user}-grey*.svg; do n=${f##*/}; ln -sf "$f" "$I/${z}x$z/places/${n/-grey/}"; done; done
+      { printf '[Icon Theme]\nName=Oracle\nInherits=Papirus-Dark,hicolor\nDirectories=22x22/places,24x24/places,32x32/places,48x48/places,64x64/places\n'
+        for z in 22 24 32 48; do printf '\n[%sx%s/places]\nSize=%s\nContext=Places\nType=Fixed\n' $z $z $z; done
+        printf '\n[64x64/places]\nSize=64\nMinSize=49\nMaxSize=512\nContext=Places\nType=Scalable\n'; } >"$I/index.theme"
+    fi
     if [[ -n $ch ]]; then pkill -USR2 -x waybar || true; swaync-client -rs &>/dev/null || true; fi ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
