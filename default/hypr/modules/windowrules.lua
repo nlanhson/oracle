@@ -49,3 +49,13 @@ hl.window_rule({
     center     = true,
     force_rgbx = true,
 })
+
+hl.window_rule({
+    -- Oracle: Settings pop-up from the control panel, floating in the middle
+    name  = "oracle-settings",
+    match = { class = "^oracle\\.settings$" },
+
+    float      = true,
+    center     = true,
+    force_rgbx = true,
+})

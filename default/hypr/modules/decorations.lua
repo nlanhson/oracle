@@ -63,6 +63,9 @@ for _, ns in ipairs({ "waybar", "launcher", "fuzzel", "swaync-control-center", "
     hl.layer_rule({ match = { namespace = "^(" .. ns .. ")$" }, blur = true, ignore_alpha = 0.2 })
 end
 
+-- Control panel: grows out of its corner (fades + scales) like a menu, instead of sliding. Banners keep the slide
+hl.layer_rule({ match = { namespace = "^(swaync-control-center)$" }, animation = "popin 94%" })
+
 -- Fuzzel (namespace "launcher"): appears at once
 hl.layer_rule({
     match        = { namespace = "^(launcher|fuzzel)$" },

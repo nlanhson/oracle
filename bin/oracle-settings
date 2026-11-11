@@ -9,6 +9,7 @@ ITEMS=(brightness nightlight textsize scale volume mute output battery wifi netw
        timezone keyboard accent wallpaper about update rollback restart shutdown)
 BUTTONS=4 # last 4 items are the buttons row
 declare -A IDX; for i in "${!ITEMS[@]}"; do IDX[${ITEMS[i]}]=$i; done
+[[ -n ${1:-} && -n ${IDX[${1:-}]:-} ]] && SEL=${IDX[$1]} # oracle settings [item]: start on that row (the control panel uses it)
 declare -A NIGHT=([off]=off [evening]="6 PM to 6 AM" [always]="always on")
 printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H%s" "$NOMOUSE"' EXIT
 
