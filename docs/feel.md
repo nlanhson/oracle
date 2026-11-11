@@ -143,3 +143,4 @@ Open choices are made inside their slice and shown to you before building: the l
 | 2 One look | Built on `feel/look`, waiting for the feel check |
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
 | 8 Welcome | Built on `feel/welcome`, waiting for feel check |
+| 10 Behaviour | Built on `feel/behaviour`, waiting for feel check |
