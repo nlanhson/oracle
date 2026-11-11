@@ -89,6 +89,10 @@ class VM:
     def send(s, text):  # Enter = CR, like a real terminal
         time.sleep(0.5); s.p.stdin.write(text.replace('\n', '\r').encode()); s.p.stdin.flush()
 
+    def off(s):  # a slow poweroff must not hide the results
+        s.send('sudo poweroff\n')
+        try: s.p.wait(180)
+        except subprocess.TimeoutExpired: s.p.kill(); s.p.wait(30)
     def sh(s, cmd, timeout=300, answers=(), show=60):
         s.buf = b''
         s.send(cmd + '; echo __RC=$?__\n')
@@ -436,7 +440,7 @@ def frames(vm):
     for f in vm.frames: print(f'  {f[0]:>3} t={f[1]:>5}s {"loader/os" if f[2] else "firmware "} text-band={f[3]:<6} lit={f[5]:<7} {"" if vm.clean(f) else "TEXT"}')
     return [f for f in vm.frames if f[2]]
 step('boot: power on, no key pressed (unattended), screenshot ~1/s → boot-N.png')
-vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm.off()
 vm = VM([]); vm.film('boot')
 i, _ = vm.expect([LUKS, r'oracle login:'], 300)
 t_login = round(time.time() - vm.t0, 1)
@@ -462,7 +466,7 @@ vm.keys(PW + '\n'); time.sleep(20)
 rc, out = vm.sh('pgrep -a cage; loginctl list-sessions --no-legend')
 ok['Oracle login: wrong password refused, right password starts Shell mode'] = 'incorrect' in t and 'cage' in out and 'tty1' in out
 step(f'boot menu: {MENU_KEY} tapped from power-on → boot-menu-top.png, then Snapshots opened → boot-menu.png')
-vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm.off()
 vm = VM([]); vm.film('menu', keys=MENU_KEY)
 i, _ = vm.expect([r'oracle login:'], 40, fail=False); vm.tick = None
 frames(vm)
