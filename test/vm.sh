@@ -258,6 +258,43 @@ vm.sh('sleep 3; setsid -f hyprlock &>/dev/null; sleep 6', 30, show=0)
 vm.mon('screendump /vm/look-lock.png -f png')
 rc, out = vm.sh('pgrep -x hyprlock; pkill -USR1 hyprlock; sleep 3; pgrep -x hyprlock || echo UNLOCKED')
 ok['look: lock screen shows, unlocks on signal'] = 'UNLOCKED' in out
+step('control panel and notifications')
+rc, out = vm.sh('bash ~/.local/share/oracle/test/panel.sh', 120)
+ok['panel: config valid, helpers change state (fakes), migration swaps untouched copies'] = rc == 0 and 'panel ok' in out
+vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794453300.sh; pkill -x waybar; pkill -x swaync; for c in swaync waybar; do setsid -f $c &>/dev/null; done; sleep 6', 60, show=0)
+rc, out = vm.sh(VMENV + '; grep -q "oracle panel wifi" ~/.config/swaync/config.json && echo CFG-NEW; grep -q custom/notification ~/.config/waybar/config.jsonc && echo BAR-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
+ok['panel: new config installed by the migration, swaync + waybar run with it'] = all(x in out for x in ('CFG-NEW', 'BAR-NEW', 'RUNNING'))
+rc, out = vm.sh(VMENV + '; oracle panel dnd true; oracle panel dnd; swaync-client -D; oracle panel dnd false; swaync-client -D')
+ok['panel: Do Not Disturb tile really switches swaync'] = out.split('[rc')[0].split().count('true') >= 2 and out.split('[rc')[0].split().count('false') >= 1
+rc, out = vm.sh(VMENV + '; oracle panel night true; sleep 1; pgrep -x wlsunset; oracle get nightlight; oracle panel night false; sleep 1; pgrep -x wlsunset || echo NO-WLSUNSET; oracle panel night')
+ok['panel: night light tile starts and stops wlsunset'] = re.search(r'^\d+$', out, re.M) and 'always' in out and 'NO-WLSUNSET' in out
+rc, out = vm.sh(VMENV + '; wpctl status | head -n 14; wpctl get-volume @DEFAULT_AUDIO_SINK@; oracle panel mute true; wpctl get-volume @DEFAULT_AUDIO_SINK@; oracle panel mute; oracle panel mute false; oracle panel mute')
+if 'MUTED' in out:  # a sound card exists in the VM
+    ok['panel: mute tile changes the real volume state (wpctl)'] = out.count('MUTED') >= 1 and 'true' in out and 'false' in out
+else:
+    print('NOTE: no audio output in the VM, mute/volume not exercised here (panel.sh covers the command logic with fakes)')
+rc, out = vm.sh('ls /sys/class/backlight | head -n 1; echo rc=$?; oracle panel charge; cat /etc/oracle/battery-limit')
+print('NOTE: brightness cannot be tested in the VM unless a backlight exists (above)')
+vm.sh(VMENV + '; swaync-client -t -sw; sleep 2', 30, show=0)
+vm.mon('screendump /vm/panel-open.png -f png')  # white wallpaper
+vm.sh(VMENV + '; swaync-client -cp -sw; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 3; swaync-client -op -sw; sleep 2', 30, show=0)
+vm.mon('screendump /vm/panel-open-dunes.png -f png')
+vm.sh(VMENV + '; swaync-client -cp -sw; sleep 1; swaync-client -C; notify-send -a Messages "Anh Minh" "Tối nay đi ăn phở không? Mình đặt bàn lúc 7 giờ nhé."; notify-send -a Messages "Anh Minh" "Địa chỉ: 12 Lý Tự Trọng"; notify-send -a Immich "Backup finished" "4,243 photos synced."; notify-send -u critical -a Updates "Disk almost full" "Only 2 GB left on /."; sleep 2', 30, show=0)
+vm.mon('screendump /vm/panel-banner.png -f png')
+rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window; sleep 7; swaync-client -op -sw; sleep 2')
+ok['panel: banners appear under the bar, 4 unread counted'] = out.split()[0] == '4' if out.split() else False
+vm.mon('screendump /vm/panel-notifs.png -f png')
+vm.sh(VMENV + '; swaync-client -cp -sw; swaync-client -C; sleep 1; oracle panel dnd true; notify-send -a Messages "Silent" "DND on: no banner"; sleep 2', 30, show=0)
+vm.mon('screendump /vm/panel-dnd.png -f png')  # bar shows the DND bell + dot, no banner
+rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window')
+ok['panel: Do Not Disturb keeps the notification in the list but shows no new banner'] = out.split()[:2] == ['1', '0']
+vm.sh(VMENV + '; swaync-client -op -sw; sleep 2', 30, show=0)
+vm.mon('screendump /vm/panel-dnd-open.png -f png')
+vm.sh(VMENV + '; oracle panel dnd false; swaync-client -C; swaync-client -cp -sw; sleep 1', 30, show=0)
+rc, out = vm.sh(VMENV + '; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings network\\")" >/dev/null; sleep 6; hyprctl clients | grep -E "class: oracle.settings|floating: 1" | head -n 4; hyprctl configerrors')
+ok['panel: Settings button opens a floating oracle.settings pop-up'] = 'oracle.settings' in out
+vm.mon('screendump /vm/panel-settings.png -f png')
+vm.sh('pkill -f oracle.settings; sleep 1', 30, show=0)
 vm.sh('setsid -f nautilus &>/dev/null; sleep 10', 30, show=0)
 vm.mon('screendump /vm/look-gtk.png -f png')
 vm.sh(VMENV + '; pkill -x nautilus; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
