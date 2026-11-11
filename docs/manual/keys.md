@@ -37,7 +37,7 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
 | `Super + Space` | Search box: type and it finds apps, `oracle` commands, sums (`12*7`, Enter copies the answer), files in your home folder and lock / sleep / restart / shut down. Up/Down moves, Enter opens, Esc closes |
-| `Super + A` | Control panel and notifications (also: click the control-centre icon on the bar) |
+| `Super + A` | Notification Center (also: click the date and time on the bar) |
 | `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
 | `Super + W` | Restart the top bar |

@@ -115,7 +115,17 @@ Forgot a command? Press `m` on the dashboard, `Super + /` on the desktop, or typ
 
 Claude Code (`claude`) and OpenCode (`opencode`) come installed. Type either one in a terminal.
 
-## Control panel
+## Control Center and Notification Center
 
-Click the control-centre icon on the bar, or press `Super + A`: one panel drops from the top right. Tiles for Wi-Fi, Bluetooth, Do Not Disturb, Night light, Mute and Settings (white = on), sliders for brightness, sound and the battery charge limit, what is playing, and below that your notifications grouped by app, with Clear All. `Networks` and `Devices` open Settings on the Wi-Fi network list or the Bluetooth devices; `Power` opens the power menu. A dot on the bar means unread notifications, a crossed bell means Do Not Disturb (banners stay quiet, nothing is lost: they wait in the panel). Esc or a click outside closes it.
+**Control Center**: click the control-centre icon on the bar (the two small switches). A panel opens under it, like on a Mac.
 
+- **Wi-Fi, Bluetooth, Night Light**: click the round button to switch on or off (it lights up when on). Click the name next to it for more: Wi-Fi and Bluetooth open the network and device lists in Settings, Night Light steps through Off, Evening and Always.
+- **Do Not Disturb**: banners stay quiet, nothing is lost, everything waits in the Notification Center. A crossed bell on the bar shows it is on.
+- **Laptop Screen** switches the built-in display off and on (for an external monitor). **Settings** opens the Settings window.
+- **Display** and **Sound**: drag the slider, or scroll on it. Click the speaker inside the Sound slider to mute. The round button next to it picks the sound output.
+- **Battery** (laptops): shows the charge and the limit it stops charging at. Drag to change the limit.
+- **Now Playing** appears when something plays: previous, play or pause, next.
+
+Esc, a click outside, or the icon again closes it.
+
+**Notification Center**: click the date and time on the bar, or press `Super + A`. Your notifications sit on the desktop, grouped by app, with **Clear All** on top. A dot on the control-centre icon means unread notifications.

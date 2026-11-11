@@ -20,6 +20,14 @@ for t in wifi bt dnd night mute; do
   ck "panel $t: off then on changes the real state" '[[ $(bash $O panel $t false; bash $O panel $t) == false && $(bash $O panel $t true; bash $O panel $t) == true ]]'
 done
 ck "panel night light writes the nightlight setting" '[[ $(bash $O panel night true; bash $O get nightlight) == always && $(bash $O panel night false; bash $O get nightlight off) == off ]]'
+mkdir -p "$T/ps/BAT0"; echo 64 >"$T/ps/BAT0/capacity"; echo Discharging >"$T/ps/BAT0/status"
+st_() { ORACLE_PS=$T/ps bash $O panel state; }
+ck "panel state: one key=value per line with the real settings" '[[ $(bash $O panel wifi false; st_) == *wifi=off* && $(bash $O panel dnd true; st_) == *dnd=true* && $(st_) == *bat=64* && $(st_) == *batstate=Discharging* && $(st_) == *screen=on* ]]'
+ck "panel state: night light cycles off → evening → always → off" '[[ $(bash $O panel night false; bash $O panel night cycle; bash $O get nightlight) == evening && $(bash $O panel night cycle; bash $O get nightlight) == always && $(bash $O panel night cycle; bash $O get nightlight off) == off ]]'
+Q=$R/default/quickshell
+ck "Control Center files exist, namespace oracle-panel, IPC target panel" '[[ -f $Q/shell.qml && -f $Q/Tokens.qml && -f $Q/Slider.qml ]] && grep -q "oracle-panel" $Q/shell.qml && grep -q "target: \"panel\"" $Q/shell.qml'
+ck "bar: control-centre icon opens the Control Center, clock opens the Notification Center" 'grep -A14 "^\"custom/panel\"" $R/config/waybar/config.jsonc | grep -q "\"on-click\": \"oracle panel\"" && grep -A5 "^\"custom/date\"" $R/config/waybar/config.jsonc | grep -q "swaync-client -t -sw"'
+ck "Notification Center config: only the title (Clear All) and notifications widgets" '[[ $(python3 -c "import json,sys; print(\",\".join(json.load(open(sys.argv[1]))[\"widgets\"]))" "$R/config/swaync/config.json") == title,notifications ]]'
 C=$HOME/.config; mkdir -p "$C/swaync" "$C/waybar"
 cp "$F/swaync-v1.json" "$C/swaync/config.json"
 out=$(bash "$R/migrations/1794453300.sh" 2>&1)

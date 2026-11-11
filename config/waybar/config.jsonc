@@ -97,7 +97,7 @@
 	},
 	"return-type": "json",
 	"exec": "swaync-client -swb",
-	"on-click": "swaync-client -t -sw",
+	"on-click": "oracle panel",
 	"tooltip": false,
 	"escape": true
 },
