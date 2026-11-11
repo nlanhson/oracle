@@ -19,7 +19,7 @@ window.launcher * { font-family: "%font_ui%", sans-serif; }
 .launcher .head { color: @o_text; font-size: %size_small%px; font-weight: %weight_bold%; padding: %sp_3%px %sp_2%px %sp_1%px; margin: 0 0 %sp_1%px; border-bottom: %border%px solid @o_line; }
 .launcher .row { min-height: 40px; padding: 0 %sp_3%px; border-radius: %r_s%px; }
 .launcher .row.two { min-height: 48px; }
-.launcher .row.top { min-height: 56px; border-radius: %r_m%px; margin-top: %sp_1%px; }
+.launcher .row.top { min-height: 64px; border-radius: %r_m%px; margin-top: %sp_1%px; }
 .launcher .row .icon { margin-right: %sp_3%px; }
 .launcher .row .title { color: @o_bright; font-size: %size_body%px; font-weight: %weight_normal%; }
 .launcher .row.top .title { font-size: %size_title%px; }

@@ -287,7 +287,7 @@ def gui(power_first):
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); row.add_css_class("row"); row.add_css_class(v["kind"])
             if i == 0: row.add_css_class("top")
             if i == S["sel"]: row.add_css_class("sel")
-            im = icon_for(v); im.set_pixel_size(32 if i == 0 else 28); im.add_css_class("icon"); row.append(im)
+            im = icon_for(v); im.set_pixel_size(36 if i == 0 else 28); im.add_css_class("icon"); row.append(im)
             sub = v["sub"] if v["kind"] in ("file", "cmd", "sum") else ""
             t = Gtk.Label(label=v["title"], xalign=0); t.add_css_class("title"); t.set_ellipsize(3)
             s = Gtk.Label(label=sub, xalign=0); s.add_css_class("sub"); s.set_ellipsize(1 if v["kind"] == "file" else 3)
