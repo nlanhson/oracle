@@ -265,7 +265,7 @@ vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794453300.sh; pkill -x w
 rc, out = vm.sh(VMENV + '; grep -q "oracle panel wifi" ~/.config/swaync/config.json && echo CFG-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
 ok['panel: new config installed by the migration, swaync runs with it'] = all(x in out for x in ("CFG-NEW", "RUNNING"))
 rc, out = vm.sh(VMENV + '; oracle panel dnd true; oracle panel dnd; swaync-client -D; oracle panel dnd false; swaync-client -D')
-ok['panel: Do Not Disturb tile really switches swaync'] = out.split('[rc')[0].split().count('true') >= 2 and out.split('[rc')[0].split().count('false') >= 1
+ok['panel: Do Not Disturb tile really switches swaync'] = re.search(r'true\s*true\s*false', out) is not None
 rc, out = vm.sh(VMENV + '; oracle panel night true; sleep 1; pgrep -x wlsunset; oracle get nightlight; oracle panel night false; sleep 1; pgrep -x wlsunset || echo NO-WLSUNSET; oracle panel night')
 ok['panel: night light tile starts and stops wlsunset'] = re.search(r'^\d+$', out, re.M) and 'always' in out and 'NO-WLSUNSET' in out
 rc, out = vm.sh(VMENV + '; wpctl status | head -n 14; wpctl get-volume @DEFAULT_AUDIO_SINK@; oracle panel mute true; wpctl get-volume @DEFAULT_AUDIO_SINK@; oracle panel mute; oracle panel mute false; oracle panel mute')
@@ -282,12 +282,12 @@ vm.mon('screendump /vm/panel-open-dunes.png -f png')
 vm.sh(VMENV + '; swaync-client -cp -sw; sleep 1; swaync-client -C; notify-send -a Messages "Anh Minh" "Tối nay đi ăn phở không? Mình đặt bàn lúc 7 giờ nhé."; notify-send -a Messages "Anh Minh" "Địa chỉ: 12 Lý Tự Trọng"; notify-send -a Immich "Backup finished" "4,243 photos synced."; notify-send -u critical -a Updates "Disk almost full" "Only 2 GB left on /."; sleep 2', 30, show=0)
 vm.mon('screendump /vm/panel-banner.png -f png')
 rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window; sleep 7; swaync-client -op -sw; sleep 2')
-ok['panel: banners appear under the bar, 4 unread counted'] = out.split()[0] == '4' if out.split() else False
+ok['panel: banners appear under the bar, 4 unread counted'] = ''.join(out.split()).startswith('41')
 vm.mon('screendump /vm/panel-notifs.png -f png')
 vm.sh(VMENV + '; swaync-client -cp -sw; swaync-client -C; sleep 1; oracle panel dnd true; notify-send -a Messages "Silent" "DND on: no banner"; sleep 2', 30, show=0)
 vm.mon('screendump /vm/panel-dnd.png -f png')  # bar shows the DND bell + dot, no banner
 rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window')
-ok['panel: Do Not Disturb keeps the notification in the list but shows no new banner'] = out.split()[:2] == ['1', '0']
+ok['panel: Do Not Disturb keeps the notification in the list but shows no new banner'] = ''.join(out.split()).startswith('10')
 vm.sh(VMENV + '; swaync-client -op -sw; sleep 2', 30, show=0)
 vm.mon('screendump /vm/panel-dnd-open.png -f png')
 vm.sh(VMENV + '; oracle panel dnd false; swaync-client -C; swaync-client -cp -sw; sleep 1', 30, show=0)
