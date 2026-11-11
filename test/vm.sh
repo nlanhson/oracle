@@ -222,6 +222,13 @@ ok['desktop: waybar, notifications, idle, Vietnamese IME running, fonts installe
 rc, out = vm.sh('sleep 5; pgrep -x wlsunset; pgrep -a swaybg; oracle set nightlight; oracle set wallpaper')
 ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'swaybg -i' in out
 vm.mon('screendump /vm/gui.png -f png')
+rc, out = vm.sh('pacman -Q satty hyprshot wl-clipboard')
+ok['screenshot packages (satty editor)'] = rc == 0
+rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); export WAYLAND_DISPLAY=$(cd $XDG_RUNTIME_DIR; ls wayland-[0-9] | tail -1); rm -rf ~/Pictures/Screenshots; swaync-client -C; oracle shot screen; sleep 3; ls ~/Pictures/Screenshots; wl-paste -l; echo COUNT=$(swaync-client -c)')
+ok['oracle shot screen: PNG saved, image on the clipboard, notification up'] = re.search(r'Screenshot-.*\.png', out) and 'image/png' in out and re.search(r'COUNT=[1-9]', out)
+vm.mon('screendump /vm/shot-notification.png -f png')
+rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.GetCapabilities; grep -c "oracle shot" ~/.local/share/oracle/default/hypr/modules/binds.lua; oracle shot bogus; echo rc=$?')
+ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^3$', out, re.M) and 'rc=1' in out
 step('one look: every surface on a white wallpaper')
 import base64, struct, zlib
 def png(w, h):  # plain white picture, made here (the VM has no image tools)

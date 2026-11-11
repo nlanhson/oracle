@@ -105,3 +105,4 @@ Open choices are made inside their slice and shown to you before building: the l
 | 0 Spec | Done 2026-11-11 |
 | 1 Motion | Built on `feel/motion`, waiting for the feel check on the G14 |
 | 2 One look | Built on `feel/look`, waiting for the feel check |
+| 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |

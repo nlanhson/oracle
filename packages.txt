@@ -24,6 +24,7 @@ hyprpolkitagent
 hypridle
 hyprlock
 hyprshot
+satty # screenshot editor (arrows, text, blur): the Edit button on the screenshot thumbnail
 waybar
 fuzzel
 swaync

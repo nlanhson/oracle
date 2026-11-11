@@ -48,7 +48,9 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + 1`–`5` | Go to workspace |
 | `Super + scroll` | Previous / next workspace |
 | `Super + drag` | Move window (left button) / resize (right button) |
-| `Print` | Screenshot of an area (saved in ~/Pictures/Screenshots) |
+| `Print` | Screenshot of an area: saved in ~/Pictures/Screenshots and copied, so you can paste it right away. A small thumbnail offers Copy and Edit; click it to open the picture. Esc cancels |
+| `Shift + Print` | Screenshot of the whole screen |
+| `Super + Print` | Screenshot of the active window |
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 | 3 fingers left / right | Previous / next workspace (follows your fingers) |

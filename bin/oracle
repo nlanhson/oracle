@@ -72,6 +72,18 @@ case ${1:-help} in
       tmux list-windows -t oracle -F '#I' 2>/dev/null | grep -qx "$i" && continue
       if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
     done 2>/dev/null || true ;;
+  shot) # shot [region|screen|window]: save to ~/Pictures/Screenshots + clipboard, then a thumbnail with Copy / Edit
+    hypr; D=$HOME/Pictures/Screenshots; mkdir -p "$D"; F=$D/Screenshot-$(date +%F_%H-%M-%S).png
+    case ${2:-region} in region) M=(-m region) ;; screen) M=(-m active -m output) ;; window) M=(-m active -m window) ;; *) die "usage: oracle shot [region|screen|window]" ;; esac
+    hyprshot "${M[@]}" -s -o "$D" -f "${F##*/}" >/dev/null 2>&1 || true
+    [[ -s $F ]] || exit 0 # Esc = nothing saved, nothing shown
+    A=(-A default=Open -A copy=Copy); command -v satty >/dev/null && A+=(-A edit=Edit)
+    ( r=$(notify-send -a Screenshot -u low -t 6000 -w "${A[@]}" -h "string:image-path:$F" "Screenshot saved" "${F##*/}" 2>/dev/null) || true
+      case $r in
+        copy) wl-copy --type image/png <"$F" ;;
+        edit) satty --filename "$F" --output-filename "${F%.png}-edited.png" --copy-command wl-copy --early-exit ;;
+        default) setsid -f xdg-open "$F" >/dev/null 2>&1 ;;
+      esac ) >/dev/null 2>&1 </dev/null & disown ;;
   home) exec "$DIR/bin/oracle-home" ;;
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
