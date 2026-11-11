@@ -1,8 +1,26 @@
 # Getting started
 
-## Your first login
+## Starting up
 
-Oracle starts on a plain login prompt. Type your username and password.
+Press the power button. Oracle starts quietly: no menu, no scrolling text. The disk unlocks by itself, and the
+home server comes back even if nobody is there (after a power cut, for example).
+
+You land on the Oracle login: the ORACLE mark, your name under it, and a blinking cursor. Type your password
+and press Enter. There is no automatic login, so your files stay locked until you type it.
+
+- **Wrong password?** Oracle says "Login incorrect" and asks for your username, then the password again.
+  Wait a minute and the Oracle login comes back by itself.
+- **A red line at the bottom** means something did not start. Log in and type `oracle doctor`.
+- **Asked for a disk password before the login?** The disk could not unlock by itself (for example after a
+  firmware update). Type your password, or the recovery key you wrote down at install.
+- **The login screen looks broken?** Press `Ctrl + Alt + F2` for a plain login prompt. Type your username and
+  password there, then `oracle doctor`. `Ctrl + Alt + F1` goes back.
+
+**Boot menu:** tap `M` again and again right after pressing the power button, until the menu shows. It lists
+the normal start and, under **Snapshots**, older versions of the system (see [Updating](updating.md)). Use the
+arrow keys and Enter.
+
+## After you log in
 
 You land in **Shell mode**:
 

@@ -264,16 +264,26 @@ else
   say "  skip: / is not btrfs, or dry-run"
 fi
 
-say "boot menu: Limine, with snapshots to start an older system"
+say "boot menu: Limine, with snapshots to start an older system. Hidden: tap M at power-on to open it. Silent boot"
 if ((!DRY)) && command -v limine-entry-tool >/dev/null && sudo test -f /etc/default/limine; then
   run sudo systemctl enable "${N[@]}" limine-snapper-sync.service
+  Q=/etc/limine-entry-tool.d/oracle-quiet.conf # no boot text (failures and the disk password prompt still show); new kernels + snapshots keep it
+  QL='KERNEL_CMDLINE[default]+="quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0"'
+  UP=0; [[ $(cat "$Q" 2>/dev/null) == "$QL" ]] || { echo "$QL" | sudo install -Dm644 /dev/stdin "$Q"; UP=1; }
   if sudo test -d /boot/EFI/arch-limine; then # archinstall's own Limine copy → replaced by limine-entry-tool's (/boot/limine.conf)
     sudo limine-install || sudo limine-install --skip-uefi --fallback || true
     sudo limine-update && sudo test -s /boot/limine.conf || die "Limine setup failed"
     sudo rm -rf /boot/EFI/arch-limine /etc/pacman.d/hooks/99-limine.hook /boot/vmlinuz-linux /boot/initramfs-linux.img /boot/initramfs-linux-fallback.img
     for b in $(sudo efibootmgr | sed -n 's/^Boot\([0-9A-F]\{4\}\)\* Arch Linux Limine Bootloader.*/\1/p'); do sudo efibootmgr -q -b "$b" -B; done
-  fi
-  sudo grep -q '^editor_enabled' /boot/limine.conf || sudo sed -i '1i editor_enabled: no' /boot/limine.conf # no editing the boot line: TPM unlocks the disk
+  elif ((UP)); then sudo limine-update || say "  limine-update failed: boot text stays until the next kernel update"; fi
+  # global options on top of /boot/limine.conf (limine-entry-tool keeps them). editor off: TPM unlocks the disk, so no editing the boot line.
+  # quiet + timeout 1: boots at once with nothing on screen; a key pressed in that second opens the menu (Limine CONFIG.md: quiet)
+  for o in 'editor_enabled: no' 'timeout: 1' 'quiet: yes' 'firmware_logo: yes' 'interface_branding: Oracle' 'interface_branding_colour: c8c8c8' 'interface_help_colour: 8a8a8a' \
+    'term_palette: 000000;a05a5a;8a8a8a;aaaaaa;8a8a8a;aaaaaa;8a8a8a;aaaaaa' 'term_palette_bright: 555555;c07070;c8c8c8;e0e0e0;c8c8c8;e0e0e0;c8c8c8;ffffff'; do
+    k=${o%%:*}
+    if sudo grep -q "^$k:" /boot/limine.conf; then sudo grep -qx "$o" /boot/limine.conf || sudo sed -i "s/^$k:.*/$o/" /boot/limine.conf
+    else sudo sed -i "1i $o" /boot/limine.conf; fi
+  done
 else
   say "  skip: not installed with Limine, or dry-run"
 fi
@@ -329,6 +339,19 @@ if ((!DRY)) && [[ ! -f /etc/systemd/system/oracle-lid.service ]]; then
 fi
 run sudo systemctl enable "${N[@]}" oracle-lid.service
 
+say "login: Oracle screen on tty1 (your name shown, password asked; no autologin). tty2 (Ctrl+Alt+F2) = plain login"
+if ((!DRY)); then
+  cmp -s "$SRC/system/oracle-login" /usr/local/bin/oracle-login || sudo install -Dm755 "$SRC/system/oracle-login" /usr/local/bin/oracle-login
+  G=/etc/systemd/system/getty@tty1.service.d/oracle-login.conf
+  GL=$(printf '[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --skip-login --login-program /usr/local/bin/oracle-login --login-options %s --noreset --noclear - ${TERM}' "$USER")
+  if [[ $(cat "$G" 2>/dev/null) != "$GL" ]]; then
+    echo "$GL" | sudo install -Dm644 /dev/stdin "$G"
+    [[ ${#N[@]} == 0 ]] || sudo systemctl daemon-reload # takes effect at the next login screen; never restart tty1 (your session may be on it)
+  fi
+  C=/etc/issue.d/oracle-cursor.issue # silent boot hides the console cursor; plain logins show it again
+  [[ -f $C ]] || printf '\e[?25h' | sudo install -Dm644 /dev/stdin "$C"
+fi
+
 say "Setting up automatic disk unlock (TPM): no password at boot"
 L=/boot/loader/loader.conf
 if ((!DRY)) && sudo test -f "$L" && ! sudo grep -q '^editor' "$L"; then run sudo sh -c "echo 'editor no' >> $L"; fi
@@ -360,6 +383,6 @@ else
   fi
 fi
 
-say "done. Reboot, log in on tty1 → Shell mode (g = desktop). Later: oracle update"
+say "done. Reboot, type your password on the Oracle screen → Shell mode (g = desktop). Later: oracle update"
 ((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."
 exit 0

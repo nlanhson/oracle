@@ -43,7 +43,7 @@ cp /repo/install.sh /repo/archinstall.json /srv/
 python -m http.server -d /srv 8000 >/dev/null 2>&1 &
 
 MODE=$MODE ISO=$ISO python -u - <<'PY'
-import glob, os, re, select, socket, subprocess, sys, time
+import glob, os, re, select, socket, struct, subprocess, sys, time, zlib
 PW = 'oracle-test-pw'
 LUKS = r'(?i)passphrase for [^\r\n]*: '
 MODE = os.environ['MODE']
@@ -61,10 +61,10 @@ class VM:
             '-nic', 'user,model=virtio-net-pci', '-device', 'virtio-vga', '-display', 'none',
             '-monitor', 'unix:/vm/mon.sock,server=on,wait=off', '-serial', 'stdio', *extra],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        s.buf = b''
+        s.buf = b''; s.all = b''; s.tick = None; s.t0 = time.time()
 
-    def expect(s, pats, timeout, answers=()):
-        """wait for one of pats (regex); answer prompts in answers [(regex, text)] meanwhile"""
+    def expect(s, pats, timeout, answers=(), fail=True):
+        """wait for one of pats (regex); answer prompts in answers [(regex, text)] meanwhile. fail=False: -1 on timeout"""
         end = time.time() + timeout
         while True:
             for i, p in enumerate(pats):
@@ -76,13 +76,15 @@ class VM:
                     s.buf = s.buf[m.end():]
                     s.send(a + '\n')
             if time.time() > end:
+                if not fail: return -1, None
                 sys.exit(f'!! timeout waiting for {pats}\n--- serial tail ---\n{s.buf[-3000:].decode(errors="replace")}')
-            if select.select([s.p.stdout], [], [], 1)[0]:
+            if s.tick: s.tick()
+            if select.select([s.p.stdout], [], [], 0.1 if s.tick else 1)[0]:
                 d = os.read(s.p.stdout.fileno(), 65536)
                 if not d:
                     sys.exit(f'!! qemu exited ({s.p.wait()}) waiting for {pats}\n--- serial tail ---\n{s.buf[-3000:].decode(errors="replace")}')
                 log.write(d); log.flush()
-                s.buf = s.buf[-400000:] + d
+                s.buf = s.buf[-400000:] + d; s.all += d
 
     def send(s, text):  # Enter = CR, like a real terminal
         time.sleep(0.5); s.p.stdin.write(text.replace('\n', '\r').encode()); s.p.stdin.flush()
@@ -99,9 +101,45 @@ class VM:
     def prev(s, m):
         return m.string[:m.start()].decode(errors='replace').split('__RC=$?__', 1)[-1]
 
-    def mon(s, cmd):
-        c = socket.socket(socket.AF_UNIX); c.connect('/vm/mon.sock'); time.sleep(0.3); c.recv(4096)
-        c.sendall(cmd.encode() + b'\n'); time.sleep(0.3); c.close()
+    def mon(s, cmd):  # returns after the command finished (next prompt)
+        c = socket.socket(socket.AF_UNIX); c.settimeout(20); c.connect('/vm/mon.sock'); b = b''
+        while not b.endswith(b'(qemu) '): b += c.recv(4096)
+        c.sendall(cmd.encode() + b'\n'); b = b''
+        while not b.endswith(b'(qemu) '):
+            d = c.recv(4096); b += d
+            if not d: break  # quit: qemu closed the monitor
+        c.close()
+
+    def shot(s, name):
+        """screendump → /vm/<name>.png; returns (lit pixels in the text band, its fingerprint, lit share of the screen).
+        Text band = top 12% + left 6%: kernel/systemd text, prompts and the Limine menu header land there; a centred logo
+        or the Oracle login does not"""
+        s.mon(f'screendump /vm/{name}.ppm')
+        d = open(f'/vm/{name}.ppm', 'rb').read(); os.remove(f'/vm/{name}.ppm')
+        m = re.match(rb'P6\s+(\d+)\s+(\d+)\s+255\s', d); w, h, px = int(m[1]), int(m[2]), d[m.end():]
+        ch = lambda t, b: struct.pack('>I', len(b)) + t + b + struct.pack('>I', zlib.crc32(t + b))
+        raw = b''.join(b'\0' + px[y * w * 3:(y + 1) * w * 3] for y in range(h))
+        open(f'/vm/{name}.png', 'wb').write(b'\x89PNG\r\n\x1a\n' + ch(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0))
+                                          + ch(b'IDAT', zlib.compress(raw, 6)) + ch(b'IEND', b''))
+        lit = px.translate(LIT); edge = w * 3 * 6 // 100; top = h * 12 // 100
+        band = lit[:top * w * 3] + b''.join(lit[y * w * 3:y * w * 3 + edge] for y in range(top, h))
+        return band.count(1), zlib.crc32(band), round(lit.count(1) / len(lit), 4)
+
+    def film(s, name, keys=None):
+        """from now on: <name>-N.png about once a second; keys = monitor key sent every 0.15 s for the first 10 s"""
+        s.frames = []; last = [0.0, 0.0]; s.fw = None; s.fw_seen = False  # fw = text band of the firmware screen (VM firmware prints, the G14 does not)
+        def tick():
+            t = time.time() - s.t0
+            if keys and t < 10 and t - last[1] >= 0.15: s.mon('sendkey ' + keys); last[1] = t
+            if t - last[0] >= 1:
+                last[0] = t; n = len(s.frames) + 1; os_ = b'BdsDxe: starting' in s.all
+                f = (n, round(t, 1), os_, *s.shot(f'{name}-{n}'))
+                if not os_ or not s.fw_seen: s.fw = f[4]; s.fw_seen = os_
+                s.frames.append(f)
+        s.tick = tick
+
+    def clean(s, f):  # frame shows nothing of ours: black, firmware logo, or firmware text left from before Limine
+        return f[3] == 0 or f[4] == s.fw
 
     def keys(s, text):
         names = {'-': 'minus', '\n': 'ret', ' ': 'spc', '.': 'dot', '/': 'slash'}
@@ -114,6 +152,8 @@ class VM:
         if s.expect([r'\$ $', '❯'], 60)[0]: s.send('exec bash\n'); s.expect([r'\$ $'], 60)  # zsh + starship → bash for the checks
         s.sh('set -o pipefail', show=0)
 
+MENU_KEY = 'm'  # Space boots the selected entry in Limine's menu; letters it does not use only open it
+LIT = bytes(int(i > 60) for i in range(256))
 def clean(t): return re.sub(r'\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\r', '', t).strip()
 def step(t): print(f'\n== {t}', flush=True)
 ok = {}
@@ -195,15 +235,20 @@ rc, out = vm.sh('sudo snapper -c root list | tail -n 2; sudo btrfs subvolume sho
 ok['snapshots set up'] = rc == 0 and 'SNAPDIR' in out
 rc, out = vm.sh('sudo pacman -S --noconfirm cowsay >/dev/null; command -v cowsay; printf "1\\n" | oracle rollback; command -v cowsay || echo GONE', 600, sudo)
 ok['oracle rollback takes back an update'] = 'GONE' in out and 'rolled back' in out
-rc, out = vm.sh('sleep 10; sudo grep -E "^ */|editor_enabled|subvol" /boot/limine.conf | head -n 30; efibootmgr | grep -i limine; bootctl is-installed 2>&1 | tail -n 1', 120, sudo)
+rc, out = vm.sh('sleep 10; sudo limine-update >/dev/null 2>&1; sudo grep -E "^ */|^[a-z_]+:|subvol" /boot/limine.conf | head -n 30; echo QUIET=$(sudo grep -c "cmdline:.*quiet loglevel=3" /boot/limine.conf);'
+                ' efibootmgr | grep -i limine; bootctl is-installed 2>&1 | tail -n 1', 120, sudo)
 ok['Limine boot menu: snapshots listed, editor off'] = 'editor_enabled: no' in out and 'Snapshots' in out and '.snapshots/' in out
+ok['silent boot kept after snapshots + limine-update: menu hidden (quiet, timeout 1), quiet kernel line'] = (
+    re.search(r'^quiet: yes$', out, re.M) and re.search(r'^timeout: 1$', out, re.M) and not re.search(r'^QUIET=0$', out, re.M))
 rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale; Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 2;'
                 ' oracle set keyboard; oracle set scale; grep -c oracle/ghostty ~/.config/ghostty/config')
 ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
 vm.sh('oracle set nightlight always; oracle set wallpaper $(ls /usr/share/hypr/*.png | head -1)')
 step('tty1 login via monitor sendkey (fresh state: welcome guide first)')
 vm.sh('rm -f ~/.local/state/oracle/done/welcome; ls ~/.local/state/oracle/migrations | grep -c .')
-vm.keys('son\n'); time.sleep(2); vm.keys(PW + '\n'); time.sleep(25)
+rc, _ = vm.sh('ps -t tty1 -o comm= | grep -x agetty')  # old prompt: agetty asks the name; Oracle login: login already waits for son's password
+if rc == 0: vm.keys('son\n'); time.sleep(2)
+vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -f oracle-welcome >/dev/null && echo WELCOME-RUNNING; tmux capture-pane -p -t oracle:1 | grep "welcome .* 1 of"; ls ~/.local/state/oracle/done')
 ok['fresh install: first Shell-mode start shows the welcome guide'] = rc == 0 and 'ghostty' in out and 'WELCOME-RUNNING' in out and re.search(r'welcome . 1 of', out)
 vm.sh('tmux send-keys -t oracle:1 Escape; sleep 4')
@@ -339,7 +384,62 @@ vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's o
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)
+
+def frames(vm):
+    for f in vm.frames: print(f'  {f[0]:>3} t={f[1]:>5}s {"loader/os" if f[2] else "firmware "} text-band={f[3]:<6} lit={f[5]:<7} {"" if vm.clean(f) else "TEXT"}')
+    return [f for f in vm.frames if f[2]]
+step('boot: power on, no key pressed (unattended), screenshot ~1/s → boot-N.png')
 vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm = VM([]); vm.film('boot')
+i, _ = vm.expect([LUKS, r'oracle login:'], 300)
+t_login = round(time.time() - vm.t0, 1)
+vm.expect([r'(?!)'], 5, fail=False); vm.tick = None
+own = frames(vm); band, _, lit = vm.shot('boot-login')
+print(f'serial login prompt after {t_login}s from power-on; boot-login: text-band={band} lit={lit}')
+ok['unattended boot: no password, no boot menu, no text on screen'] = i == 1 and own and all(vm.clean(f) for f in own[1:])
+ok['styled login on tty1 (centred, nothing in the text band)'] = band == 0 and lit > 0.002
+FW = vm.fw  # firmware screen as Limine finds it (same every boot)
+vm.login(seen=True); vm.sh('sudo -v', 60, sudo, show=0)
+vm.sh('systemctl is-system-running --wait; systemd-analyze; systemd-analyze blame | head -n 10; cat /proc/cmdline', 300)
+rc, out = vm.sh('for i in $(seq 60); do docker ps --format "{{.Names}}" | grep -q dockge && break; sleep 5; done; docker ps --format "{{.Names}}";'
+                ' echo FAILED=$(systemctl --failed --no-legend | wc -l); systemctl is-active getty@tty1; pgrep -a agetty; sudo stty -F /dev/tty1 -a | grep -oE "(-)?(cs8|istrip|iutf8)";'
+                ' sudo head -n 8 /boot/limine.conf; sudo grep -c "cmdline:.*quiet" /boot/limine.conf;'
+                ' oracle doctor | grep -iE "boot|login|services"; for u in $(systemctl --failed --plain --no-legend | cut -d" " -f1); do journalctl -b -u "$u" -o short-monotonic | tail -n 6; done', 400)
+ok['after a plain power-on: server apps up, nothing failed, tty1 login running'] = 'dockge' in out and 'FAILED=0' in out and re.search(r'^active$', out, re.M)
+step('Oracle login on tty1: a wrong password, then the right one → boot-login-wrong.png')
+screen = lambda: vm.sh('sudo cat /dev/vcs1 | tr -s " " | fold -w 160', show=0)[1]
+print('tty1 shows:', screen()[-160:])
+vm.keys('wrong-pw\n'); time.sleep(8); vm.shot('boot-login-wrong'); t = screen(); print('after a wrong password:', t[-200:])
+if re.search(r'login: *$', t): vm.keys('son\n'); time.sleep(2)
+vm.keys(PW + '\n'); time.sleep(20)
+rc, out = vm.sh('pgrep -a cage; loginctl list-sessions --no-legend')
+ok['Oracle login: wrong password refused, right password starts Shell mode'] = 'incorrect' in t and 'cage' in out and 'tty1' in out
+step(f'boot menu: {MENU_KEY} tapped from power-on → boot-menu-top.png, then Snapshots opened → boot-menu.png')
+vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm = VM([]); vm.film('menu', keys=MENU_KEY)
+i, _ = vm.expect([r'oracle login:'], 40, fail=False); vm.tick = None
+frames(vm)
+f = (0, 0, True, *vm.shot('boot-menu-top'))
+for k in ('down', 'ret'): vm.mon('sendkey ' + k); time.sleep(0.5)
+time.sleep(1); vm.shot('boot-menu')
+ok['key at power-on opens the boot menu (and it waits)'] = i == -1 and f[3] > 0 and f[4] != FW
+vm.mon('quit'); vm.p.wait(60)
+step('TPM cannot unlock (blank TPM) → password prompt → boot-tpm-fail.png, typed on the screen keyboard')
+os.system('while pgrep -x swtpm >/dev/null; do sleep 0.5; done; rm -rf /vm/tpm && mkdir /vm/tpm')
+vm = VM([]); vm.film('tpm')
+i = -1
+for _ in range(60):  # until the screen shows something of ours for 2 frames (the prompt), max ~2 min
+    i, _ = vm.expect([LUKS], 2, fail=False)
+    if i == 0 or len(vm.frames) > 3 and not any(vm.clean(f) for f in vm.frames[-2:]): break
+vm.expect([r'(?!)'], 3, fail=False)
+band, _, lit = vm.shot('boot-tpm-fail')
+print(f'prompt on serial too: {i == 0}; boot-tpm-fail: text-band={band} lit={lit}')
+vm.keys(PW + '\n')
+j, _ = vm.expect([r'oracle login:'], 240, fail=False); vm.tick = None
+frames(vm); band2, _, lit2 = vm.shot('boot-tpm-after')
+print(f'after typing the password: serial login {j == 0}; screen text-band={band2} lit={lit2}')
+ok['TPM fails: password prompt readable on screen, keyboard unlocks, boots to login'] = band > 0 and band != FW and j == 0
+vm.mon('system_powerdown'); vm.p.wait(120)
 step('result')
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
