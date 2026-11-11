@@ -290,7 +290,7 @@ vm.sh('systemctl is-system-running --wait; systemd-analyze; systemd-analyze blam
 rc, out = vm.sh('for i in $(seq 60); do docker ps --format "{{.Names}}" | grep -q dockge && break; sleep 5; done; docker ps --format "{{.Names}}";'
                 ' echo FAILED=$(systemctl --failed --no-legend | wc -l); systemctl is-active getty@tty1; pgrep -a agetty; sudo stty -F /dev/tty1 -a | grep -oE "(-)?(cs8|istrip|iutf8)";'
                 ' sudo head -n 8 /boot/limine.conf; sudo grep -c "cmdline:.*quiet" /boot/limine.conf;'
-                ' oracle doctor | grep -iE "boot|login|services"', 400)
+                ' oracle doctor | grep -iE "boot|login|services"; for u in $(systemctl --failed --plain --no-legend | cut -d" " -f1); do journalctl -b -u "$u" -o short-monotonic | tail -n 6; done', 400)
 ok['after a plain power-on: server apps up, nothing failed, tty1 login running'] = 'dockge' in out and 'FAILED=0' in out and re.search(r'^active$', out, re.M)
 step(f'boot menu: {MENU_KEY} tapped from power-on → boot-menu-top.png, then Snapshots opened → boot-menu.png')
 vm.send('sudo poweroff\n'); vm.p.wait(120)
