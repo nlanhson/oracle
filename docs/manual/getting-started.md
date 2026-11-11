@@ -92,7 +92,7 @@ Oracle looks for problems every 5 minutes and tells you once, in a short notific
 | Immich is not working | A home server app stopped | `oracle doctor` |
 | Updates are ready | New programs or a newer Oracle are waiting | `oracle update`, when it suits you |
 
-The same alert never comes twice in one day. In Shell mode there are no notifications: the same lines show at the top of the dashboard, with a red `!`. To turn the alerts and the update notice off: `systemctl --user mask --now oracle-watch.timer` (`unmask` turns them back on).
+The same alert never comes twice in one day. In Shell mode there are no notifications: the same lines show on the dashboard, just above the bottom links, with a red `!`. To turn the alerts and the update notice off: `systemctl --user mask --now oracle-watch.timer` (`unmask` turns them back on).
 
 ## First things to do
 

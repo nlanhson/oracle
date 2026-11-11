@@ -70,7 +70,7 @@ n=$(grep -c . "$N"); ORACLE_DISK_ALERT=0 bash "$W"; sleep 1
 ck "second run: no repeats (once a day), dashboard lines kept" '[[ $(grep -c . "$N") == "$n" && $(grep -c . "$S/alerts") == 4 ]]'
 ck "wording: sentence case, no exclamation marks" '! grep -q "!" "$N" "$S/alerts"'
 out=$(H=$R/default/home; RW=80; source "$H/theme.sh"; source "$H/alerts.sh"; w_alerts)
-ck "dashboard: alert lines at the top" '[[ $out == *"Disk is "*"% full. Free some space: oracle files"* ]]'
+ck "dashboard: alert lines above the footer" '[[ $out == *"Disk is "*"% full. Free some space: oracle files"* ]]'
 fake systemctl '[[ $* == *--user*--failed* ]] && echo "swaync.service loaded failed failed Notifications"; exit 0'; fake pgrep '[[ $* == *swaync* ]]'
 fake nmcli 'echo full'; fake coredumpctl 'exit 0'; bash "$W"; fake pgrep 'exit 1'
 ck "all fine again (a failed unit whose program runs anyway is not an alert): dashboard lines gone" '[[ ! -s $S/alerts ]]'
