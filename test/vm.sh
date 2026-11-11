@@ -346,7 +346,7 @@ vm.sh(VMENV + '; oracle panel; oracle set accent; oracle look; sleep 1', 30, sho
 rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"')
 ok['control center: Esc closes it'] = re.search(r'^0\s*$', out, re.M) is not None
 vm.sh(VMENV + '; oracle panel close; sleep 1', 30, show=0)
-rc, out = vm.sh(VMENV + '; P=$(pgrep -x quickshell | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x quickshell >/dev/null && echo ALIVE')
+rc, out = vm.sh(VMENV + '; P=$(pgrep -x quickshell | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x quickshell >/dev/null && echo ALIVE', 90)
 print(out)
 ok['control center: quickshell survives 30 s idle (see CPU/RSS above)'] = 'ALIVE' in out
 rc, out = vm.sh(VMENV + '; swaync-client -t -sw; sleep 2; hyprctl layers | grep -c "namespace: swaync-control-center"; swaync-client -cp -sw')
