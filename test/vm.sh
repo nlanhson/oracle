@@ -281,8 +281,8 @@ step('control panel and notifications')
 rc, out = vm.sh('bash ~/.local/share/oracle/test/panel.sh', 120)
 ok['panel: config valid, helpers change state (fakes), migration swaps untouched copies'] = rc == 0 and 'panel ok' in out
 vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794453300.sh; pkill -x waybar; pkill -x swaync; for c in swaync waybar; do setsid -f $c &>/dev/null; done; sleep 6', 60, show=0)
-rc, out = vm.sh(VMENV + '; grep -q "oracle panel wifi" ~/.config/swaync/config.json && echo CFG-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
-ok['panel: new config installed by the migration, swaync runs with it'] = all(x in out for x in ("CFG-NEW", "RUNNING"))
+rc, out = vm.sh(VMENV + '; grep -q "\\"notifications\\"" ~/.config/swaync/config.json && ! grep -q slider ~/.config/swaync/config.json && echo CFG-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
+ok['panel: Notification Center config (cards only) installed by the migration, swaync runs with it'] = all(x in out for x in ("CFG-NEW", "RUNNING"))
 rc, out = vm.sh(VMENV + '; oracle panel dnd true; oracle panel dnd; swaync-client -D; oracle panel dnd false; swaync-client -D')
 ok['panel: Do Not Disturb tile really switches swaync'] = re.search(r'true\s*true\s*false', out) is not None
 rc, out = vm.sh(VMENV + '; oracle panel night true; sleep 1; pgrep -x wlsunset; oracle get nightlight; oracle panel night false; sleep 1; pgrep -x wlsunset || echo NO-WLSUNSET; oracle panel night')
@@ -295,14 +295,14 @@ else:
 rc, out = vm.sh('ls /sys/class/backlight | head -n 1; echo rc=$?; oracle panel charge; cat /etc/oracle/battery-limit')
 print('NOTE: brightness cannot be tested in the VM unless a backlight exists (above)')
 vm.sh(VMENV + '; swaync-client -t -sw; sleep 2', 30, show=0)
-vm.mon('screendump /vm/panel-open.png -f png')  # white wallpaper
+vm.mon('screendump /vm/nc-open-white.png -f png')  # white wallpaper
 vm.sh(VMENV + '; swaync-client -cp -sw; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 3; swaync-client -op -sw; sleep 2', 30, show=0)
-vm.mon('screendump /vm/panel-open-dunes.png -f png')
+vm.mon('screendump /vm/nc-open-dunes.png -f png')
 vm.sh(VMENV + '; swaync-client -cp -sw; sleep 1; swaync-client -C; notify-send -a Messages "Anh Minh" "Tối nay đi ăn phở không? Mình đặt bàn lúc 7 giờ nhé."; notify-send -a Messages "Anh Minh" "Địa chỉ: 12 Lý Tự Trọng"; notify-send -a Immich "Backup finished" "4,243 photos synced."; notify-send -u critical -a Updates "Disk almost full" "Only 2 GB left on /."; sleep 2', 30, show=0)
-vm.mon('screendump /vm/panel-banner.png -f png')
+vm.mon('screendump /vm/nc-banner.png -f png')
 rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window; sleep 7; swaync-client -op -sw; sleep 2')
 ok['panel: banners appear under the bar, 4 unread counted'] = ''.join(out.split()).startswith('41')
-vm.mon('screendump /vm/panel-notifs.png -f png')
+vm.mon('screendump /vm/nc-open.png -f png')  # 3 notifications, 2 apps
 vm.sh(VMENV + '; swaync-client -cp -sw; swaync-client -C; sleep 1; oracle panel dnd true; notify-send -a Messages "Silent" "DND on: no banner"; sleep 2', 30, show=0)
 vm.mon('screendump /vm/panel-dnd.png -f png')  # bar shows the DND bell + dot, no banner
 rc, out = vm.sh(VMENV + '; swaync-client -c; hyprctl layers | grep -c swaync-notification-window')
@@ -330,6 +330,29 @@ rc, out = vm.sh(VMENV + '; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel set
 ok['panel: Settings button opens a floating oracle.settings pop-up'] = 'oracle.settings' in out
 vm.mon('screendump /vm/panel-settings.png -f png')
 vm.sh('pkill -f oracle.settings; sleep 1', 30, show=0)
+step('Control Center (Quickshell)')
+vm.sh(VMENV + '; pgrep -x quickshell >/dev/null || setsid -f qs -p ~/.local/share/oracle/default/quickshell &>/dev/null; sleep 6; oracle panel dnd false; oracle panel night false', 40, show=0)
+rc, out = vm.sh(VMENV + '; pgrep -x quickshell | head -n 1; oracle panel; sleep 2; hyprctl layers | grep -c "namespace: oracle-panel"; oracle panel; sleep 1; hyprctl layers | grep -c "namespace: oracle-panel"; hyprctl configerrors')
+ok['control center: `oracle panel` opens a layer "oracle-panel", a second call closes it, no Hyprland config errors'] = re.search(r'^1\s*$', out, re.M) is not None and re.search(r'^0\s*$', out, re.M) is not None and 'error' not in out.lower()
+vm.sh(VMENV + '; pkill -x swaybg; setsid -f swaybg -c ffffff &>/dev/null; oracle panel; sleep 2', 30, show=0)
+vm.mon('screendump /vm/cc-open-white.png -f png')
+vm.sh(VMENV + '; oracle panel; oracle wall; sleep 2; oracle panel; sleep 2', 30, show=0)
+vm.mon('screendump /vm/cc-open.png -f png')  # dunes
+vm.sh(VMENV + '; oracle panel dnd true; oracle panel night true; sleep 3', 30, show=0)
+vm.mon('screendump /vm/cc-states.png -f png')  # DND and night light on (the panel polls while open)
+vm.sh(VMENV + '; oracle panel; oracle panel dnd false; oracle panel night false; oracle set accent cyan; oracle look; sleep 2; oracle panel; sleep 3', 40, show=0)
+vm.mon('screendump /vm/cc-cyan.png -f png')
+vm.sh(VMENV + '; oracle panel; oracle set accent; oracle look; sleep 1', 30, show=0)
+rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"')
+ok['control center: Esc closes it'] = re.search(r'^0\s*$', out, re.M) is not None
+vm.sh(VMENV + '; oracle panel close; sleep 1', 30, show=0)
+rc, out = vm.sh(VMENV + '; P=$(pgrep -x quickshell | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x quickshell >/dev/null && echo ALIVE')
+print(out)
+ok['control center: quickshell survives 30 s idle (see CPU/RSS above)'] = 'ALIVE' in out
+rc, out = vm.sh(VMENV + '; swaync-client -t -sw; sleep 2; hyprctl layers | grep -c "namespace: swaync-control-center"; swaync-client -cp -sw')
+ok['notification center: the date click command opens swaync'] = 'swaync-control-center' in out or re.search(r'^1\s*$', out, re.M) is not None
+rc, out = vm.sh(VMENV + '; notify-send -a Messages "Dot" "unread"; sleep 2; swaync-client -swb; hyprctl configerrors')
+ok['bar: unread dot state still reported by swaync (custom/panel)'] = 'notification' in out
 vm.sh('setsid -f nautilus &>/dev/null; sleep 10', 30, show=0)
 vm.mon('screendump /vm/look-gtk.png -f png')
 vm.sh(VMENV + '; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
