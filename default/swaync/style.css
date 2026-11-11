@@ -135,3 +135,6 @@ scale trough slider { min-width: 0; min-height: 0; margin: 0; border-radius: 99p
 
 .widget-dnd > switch:checked { background: @o_dim; }
 .widget-dnd > switch slider { background: @o_bright; border-radius: 99px; }
+
+.notification-row:focus, .notification-group:focus,
+.notification-group.low, .notification-group.normal, .notification-group.critical { background: transparent; box-shadow: none; outline: none; }
