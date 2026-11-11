@@ -24,7 +24,7 @@ oracle rollback
 
 Pick the update from the list, newest first. Oracle puts back the system files that update changed, then asks you to restart. Your own files (documents, photos, settings) are never touched. Changed your mind? Run `oracle rollback` again and pick the line that starts with "rollback". The settings screen has a **rollback** button too.
 
-**If Oracle doesn't start at all:** restart, and in the boot menu open **Snapshots**. Pick one from before the update and start it. Once logged in, type `oracle rollback` to keep that older system for good.
+**If Oracle doesn't start at all:** restart and tap `M` until the boot menu shows, then open **Snapshots**. Pick one from before the update and start it. Once logged in, type `oracle rollback` to keep that older system for good.
 
 Oracle keeps the last 20 snapshots and deletes older ones by itself.
 

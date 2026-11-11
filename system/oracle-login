@@ -1,0 +1,22 @@
+#!/bin/bash
+# tty1 login screen: the Oracle mark, your name, then login asks your password (no autologin). Run by agetty as root
+# (getty@tty1.service.d/oracle-login.conf). If drawing fails it still ends in the plain login. Way back: Ctrl+Alt+F2.
+U=${1:-}
+{
+  read -r H W < <(stty size) || true
+  ((H > 10 && W > 40)) || { H=25; W=80; }
+  M=('▄▀▀▄  █▀▀▄  ▄▀▀▄  ▄▀▀▀  █     █▀▀▀' '█  █  █▄▄▀  █▄▄█  █     █     █▀▀ ' '▀▄▄▀  █ ▀▄  █  █  ▀▄▄▄  █▄▄▄  █▄▄▄')
+  at() { printf '\e[%d;%dH' "$1" $(($2 > 0 ? $2 : 1)); }
+  T=$(((H - 8) * 2 / 5)); ((T > 0)) || T=1
+  printf '\e[0m\e[H\e[2J\e[3J\e[?25l'
+  for i in 0 1 2; do at $((T + i)) $(((W - 34) / 2 + 1)); printf '\e[1;37m%s' "${M[i]}"; done
+  F=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | head -3 | xargs)
+  if [[ -n $F ]]; then
+    m="! did not start: $F · after login: oracle doctor"
+    at "$H" $(((W - ${#m}) / 2 + 1)); printf '\e[0;31m%s' "$m"
+  fi
+  if [[ -n $U ]]; then at $((T + 5)) $(((W - ${#U}) / 2 + 1)); printf '\e[0;37m%s' "$U"; fi
+  at $((T + 7)) $(((W - 22) / 2 + 1)); printf '\e[0m\e[?25h'
+} 2>/dev/null
+[[ $U =~ ^[a-z_][a-z0-9_-]*$ ]] && exec /usr/bin/login -- "$U"
+exec /usr/bin/login

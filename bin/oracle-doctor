@@ -38,14 +38,23 @@ if lsblk -rno TYPE | grep -qx crypt; then
   ok "encryption" "disk is encrypted"
   dev=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}')
   if ((!ROOT)); then skip "unlock at boot" "needs your password"
-  elif S cryptsetup luksDump "$dev" | grep -q systemd-tpm2 && grep -q tpm2-device /etc/crypttab; then ok "unlock at boot" "TPM, no password"
+  elif S cryptsetup luksDump "$dev" | grep -q systemd-tpm2 && S grep -q tpm2-device /etc/crypttab; then ok "unlock at boot" "TPM, no password"
   else warn "unlock at boot" "TPM not set up (asks for the password): rerun bash $DIR/install.sh"; fi
   if ((ROOT)) && ! S cryptsetup luksDump "$dev" | grep -q systemd-recovery; then warn "recovery key" "none on the disk: sudo systemd-cryptenroll --recovery-key $dev"; fi
 else warn "encryption" "disk is not encrypted"; fi
 if ((!ROOT)); then skip "boot menu" "needs your password"
 elif S test -f /boot/limine.conf; then
-  if S grep -q '^editor_enabled: no' /boot/limine.conf; then ok "boot menu" "Limine, editing locked"; else warn "boot menu" "boot line can be edited: rerun bash $DIR/install.sh"; fi
+  if ! S grep -q '^editor_enabled: no' /boot/limine.conf; then warn "boot menu" "boot line can be edited: rerun bash $DIR/install.sh"
+  elif ! S grep -q '^quiet: yes' /boot/limine.conf; then warn "boot menu" "shows at every start: rerun bash $DIR/install.sh"
+  else ok "boot menu" "hidden (tap M at power-on), editing locked"; fi
 else skip "boot menu" "not Limine"; fi
+if grep -qw quiet /proc/cmdline; then ok "silent boot" "no text at start"
+elif ! grep -q '/\.snapshots/' /proc/cmdline; then warn "silent boot" "text at start: rerun bash $DIR/install.sh, then restart"; fi
+if [[ -f /etc/systemd/system/getty@tty1.service.d/oracle-login.conf ]]; then
+  if [[ ! -x /usr/local/bin/oracle-login ]]; then bad "login screen" "/usr/local/bin/oracle-login missing (Ctrl+Alt+F2 = plain login): rerun bash $DIR/install.sh"
+  elif on getty@tty1.service; then ok "login screen" "Oracle login on tty1"
+  else bad "login screen" "not running (Ctrl+Alt+F2 = plain login): sudo systemctl restart getty@tty1"; fi
+else warn "login screen" "plain text login: rerun bash $DIR/install.sh"; fi
 if ! has snapper; then warn "snapshots" "snapper missing (no rollback): rerun bash $DIR/install.sh"
 elif ((!ROOT)); then skip "snapshots" "needs your password"
 else

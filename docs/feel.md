@@ -101,3 +101,4 @@ Open choices are made inside their slice and shown to you before building: the l
 |---|---|
 | 0 Spec | Done 2026-11-11 |
 | 1 Motion | In progress |
+| 5 Boot to desktop | Built, waiting for feel check (branch `feel/boot`) |
