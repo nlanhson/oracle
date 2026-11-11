@@ -31,6 +31,9 @@ tooltip label { color: @o_text; }
 	border-radius: 99px;
 }
 
+#workspaces button,
+#workspaces button label { font-size: 0.4rem; min-height: 0; } /* the * rule's 13px would make the pills tall */
+
 #workspaces button {
 	background-color: @o_dim; /* Inactive */
 	color: transparent;
