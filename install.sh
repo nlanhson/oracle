@@ -333,7 +333,7 @@ say "battery: notices at 20% and 10%, clean shutdown at 4% (the server's data st
 if ((!DRY)) && ! cmp -s "$SRC/system/oracle-power" /usr/local/bin/oracle-power; then sudo install -Dm755 "$SRC/system/oracle-power" /usr/local/bin/oracle-power; sudo systemctl try-restart oracle-power.service 2>/dev/null || true; fi
 PU=$'[Unit]\nDescription=Oracle: battery notices, clean shutdown at 4%\n[Service]\nExecStart=/usr/local/bin/oracle-power\nRestart=on-failure\n[Install]\nWantedBy=multi-user.target'
 if ((!DRY)) && [[ $(cat /etc/systemd/system/oracle-power.service 2>/dev/null) != "$PU" ]]; then echo "$PU" | sudo tee /etc/systemd/system/oracle-power.service >/dev/null; [[ -z ${N[*]} ]] || sudo systemctl daemon-reload; fi
-run sudo systemctl enable "${N[@]}" oracle-power.service
+[[ $(systemctl is-enabled oracle-power.service 2>/dev/null) == masked ]] && say "  kept off (masked)" || run sudo systemctl enable "${N[@]}" oracle-power.service
 
 say "alerts in plain words (full disk, failed service, app crash, Wi-Fi sign-in, server app down) + a quiet weekly update check"
 WS=$'[Unit]\nDescription=Oracle: plain-word alerts and the weekly update check\n[Service]\nType=oneshot\nExecStart=%h/.local/share/oracle/bin/oracle-watch\nKillMode=process\nNice=10'

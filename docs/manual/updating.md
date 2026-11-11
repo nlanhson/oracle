@@ -14,6 +14,12 @@ It:
 4. Updates firmware (BIOS, SSD, touchpad) when the maker publishes one.
 5. Tells you if a restart is needed (for example after a new Linux kernel).
 
+## The update notice
+
+Once a week Oracle checks quietly whether updates are waiting. It never installs anything by itself. When something new turns up, you get one small notification, like "Updates are ready: 23 packages and a newer Oracle. Run oracle update when it suits you.", and the dashboard shows the count next to `[u]pdate`. It does not ask again for the same updates. Offline, it says nothing and tries later.
+
+To check right now without installing: `oracle update --check`.
+
 ## Roll back an update
 
 Before every update (and every program you install), Oracle saves a snapshot of the system. If something breaks after an update, type:
