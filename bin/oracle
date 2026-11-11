@@ -73,7 +73,7 @@ case ${1:-help} in
       if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
     done 2>/dev/null || true ;;
   shot) # shot [region|screen|window]: save to ~/Pictures/Screenshots + clipboard, then a thumbnail with Copy / Edit
-    hypr; D=$HOME/Pictures/Screenshots; mkdir -p "$D"; F=$D/Screenshot-$(date +%F_%H-%M-%S).png
+    hypr; D=$HOME/Pictures/Screenshots; mkdir -p "$D"; F="$D/Screenshot $(date +'%F at %-I.%M.%S %p').png"
     case ${2:-region} in region) M=(-m region) ;; screen) M=(-m active -m output) ;; window) M=(-m active -m window) ;; *) die "usage: oracle shot [region|screen|window]" ;; esac
     hyprshot "${M[@]}" -s -o "$D" -f "${F##*/}" >/dev/null 2>&1 || true
     [[ -s $F ]] || exit 0 # Esc = nothing saved, nothing shown
@@ -84,7 +84,10 @@ case ${1:-help} in
         edit) satty --filename "$F" --output-filename "${F%.png}-edited.png" --copy-command wl-copy --early-exit ;;
         default) setsid -f xdg-open "$F" >/dev/null 2>&1 ;;
       esac ) >/dev/null 2>&1 </dev/null & disown ;;
-  home) exec "$DIR/bin/oracle-home" ;;
+  home) W=${MODE%/*}/done/welcome # the first start after a fresh install shows the welcome guide once; if it fails the dashboard still comes up
+    [[ -f $W ]] || { mkdir -p "${W%/*}"; touch "$W"; "$ME/oracle-welcome" || true; }
+    exec "$DIR/bin/oracle-home" ;;
+  welcome) exec "$ME/oracle-welcome" ;;
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;

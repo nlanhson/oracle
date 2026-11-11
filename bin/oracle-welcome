@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# Oracle welcome: a calm first minute, one decision per screen, every step skippable, everything changeable later in oracle settings.
+# enter continue · ←→ change · ↑↓ move · s skip · esc back (first screen: skip all). Mouse: click, right click = back.
+# Runs by itself once (first Shell-mode start after a fresh install: oracle home), or by hand: oracle welcome.
+H=$(dirname "$(readlink -f "$0")")/../default/home
+# shellcheck disable=SC1091
+source "$H/theme.sh"
+# shellcheck disable=SC1091
+source "$H/pick.sh"
+# shellcheck disable=SC2034
+DONE=$HOME/.local/state/oracle/done/welcome BW=64 MSG='' I=0 F=0 BS=0 A0='' T0=''
+STEPS=(hello look wall keys 'done')
+# offline with a Wi-Fi card → a network step goes second
+if command -v nmcli >/dev/null && nmcli -t -f TYPE dev 2>/dev/null | grep -q '^wifi$' && [[ $(nmcli -t -g STATE general 2>/dev/null) != connected* ]]; then
+  STEPS=(hello wifi look wall keys 'done')
+fi
+printf '\e[?25l'; trap 'printf "\e[?25h\e[2J\e[H%s" "$NOMOUSE"; mkdir -p "${DONE%/*}"; touch "$DONE"' EXIT
+
+select_() { printf "%s[ %s%-24s%s v ]%s" "$D" "$W" "${1:0:24}" "$D" "$N"; }
+stepper() { printf "%s◂ %s%-24s%s ▸%s" "$D" "$W" "${1:0:24}" "$D" "$N"; }
+button() { printf "%s[ %s%s%s ]%s" "$D" "$W" "$1" "$D" "$N"; }
+cycle() { local c=$1 d=$2 i; shift 2; local a=("$@"); for ((i = 0; i < $#; i++)); do [[ ${a[i]} == "$c" ]] && break; done; ((i == $#)) && i=0; V=${a[$(((i + d + $#) % $#))]}; }
+text() { local l; for l; do LINES+=("  $W$l$N"); done; }
+row() { # row <index> <label> <control>
+  local m='  ' c=$W; ((F == $1)) && m="$C> " c=$C
+  ROWOF[${#LINES[@]}]=$1; LINES+=("$m$c$(printf '%-12s' "$2")$N$3")
+}
+
+# each screen: s_<name> fills LINES and sets NCTL (controls) · BTN (buttons, last = default) · HINT; c_<name> changes row F by ±1; a_<name> = enter on row F
+s_hello() {
+  local g=(" ███  ████   ███   ███  █     █████" "█   █ █   █ █   █ █   █ █     █    " "█   █ ████  █████ █     █     ████ "
+           "█   █ █  █  █   █ █   █ █     █    " " ███  █   █ █   █  ███  █████ █████") l
+  for l in "${g[@]}"; do LINES+=("    $W$l$N"); done; LINES+=('')
+  text "A fast, calm computer made of a terminal," "a dashboard and a desktop when you need one." '' \
+       "This takes about a minute. One choice per screen," "all of them can be changed later in settings."
+  NCTL=0 BTN=("skip all" continue) HINT="enter continue · esc skip all"
+}
+s_wifi() {
+  local s; s=$(nmcli -t -f active,ssid dev wifi 2>/dev/null | awk -F: '$1=="yes"{print $2; exit}')
+  text "You are offline. Connect to Wi-Fi to get updates" "and open web pages. You can do this later too." ''
+  row 0 network "$(select_ "${s:-not connected}")"
+  NCTL=1 BTN=(back skip continue) HINT="enter choose a network · s skip · esc back"
+}
+s_look() {
+  local t; t=$(oracle get textsize 12)
+  text "The accent colour marks what you are on." "Text size is the Shell mode font." ''
+  row 0 accent "$(stepper "$(oracle get accent white)")"; row 1 "text size" "$(stepper "$t")"; LINES+=('')
+  LINES+=("  ${D}preview   ${C}█▓▒░ ${W}The quick brown fox${N}")
+  NCTL=2 BTN=(back skip continue) HINT="←→ change · enter continue · s skip · esc back"
+}
+s_wall() {
+  local w; w=$(oracle get wallpaper); w=${w##*/}
+  text "Wallpaper for the desktop. Black is calm;" "or pick a picture from ~/Pictures." ''
+  row 0 wallpaper "$(select_ "${w:-black}")"
+  NCTL=1 BTN=(back skip continue) HINT="enter choose · s skip · esc back"
+}
+s_keys() {
+  local k
+  for k in "Alt + 1 to 4|switch workspace (1 is the dashboard)" "g|open the desktop (on the dashboard)" "Super + M|back to Shell mode" \
+           "Super + Space|launcher (desktop)" "Super + /|manual: every command" "s|settings (on the dashboard)" "f|files" "u|update"; do
+    LINES+=("  $(printf "${C}%-16s${W}%s${N}" "${k%%|*}" "${k#*|}")")
+  done
+  NCTL=0 BTN=(back continue) HINT="the keys worth knowing · enter continue · esc back"
+}
+s_done() {
+  text "You're set." '' "Change anything later, from the dashboard:" ''
+  LINES+=("  $(printf "${C}%-5s${W}%s${N}" s "settings: look, sound, network, keyboard…")" "  $(printf "${C}%-5s${W}%s${N}" m "manual: every command")" '')
+  text "Run oracle welcome to see this again."
+  NCTL=0 BTN=(back 'done') HINT="enter finish · esc back"
+}
+c_look() {
+  if ((F == 0)); then cycle "$(oracle get accent white)" "$1" white cyan amber green purple; oracle set accent "$V"; oracle look
+    # shellcheck disable=SC1091
+    source "$H/theme.sh"
+  else local t=$(($(oracle get textsize 12) + $1)); ((t < 8)) && t=8; ((t > 28)) && t=28; oracle set textsize "$t"; oracle look; fi
+}
+a_wifi() { wifi; }
+a_wall() { wallpaper; }
+
+draw() {
+  local s=${STEPS[I]} b='' k j=0
+  LINES=('') ROWOF=(); "s_$s"
+  for k in "${BTN[@]}"; do if ((F == NCTL && BS == j)); then b+="${C}[ $k ]$N   "; else b+="$(button "$k")   "; fi; ((j++)); done
+  LINES+=(''); BTNROW=${#LINES[@]}; LINES+=("  $b" '')
+  place
+  printf '\e[?2026h\e[H\e[2J%s' "$MOUSE"; box "welcome · $((I + 1)) of ${#STEPS[@]}" "${MSG:-$HINT}"; printf '\e[?2026l'; MSG=''
+}
+goto() { # goto <+1|-1|0>
+  I=$((I + $1)); ((I < 0)) && I=0; ((I < ${#STEPS[@]})) || exit
+  LINES=(); "s_${STEPS[I]}"; F=0; BS=$((${#BTN[@]} - 1)) # first control focused, default button = the last
+  [[ ${STEPS[I]} == look ]] && { A0=$(oracle get accent); T0=$(oracle get textsize); }
+  return 0
+}
+press() { # a button
+  case ${BTN[BS]} in
+    "skip all" | 'done') exit ;; back) goto -1 ;; skip) restore; goto 1 ;; continue) goto 1 ;;
+  esac
+}
+restore() { # skip or back on the look screen puts the choices back as they were
+  [[ ${STEPS[I]} == look ]] || return
+  oracle set accent "$A0"; oracle set textsize "$T0"; oracle look
+  # shellcheck disable=SC1091
+  source "$H/theme.sh"
+}
+clickat() {
+  local r=$((MY - BY - 1)) x=$((MX - BX - 2)) p=2 k j=0
+  if ((r == BTNROW)); then
+    for k in "${BTN[@]}"; do
+      ((x >= p && x < p + ${#k} + 4)) && { F=$NCTL BS=$j; press; return; }
+      p=$((p + ${#k} + 7)); ((j++))
+    done; return
+  fi
+  [[ -n ${ROWOF[r]:-} ]] || return
+  F=${ROWOF[r]} x=$((x - 14)) # controls start after "> " + 12-wide label
+  case ${STEPS[I]} in
+    look) ((x < 0)) && return; if ((x < 14)); then c_look -1; else c_look 1; fi ;;
+    *) ((x >= 0)) && act ;;
+  esac
+}
+act() { local f="a_${STEPS[I]}"; if declare -F "$f" >/dev/null; then "$f"; F=$NCTL; fi; }
+goto 0; draw; SZ=$(stty size)
+while :; do
+  if ! key 1; then [[ $(stty size) == "$SZ" ]] || { draw; SZ=$(stty size); }; continue; fi
+  case $KEY in
+    up | k) ((F > 0)) && { ((F--)); } ;;
+    down | j | tab) ((F < NCTL)) && ((F++)) ;;
+    left | h) if ((F == NCTL)); then ((BS > 0)) && ((BS--)); elif declare -F "c_${STEPS[I]}" >/dev/null; then "c_${STEPS[I]}" -1; fi ;;
+    right | l) if ((F == NCTL)); then ((BS < ${#BTN[@]} - 1)) && ((BS++)); elif declare -F "c_${STEPS[I]}" >/dev/null; then "c_${STEPS[I]}" 1; fi ;;
+    enter | space) if ((F == NCTL)); then press; elif declare -F "a_${STEPS[I]}" >/dev/null; then act; else F=$NCTL; fi ;;
+    s) if ((I > 0 && I < ${#STEPS[@]} - 1)); then restore; goto 1; fi ;;
+    esc) if ((I == 0)); then exit; else restore; goto -1; fi ;;
+    back) ((I > 0)) && { restore; goto -1; } ;;
+    click) clickat ;;
+  esac
+  draw; SZ=$(stty size)
+done
