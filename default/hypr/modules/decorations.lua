@@ -59,13 +59,13 @@ hl.config({
 hl.window_rule({ name = "oracle-no-shadow-tiled", match = { float = false }, no_shadow = true })
 
 -- Frosted surfaces: blur behind the dark tint. ignore_alpha keeps the see-through corners and gaps unblurred
-for _, ns in ipairs({ "waybar", "launcher", "fuzzel", "swaync-control-center", "swaync-notification-window", "swayosd" }) do
+for _, ns in ipairs({ "waybar", "launcher", "swaync-control-center", "swaync-notification-window", "swayosd" }) do
     hl.layer_rule({ match = { namespace = "^(" .. ns .. ")$" }, blur = true, ignore_alpha = 0.2 })
 end
 
--- Fuzzel (namespace "launcher"): appears at once
+-- Launcher (namespace "launcher"): appears at once
 hl.layer_rule({
-    match        = { namespace = "^(launcher|fuzzel)$" },
+    match        = { namespace = "^launcher$" },
     animation    = "none",
     no_anim      = true
 })

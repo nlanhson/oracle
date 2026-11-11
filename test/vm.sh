@@ -104,7 +104,7 @@ class VM:
         c.sendall(cmd.encode() + b'\n'); time.sleep(0.3); c.close()
 
     def keys(s, text):
-        names = {'-': 'minus', '\n': 'ret', ' ': 'spc', '.': 'dot', '/': 'slash'}
+        names = {'-': 'minus', '\n': 'ret', ' ': 'spc', '.': 'dot', '/': 'slash', '*': 'asterisk'}
         for ch in text:
             s.mon('sendkey ' + names.get(ch, ch)); time.sleep(0.05)
 
@@ -187,7 +187,7 @@ INSTALL = 'curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.
 vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')  # served repo is new each run
 rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run on the installed system (idempotent)'] = rc == 0 and 'already enrolled' in out
-rc, _ = vm.sh('pacman -Q waybar fuzzel swaync hypridle swaybg fwupd fcitx5-bamboo loupe bluez micro nautilus noto-fonts')
+rc, _ = vm.sh('pacman -Q waybar python-gobject gtk4-layer-shell fd swaync hypridle swaybg fwupd fcitx5-bamboo loupe bluez micro nautilus noto-fonts')
 ok['desktop packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
 ok['new hyprland config verifies'] = rc == 0 and 'config ok' in out
@@ -243,11 +243,42 @@ vm.mon('screendump /vm/look-desktop-float.png -f png')
 rc, out = vm.sh('hyprctl configerrors; hyprctl getoption decoration:rounding | head -n 1; hyprctl getoption general:col.active_border | head -n 1;'
                 ' hyprctl layers | grep -E "namespace" | sort -u')
 ok['look: Hyprland config has no errors, rounding from tokens, bar layer present'] = 'int: 8' in out and 'waybar' in out
-vm.sh('pkill -f oracle.manual; setsid -f fuzzel --show drun &>/dev/null; sleep 3', 30, show=0)
-vm.mon('screendump /vm/look-launcher.png -f png')
-rc, out = vm.sh('hyprctl layers | grep namespace | sort -u')
-ok['look: launcher layer is "launcher" (blur rule matches)'] = 'launcher' in out
-vm.sh('pkill -x fuzzel; for i in 1 2; do notify-send "Test notification $i" "Tiếng Việt: Xin chào, đã lưu ảnh. 4,243 photos synced, this line is longer to see wrapping."; done; sleep 3', 30, show=0)
+step('launcher')
+LENV = VMENV + '; export ORACLE_LAUNCHER_TIMING=1'
+def lshot(text, name, wait=1.5):  # open the launcher, type, picture, Esc
+    vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys(text); time.sleep(wait)
+    vm.mon(f'screendump /vm/{name}.png -f png'); vm.mon('sendkey esc'); time.sleep(1)
+vm.sh('pkill -f oracle.manual; mkdir -p ~/Documents; touch ~/Documents/Quarterly-report-2026.pdf', 30, show=0)
+rc, out = vm.sh(LENV + '; rm -f $XDG_RUNTIME_DIR/oracle-launcher.timing; oracle launcher daemon; sleep 5; pgrep -fc "python3.*oracle-launcher"')
+ok['launcher: daemon starts at login (one process)'] = rc == 0 and out.split()[-1] == '1'
+lshot('gho', 'launcher-white')  # white wallpaper: contrast
+rc, out = vm.sh(LENV + '; oracle launcher; sleep 1.5; hyprctl layers | grep -c "namespace: launcher"; oracle launcher; sleep 1; hyprctl layers | grep -c "namespace: launcher"')
+ok['launcher: layer namespace is "launcher" (blur + no_anim rules match), closes on the key'] = out.split()[-2:] == ['1', '0'] and "^launcher$" in open('/repo/default/hypr/modules/decorations.lua').read()
+vm.sh(LENV + '; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
+lshot('', 'launcher-empty')
+lshot('gho', 'launcher-apps'); lshot('upd', 'launcher-oracle'); lshot('12*7', 'launcher-sum'); lshot('quarterly', 'launcher-files')
+vm.sh(LENV + '; oracle launcher power; sleep 1.5', 30, show=0); time.sleep(1); vm.mon('screendump /vm/launcher-power.png -f png'); vm.mon('sendkey esc'); time.sleep(1)
+rc, out = vm.sh('python3 ~/.local/share/oracle/bin/oracle-launcher --power --query ""')
+ok['launcher: power menu lists its 4 entries'] = [l.split('\t')[1] for l in out.splitlines() if l.startswith('power')] == ['Lock', 'Sleep', 'Restart', 'Shut Down']
+vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('mousepad\n'); time.sleep(6)
+rc, out = vm.sh(VMENV + '; hyprctl clients | grep -ci "class: .*mousepad"; pkill -x mousepad; true')
+ok['launcher: Enter on an app starts it (mousepad window appears)'] = out.split()[-1] != '0'
+vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('12*7\n'); time.sleep(2)
+rc, out = vm.sh(VMENV + '; wl-paste')
+ok['launcher: Enter on a sum copies the result'] = '84' in out
+vm.mon('sendkey meta_l-spc'); time.sleep(2)
+rc, out = vm.sh(VMENV + '; hyprctl layers | grep -c "namespace: launcher"')
+ok['launcher: Super+Space (the real key) opens it'] = out.split()[-1] == '1'
+vm.mon('sendkey meta_l-spc'); time.sleep(1)
+vm.sh(LENV + '; for i in 1 2 3 4 5 6; do oracle launcher; sleep 1; oracle launcher; sleep 1; done; sort -n $XDG_RUNTIME_DIR/oracle-launcher.timing | tr "\\n" " "')
+rc, out = vm.sh('sort -n $XDG_RUNTIME_DIR/oracle-launcher.timing | awk \'{a[NR]=$1} END{print NR, "median", a[int((NR+1)/2)]}\'', 30)
+ok['launcher: time to first picture under 150 ms (median, software rendering)'] = 'median' in out and float(out.split()[-1]) < 150
+rc, out = vm.sh('bash ~/.local/share/oracle/test/launcher.sh | tail -n 30', 120)
+ok['launcher: 20+ scripted queries, expected top row (test/launcher.sh)'] = rc == 0 and 'launcher ok' in out
+rc, out = vm.sh('for q in gho upd shut "12*7" quarterly; do python3 ~/.local/share/oracle/bin/oracle-launcher --query "$q" | head -n 1; done')
+ok['launcher: real apps, ranked top rows'] = re.search(r'app\tGhostty', out) and re.search(r'cmd\toracle update', out) and re.search(r'power\tShut Down', out) and 'sum\t84' in out and 'Quarterly-report-2026.pdf' in out
+vm.sh(VMENV + '; oracle set wallpaper /tmp/white.png; oracle wall; sleep 3', 30, show=0)
+vm.sh('for i in 1 2; do notify-send "Test notification $i" "Tiếng Việt: Xin chào, đã lưu ảnh. 4,243 photos synced, this line is longer to see wrapping."; done; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-notify.png -f png')
 vm.sh('swaync-client -t; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-panel.png -f png')

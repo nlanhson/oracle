@@ -109,6 +109,6 @@
 	"format": "⏻",
 	"tooltip": "Power menu",
 	"interval": 0,
-	"on-click": "bash ~/.config/fuzzel/power-menu.sh"
+	"on-click": "oracle launcher power"
 }
 }

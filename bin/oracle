@@ -76,7 +76,12 @@ case ${1:-help} in
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
   settings) exec "$DIR/bin/oracle-settings" ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;
-  manual) exec "$ME/oracle-manual" ;;
+  manual) exec "$ME/oracle-manual" "${@:2}" ;;
+  launcher) # Super+Space: show/hide the launcher (a small daemon, so it opens at once). power = power menu, daemon = start hidden at login
+    P=${XDG_RUNTIME_DIR:-/tmp}/oracle-launcher.pid; sig=USR1; [[ ${2:-} != power ]] || sig=USR2
+    if [[ -r $P ]] && kill -0 "$(<"$P")" 2>/dev/null; then [[ ${2:-} == daemon ]] || kill -"$sig" "$(<"$P")"
+    else a=(); [[ ${2:-} != daemon ]] || a=(--daemon); [[ ${2:-} != power ]] || a=(--power)
+      LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so exec python3 "$ME/oracle-launcher" "${a[@]}"; fi ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
@@ -103,11 +108,9 @@ case ${1:-help} in
     fa=$(printf %02x "$(awk -v a="$frost_alpha" 'BEGIN{printf "%d", a * 255 + 0.5}')") # frost alpha as a hex byte
     { for k in bg surface raised hover line dim muted text bright error accent; do echo "@define-color o_$k #${!k};"; done
       echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; } | put colors.css
-    { echo "font=${font_ui//\"/}:size=$size_body,${font_mono//\"/}:size=$size_body"; echo "icon-theme=$icon_theme"
-      echo "horizontal-pad=$sp_4"; echo "vertical-pad=$sp_3"; echo "inner-pad=$sp_2"
-      printf '[colors]\nbackground=%s%s\ntext=%sff\nmatch=%sff\nselection=%sff\nselection-text=%sff\nselection-match=%sff\nborder=%sff\nprompt=%sff\n' \
-        "$bg" "$fa" "$text" "$bright" "$hover" "$bright" "$bright" "$line" "$muted"
-      printf '[border]\nwidth=%s\nradius=%s\nselection-radius=%s\n' "$border" "$r_l" "$r_s"; } | put fuzzel.ini
+    t=$(<"$DIR/default/launcher/style.css"); size_field=$((size_title * 14 / 10)) # field text = title x1.4 (Spotlight's field is big)
+    for k in font_ui border r_s r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_field weight_normal weight_bold; do t=${t//"%$k%"/${!k//\"/}}; done
+    printf '%s\n' "$t" | put launcher.css
     { for k in bg surface raised hover line dim muted text bright error accent; do echo "\$$k = rgb(${!k})"; done
       echo "\$frost = rgba($bg$fa)"; echo "\$font_ui = ${font_ui//\"/}"
       for k in r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_display border; do echo "\$$k = ${!k}"; done; } | put hyprlock.conf

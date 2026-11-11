@@ -16,6 +16,7 @@ hl.on("hyprland.start", function ()
   hl.exec_cmd("swayosd-server &")
   hl.exec_cmd("waybar &")
   hl.exec_cmd("swaync &")
+  hl.exec_cmd("oracle launcher daemon") -- Oracle: launcher waits hidden, so Super+Space opens at once
   hl.exec_cmd("udiskie &")
   hl.exec_cmd("oracle pending") -- Oracle: wallpaper (swaybg), night light, a file opened from Shell mode
 
