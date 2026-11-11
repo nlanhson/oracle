@@ -1,0 +1,72 @@
+/* Oracle notifications: swaync's own layout, Oracle greys, frosted. Colours from ~/.config/oracle/look/colors.css (tokens).
+   Owned by Oracle; your lines go in ~/.config/swaync/style.css. Corners: cards 8, panel 14, buttons 6. */
+@import url("file:///etc/xdg/swaync/style.css");
+
+@define-color cc-bg @o_frost;
+@define-color noti-bg @o_frost_up;
+@define-color noti-bg-opaque @o_raised;
+@define-color noti-bg-darker @o_surface;
+@define-color noti-bg-hover @o_hover;
+@define-color noti-bg-hover-opaque @o_hover;
+@define-color noti-bg-focus @o_hover;
+@define-color noti-close-bg @o_hover;
+@define-color noti-close-bg-hover @o_dim;
+@define-color text-color @o_text;
+@define-color text-color-disabled @o_muted;
+@define-color bg-selected @o_dim;
+
+* { font-family: "Inter", "JetBrainsMono Nerd Font Propo", sans-serif; font-size: 13px; font-feature-settings: "tnum"; }
+
+.control-center {
+	background: @o_frost;
+	border: 1px solid @o_line;
+	border-radius: 14px;
+	margin: 8px;
+	box-shadow: none;
+}
+
+.control-center .widget-title > label { font-size: 15px; color: @o_bright; }
+
+.control-center .notification-row .notification-background,
+.notification-row .notification-background {
+	background: transparent;
+}
+
+.notification {
+	background: @o_frost_up;
+	border: 1px solid @o_line;
+	border-radius: 8px;
+	box-shadow: none;
+}
+
+.notification-row,
+.notification-group,
+.control-center-list,
+.control-center .widget-title,
+.control-center .widget-dnd { background: transparent; box-shadow: none; outline: none; }
+
+.notification-content { background: transparent; padding: 10px 12px; }
+
+.notification .summary { color: @o_bright; font-size: 13px; font-weight: 600; }
+.notification .body, .notification .time { color: @o_text; font-size: 13px; }
+.notification .time { color: @o_muted; font-size: 11px; }
+
+.notification.critical { border-color: @o_error; }
+
+.notification-action,
+.widget-title > button,
+.widget-dnd > switch {
+	background: @o_raised;
+	border: 1px solid @o_line;
+	border-radius: 6px;
+	color: @o_text;
+}
+
+.notification-action:hover,
+.widget-title > button:hover { background: @o_hover; color: @o_bright; }
+
+.widget-dnd > switch:checked { background: @o_dim; }
+.widget-dnd > switch slider { background: @o_bright; border-radius: 6px; }
+
+.close-button { background: @o_hover; color: @o_text; border-radius: 6px; }
+.close-button:hover { background: @o_dim; }

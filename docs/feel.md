@@ -9,6 +9,9 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 
 ## Ground rules
 
+- **One reference: macOS Sequoia (15).** When a choice is open (how tall the bar is, how a panel is laid out, where a
+  notification sits, how long something takes to move), we do what Sequoia does, in Oracle's greys. It is the last
+  macOS with the frosted look, before Liquid Glass. A guide for layout, proportion and behaviour, never a source of assets.
 - Shell mode stays pure Oracle. The desktop (Hyprland) may borrow macOS *patterns* where they fit.
 - Existing keys never change without asking. New features get keys that fit the current scheme.
 - Monochrome: greys and white, muted red only for errors.
@@ -39,7 +42,7 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 |---|---|---|---|
 | Windows | Open, close and fade are switched off. Workspaces slide. Only one gesture (3 fingers sideways). | Open, close, move and fade with tuned springs. Gestures for workspaces and Shell mode. | VM: config loads with no errors. G14: feel checklist. |
 | Colours and shapes | Greys repeated per app. Corners 8 on windows, 18 on the launcher. Default cursor. | One token file feeds everything. One corner scale, one spacing grid, one cursor. | VM screenshots of every surface side by side. |
-| Type | JetBrains Mono everywhere, sizes picked per app. | Mono stays (it is Oracle's voice). One size and weight scale. | Screenshots. |
+| Type | JetBrains Mono everywhere, sizes picked per app. | Inter on the desktop (modern, easy to read, Vietnamese). JetBrains Mono stays in the terminal and Shell mode. One size and weight scale. | Screenshots. |
 | Top bar | Text modules, read only. Tray off. Power button. | Same bar, calmer. Right side opens the control panel. | Screenshots, click test. |
 | Control panel | None. Wi-Fi and Bluetooth need the Settings screen. | One panel: Wi-Fi, Bluetooth, sound, brightness, night light, battery, do not disturb. Deeper settings open `oracle settings`. | VM: each control changes the real setting. |
 | Notifications | Stock look in grey. Not grouped. | Frosted cards, grouped per app, quiet by default, one clear action. | VM: send test notifications, screenshot. |
@@ -100,4 +103,5 @@ Open choices are made inside their slice and shown to you before building: the l
 | Slice | State |
 |---|---|
 | 0 Spec | Done 2026-11-11 |
-| 1 Motion | In progress |
+| 1 Motion | Built on `feel/motion`, waiting for the feel check on the G14 |
+| 2 One look | Built on `feel/look`, waiting for the feel check |

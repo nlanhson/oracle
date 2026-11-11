@@ -45,6 +45,7 @@ ttf-jetbrains-mono-nerd
 woff2-font-awesome
 noto-fonts
 noto-fonts-emoji
+inter-font # desktop UI font (bar, launcher, notifications, lock, apps): clear sans that covers Vietnamese. Terminals keep JetBrains Mono
 # Vietnamese typing (desktop only): Ctrl+Shift switches English ⇄ Vietnamese (Telex)
 fcitx5
 fcitx5-gtk

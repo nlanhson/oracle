@@ -4,8 +4,12 @@
 
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
 
-hl.env("XCURSOR_SIZE", "24")
-hl.env("HYPRCURSOR_SIZE", "24")
+-- cursor theme + size come from the look tokens (default/look/tokens)
+local T = (loadfile(os.getenv("HOME") .. "/.config/oracle/look/tokens.lua") or function() return {} end)()
+hl.env("XCURSOR_THEME", T.cursor_theme or "Adwaita")
+hl.env("XCURSOR_SIZE", tostring(T.cursor_size or 24))
+hl.env("HYPRCURSOR_THEME", T.cursor_theme or "Adwaita")
+hl.env("HYPRCURSOR_SIZE", tostring(T.cursor_size or 24))
 hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/Screenshots")
 
 -- Toolkit Backend Variables

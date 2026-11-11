@@ -222,6 +222,46 @@ ok['desktop: waybar, notifications, idle, Vietnamese IME running, fonts installe
 rc, out = vm.sh('sleep 5; pgrep -x wlsunset; pgrep -a swaybg; oracle set nightlight; oracle set wallpaper')
 ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'swaybg -i' in out
 vm.mon('screendump /vm/gui.png -f png')
+step('one look: every surface on a white wallpaper')
+import base64, struct, zlib
+def png(w, h):  # plain white picture, made here (the VM has no image tools)
+    ch = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d))
+    return b'\x89PNG\r\n\x1a\n' + ch(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + ch(b'IDAT', zlib.compress((b'\0' + b'\xff' * 3 * w) * h)) + ch(b'IEND', b'')
+rc, out = vm.sh('bash ~/.local/share/oracle/test/look.sh', 120)
+ok['look: tokens → generated files, one edit changes all, migration swaps old copies only'] = rc == 0 and 'look ok' in out
+vm.sh(f'echo {base64.b64encode(png(1280, 800)).decode()} | base64 -d >/tmp/white.png; oracle set wallpaper /tmp/white.png', show=0)
+VMENV = ('export XDG_RUNTIME_DIR=/run/user/$(id -u) HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1)'
+         ' WAYLAND_DISPLAY=$(cd $XDG_RUNTIME_DIR && ls -d wayland-? | head -1)')
+vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794366900.sh; oracle look; hyprctl reload; pkill -x waybar; pkill -x swaync; pkill -x swayosd-server;'  # = what oracle update does
+      ' for c in waybar swaync swayosd-server; do setsid -f $c &>/dev/null; done; oracle wall; setsid -f ghostty --class=oracle.manual'
+      ' --gtk-single-instance=false --window-width=70 --window-height=18 -e oracle manual &>/dev/null; sleep 8', 60, show=0)
+vm.mon('screendump /vm/look-desktop.png -f png')
+rc, out = vm.sh('fc-match sans-serif; fc-match system-ui; fc-match monospace; fc-list | grep -ci "/inter" ; xdg-user-dir >/dev/null; gsettings get org.gnome.desktop.interface font-name')
+ok['look: Inter installed, sans-serif and system-ui resolve to it, monospace is not Inter'] = out.count('Inter.ttc') == 2 and "'Inter 11'" in out and 'Inter' not in out.splitlines()[2]
+vm.sh('pkill -fx ghostty; sleep 2', 30, show=0)
+vm.mon('screendump /vm/look-desktop-float.png -f png')
+rc, out = vm.sh('hyprctl configerrors; hyprctl getoption decoration:rounding | head -n 1; hyprctl getoption general:col.active_border | head -n 1;'
+                ' hyprctl layers | grep -E "namespace" | sort -u')
+ok['look: Hyprland config has no errors, rounding from tokens, bar layer present'] = 'int: 8' in out and 'waybar' in out
+vm.sh('pkill -f oracle.manual; setsid -f fuzzel --show drun &>/dev/null; sleep 3', 30, show=0)
+vm.mon('screendump /vm/look-launcher.png -f png')
+rc, out = vm.sh('hyprctl layers | grep namespace | sort -u')
+ok['look: launcher layer is "launcher" (blur rule matches)'] = 'launcher' in out
+vm.sh('pkill -x fuzzel; for i in 1 2; do notify-send "Test notification $i" "Tiếng Việt: Xin chào, đã lưu ảnh. 4,243 photos synced, this line is longer to see wrapping."; done; sleep 3', 30, show=0)
+vm.mon('screendump /vm/look-notify.png -f png')
+vm.sh('swaync-client -t; sleep 3', 30, show=0)
+vm.mon('screendump /vm/look-panel.png -f png')
+vm.sh('swaync-client -cp; swaync-client -C; sleep 1', 30, show=0)
+vm.sh(VMENV + '; swayosd-client --output-volume 0; sleep 0.7', 30)
+vm.mon('screendump /vm/look-osd.png -f png')
+vm.sh('sleep 3; setsid -f hyprlock &>/dev/null; sleep 6', 30, show=0)
+vm.mon('screendump /vm/look-lock.png -f png')
+rc, out = vm.sh('pgrep -x hyprlock; pkill -USR1 hyprlock; sleep 3; pgrep -x hyprlock || echo UNLOCKED')
+ok['look: lock screen shows, unlocks on signal'] = 'UNLOCKED' in out
+vm.sh('setsid -f nautilus &>/dev/null; sleep 10', 30, show=0)
+vm.mon('screendump /vm/look-gtk.png -f png')
+vm.sh(VMENV + '; pkill -x nautilus; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
+vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's own wallpaper
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)

@@ -1,0 +1,10 @@
+/* Oracle monochrome: swaync's own look, grey instead of blue */
+@import url("file:///etc/xdg/swaync/style.css");
+@define-color bg-selected rgb(90, 90, 90);
+@define-color cc-bg rgba(10, 10, 10, 0.85);
+@define-color noti-bg rgba(20, 20, 20, 0.9);
+@define-color noti-bg-opaque rgb(20, 20, 20);
+@define-color noti-bg-darker rgb(10, 10, 10);
+@define-color noti-bg-hover rgb(42, 42, 42);
+@define-color noti-bg-hover-opaque rgb(42, 42, 42);
+@define-color text-color rgb(200, 200, 200);

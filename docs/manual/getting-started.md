@@ -57,6 +57,10 @@ To type Vietnamese in the desktop, press `Ctrl + Shift` to switch between Englis
 
 Your terminal sessions keep running while you're in the desktop. Apps you opened in the desktop close when you go back.
 
+### One look
+
+Every part of the desktop (bar, launcher, notifications, volume pill, lock screen, window borders, Files and other apps) takes its greys, corners, spacing and fonts from one file (the font is Inter, a clear sans that also covers Vietnamese; terminals and Shell mode keep JetBrains Mono): `~/.local/share/oracle/default/look/tokens`. To change a value yourself, copy the line into `~/.config/oracle/tokens` (same format, it wins), then run `oracle look`. Your accent colour in Settings is used too. To add your own touches to one part, write below the import line in its file in `~/.config` (for example `~/.config/waybar/style.css`).
+
 ## First things to do
 
 1. **Wi-Fi:** if you didn't connect during install, type `nmtui`.

@@ -7,3 +7,4 @@ jobs:
       - uses: actions/checkout@v4
       - run: for f in install.sh server/server.sh system/* migrations/*.sh bin/* test/*.sh; do bash -n "$f" || exit 1; done
       - run: bash test/manual.sh
+      - run: bash test/look.sh

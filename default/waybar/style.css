@@ -1,0 +1,92 @@
+/* Oracle bar. Colours are the tokens in ~/.config/oracle/look/colors.css (made by `oracle look` from default/look/tokens).
+   Sizes follow the scale there: corners 6/8/14, spacing 4/8/12/16/24, type 11/13/15. Owned by Oracle; your lines go in ~/.config/waybar/style.css. */
+
+* {
+	all: unset;
+	font-family: "Inter", "JetBrainsMono Nerd Font Propo", sans-serif;
+	font-size: 13px;
+	font-feature-settings: "tnum"; /* digits keep their width: clock, battery, memory do not jiggle */
+}
+
+window#waybar {
+	background-color: @o_frost;
+	border-bottom: 1px solid @o_line;
+	color: @o_text;
+}
+
+tooltip {
+	background-color: @o_raised;
+	border: 1px solid @o_line;
+	border-radius: 6px;
+	padding: 4px 8px;
+}
+
+tooltip label { color: @o_text; }
+
+#workspaces {
+	min-width: 100px;
+	font-size: 0.4rem;   /* Pill size */
+	padding: 1px 4px;
+	margin: 10px 0;
+	border-radius: 99px;
+}
+
+#workspaces button {
+	background-color: @o_dim; /* Inactive */
+	color: transparent;
+	padding: 0px 5px;
+	border-radius: 99px;
+	margin: 0px 2px;
+	min-width: 6px;
+}
+
+#workspaces button.active {
+	background-color: @o_accent;
+	min-width: 1.2rem;
+	transition: all 200ms ease-in-out;
+}
+
+.modules-left {
+	margin-left: 4px;
+}
+
+.modules-right {
+	margin-right: 4px;
+}
+
+#custom-display,
+#custom-date,
+#mpris,
+#network,
+#pulseaudio,
+#battery,
+#memory,
+#temperature,
+#custom-logout {
+	padding: 0 8px;
+	color: @o_text;
+	border-radius: 6px;
+	transition: background-color 150ms ease-in-out;
+}
+
+#custom-display:hover,
+#custom-date:hover,
+#network:hover,
+#pulseaudio:hover,
+#battery:hover,
+#memory:hover,
+#temperature:hover,
+#custom-logout:hover {
+	background-color: @o_hover;
+	color: @o_bright;
+}
+
+#custom-display.off,
+#mpris.paused,
+#network.disconnected { color: @o_muted; }
+
+#battery.warning,
+#battery.critical,
+#temperature.critical { color: @o_error; }
+
+#custom-logout { color: @o_muted; }

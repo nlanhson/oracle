@@ -1,0 +1,38 @@
+# Oracle look tokens: the one place for greys, corners, spacing, type. Hex without #.
+# Edit here, run `oracle look`, every surface follows. Yours: ~/.config/oracle/tokens (same format, wins).
+# colours: monochrome, muted red only for errors. The accent comes from Settings (oracle get accent).
+bg=0a0a0a
+surface=141414
+raised=1e1e1e
+hover=2a2a2a
+line=3a3a3a
+dim=5a5a5a
+muted=8a8a8a
+text=c8c8c8
+bright=ffffff
+error=8b2e2e
+# frosted = bg at this opacity over Hyprland blur. 0.75 keeps text above 4.5:1 on a white wallpaper
+frost_alpha=0.75
+# corners: s = buttons, inputs, pills, selected rows; m = windows, notification cards; l = launcher, panel, OSD
+r_s=6
+r_m=8
+r_l=14
+# spacing grid
+sp_1=4
+sp_2=8
+sp_3=12
+sp_4=16
+sp_5=24
+# type: Inter for desktop UI (covers Vietnamese), mono for terminals and Shell mode. Strong text = 600 (700 is heavy in UI)
+font_ui=Inter
+font_mono="JetBrainsMono Nerd Font"
+size_small=11
+size_body=13
+size_title=15
+size_display=96
+weight_normal=400
+weight_bold=600
+border=1
+cursor_theme=Adwaita
+cursor_size=24
+icon_theme=Papirus-Dark

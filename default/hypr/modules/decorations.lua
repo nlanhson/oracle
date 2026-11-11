@@ -3,16 +3,20 @@
 -----------------------
 
 -- Refer to https://wiki.hypr.land/Configuring/Basics/Variables/
+
+-- Oracle look tokens (default/look/tokens → `oracle look` → ~/.config/oracle/look/tokens.lua). Missing file = today's values.
+local T = (loadfile(os.getenv("HOME") .. "/.config/oracle/look/tokens.lua") or function() return {} end)()
+
 hl.config({
     general = {
         gaps_in  = 0,
         gaps_out = 0,
 
-        border_size = 1,
+        border_size = T.border or 1,
 
         col = {
-            active_border   = { colors = {"rgb(c8c8c8)"}},
-            inactive_border = "rgb(252525)",
+            active_border   = { colors = {"rgb(" .. (T.accent or "c8c8c8") .. ")"}},
+            inactive_border = "rgb(" .. (T.line or "3a3a3a") .. ")",
         },
 
         -- Set to true to enable resizing windows by clicking and dragging on borders and gaps
@@ -23,17 +27,19 @@ hl.config({
     },
 
     decoration = {
-        rounding       = 8,
+        rounding       = T.r_m or 8,
         rounding_power = 4, -- Squircle
 
         active_opacity   = 1.0,
         inactive_opacity = 0.9,
 
+        -- Shadow only under floating windows (rule below); tiled windows have none
         shadow = {
-            enabled      = false,
-            range        = 4,
+            enabled      = true,
+            range        = 24,
             render_power = 3,
-            color        = 0xee1a1a1a,
+            offset       = "0 8",
+            color        = 0x99000000,
         },
 
         blur = {
@@ -49,22 +55,17 @@ hl.config({
     },
 })
 
--- Blur
-hl.layer_rule({
-    match         = { namespace = "^(waybar)$" },
-    blur          = true,
-    ignore_alpha  = 0.1
-})
+-- Tiled windows: no shadow
+hl.window_rule({ name = "oracle-no-shadow-tiled", match = { float = false }, no_shadow = true })
 
--- Fuzzel
-hl.layer_rule({	
-    match        = { namespace = "^(fuzzel)$" },
+-- Frosted surfaces: blur behind the dark tint. ignore_alpha keeps the see-through corners and gaps unblurred
+for _, ns in ipairs({ "waybar", "launcher", "fuzzel", "swaync-control-center", "swaync-notification-window", "swayosd" }) do
+    hl.layer_rule({ match = { namespace = "^(" .. ns .. ")$" }, blur = true, ignore_alpha = 0.2 })
+end
+
+-- Fuzzel (namespace "launcher"): appears at once
+hl.layer_rule({
+    match        = { namespace = "^(launcher|fuzzel)$" },
     animation    = "none",
     no_anim      = true
-})
-
-hl.layer_rule({
-    match        = { namespace = "^(fuzzel)$" },
-    blur         = true,
-    ignore_alpha = 0.1
 })

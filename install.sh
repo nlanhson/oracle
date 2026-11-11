@@ -194,8 +194,10 @@ fi
 say "desktop config = owner's dotfiles (waybar, fuzzel, notifications, idle, lock, gtk, btop, fastfetch, git, home folders)"
 while IFS= read -r f; do
   f=${f#"$SRC/config/"}; [[ $f == hypr/hyprland.lua ]] && continue
-  if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm"$([[ $f == *.sh ]] && echo 755 || echo 644)" "$SRC/config/$f" "$HOME/.config/$f"; fi
+  if [[ -e $HOME/.config/$f ]]; then say "  kept your ~/.config/$f"; else run install -Dm"$([[ $f == *.sh ]] && echo 755 || echo 644)" "$SRC/config/$f" "$HOME/.config/$f"
+    ((DRY)) || sed -i "s|@HOME@|$HOME|g" "$HOME/.config/$f"; fi # look stubs (include the shared look) need absolute paths
 done < <(find "$SRC/config" -type f | sort)
+((DRY)) || "$DIR/bin/oracle" look || true # tokens → ~/.config/oracle/look/* (bar, launcher, panels, lock, borders, GTK)
 run mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Pictures,Public,Templates,Videos} # folders named in ~/.config/user-dirs.dirs
 B=$HOME/.config/gtk-3.0/bookmarks # Files (Nautilus) sidebar
 if [[ -e $B ]]; then say "  kept your $B"; else run mkdir -p "${B%/*}"; ((DRY)) || printf 'file://%s/Downloads Downloads\nfile://%s/.config .config\n' "$HOME" "$HOME" >"$B"; fi

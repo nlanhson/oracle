@@ -1,0 +1,41 @@
+/* Oracle volume/brightness pill: frosted, corner 14. Colours from ~/.config/oracle/look/colors.css. */
+window#osd {
+	padding: 12px 20px;
+	border-radius: 14px;
+	border: 1px solid @o_line;
+	background: @o_frost;
+}
+
+window#osd #container { margin: 16px; }
+
+window#osd image,
+window#osd label {
+	color: @o_text;
+	font-family: "Inter", "JetBrainsMono Nerd Font Propo", sans-serif;
+	font-size: 13px;
+	font-feature-settings: "tnum";
+}
+
+window#osd progressbar:disabled,
+window#osd image:disabled { opacity: 0.5; }
+
+window#osd progressbar {
+	min-height: 6px;
+	border-radius: 999px;
+	background: transparent;
+	border: none;
+}
+
+window#osd trough {
+	min-height: inherit;
+	border-radius: inherit;
+	border: none;
+	background: @o_dim;
+}
+
+window#osd progress {
+	min-height: inherit;
+	border-radius: inherit;
+	border: none;
+	background: @o_bright;
+}

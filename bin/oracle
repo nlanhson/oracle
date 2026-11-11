@@ -84,16 +84,39 @@ case ${1:-help} in
     "$0" wall; "$0" night
     gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true # GTK apps: dark, grey accent (monochrome)
     gsettings set org.gnome.desktop.interface accent-color slate 2>/dev/null || true
+    gsettings set org.gnome.desktop.interface font-name 'Inter 11' 2>/dev/null || true # UI font (token font_ui); monospace stays JetBrains Mono
     [[ -f $P/open ]] && { f=$(<"$P/open"); rm -f "$P/open"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
   set) mkdir -p "${SET%/*}"; touch "$SET" # set <key> [value]: ~/.config/oracle/settings (settings screen)
     { grep -v "^${2:?}=" "$SET" || true; [[ -z ${3:-} ]] || printf '%s=%s\n' "$2" "$3"; } >"$SET.new"; mv "$SET.new" "$SET" ;;
   get) v=$(sed -n "s/^${2:?}=//p" "$SET" 2>/dev/null | tail -1) || true; echo "${v:-${3:-}}" ;; # get <key> [default]
-  look) # text size + accent → ghostty include, tmux colors
+  look) # text size + accent → ghostty include, tmux colors; tokens + accent → ~/.config/oracle/look/* (bar, launcher, panels, lock, borders, GTK)
     # shellcheck disable=SC1091
     source "$DIR/default/home/theme.sh"; a=$A; mkdir -p "${SET%/*}"
     printf 'font-size = %s\ncursor-color = %s\n' "$("$0" get textsize 12)" "$a" >"${SET%/*}/ghostty.new"
     cmp -s "${SET%/*}/ghostty.new" "${SET%/*}/ghostty" && rm "${SET%/*}/ghostty.new" || { mv "${SET%/*}/ghostty.new" "${SET%/*}/ghostty"; pkill -USR2 -x ghostty || true; }
-    tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true ;;
+    tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true
+    # shellcheck disable=SC1091
+    source "$DIR/default/look/tokens"; [[ ! -f ${SET%/*}/tokens ]] || source "${SET%/*}/tokens"
+    L=${SET%/*}/look; mkdir -p "$L"; accent=$a; ch=
+    put() { cat >"$L/$1.new"; if cmp -s "$L/$1.new" "$L/$1"; then rm "$L/$1.new"; else mv "$L/$1.new" "$L/$1"; ch=1; fi; } # write only if changed
+    rgb() { printf '%d,%d,%d' $((16#${1:0:2})) $((16#${1:2:2})) $((16#${1:4:2})); }
+    fa=$(printf %02x "$(awk -v a="$frost_alpha" 'BEGIN{printf "%d", a * 255 + 0.5}')") # frost alpha as a hex byte
+    { for k in bg surface raised hover line dim muted text bright error accent; do echo "@define-color o_$k #${!k};"; done
+      echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; } | put colors.css
+    { echo "font=${font_ui//\"/}:size=$size_body,${font_mono//\"/}:size=$size_body"; echo "icon-theme=$icon_theme"
+      echo "horizontal-pad=$sp_4"; echo "vertical-pad=$sp_3"; echo "inner-pad=$sp_2"
+      printf '[colors]\nbackground=%s%s\ntext=%sff\nmatch=%sff\nselection=%sff\nselection-text=%sff\nselection-match=%sff\nborder=%sff\nprompt=%sff\n' \
+        "$bg" "$fa" "$text" "$bright" "$hover" "$bright" "$bright" "$line" "$muted"
+      printf '[border]\nwidth=%s\nradius=%s\nselection-radius=%s\n' "$border" "$r_l" "$r_s"; } | put fuzzel.ini
+    { for k in bg surface raised hover line dim muted text bright error accent; do echo "\$$k = rgb(${!k})"; done
+      echo "\$frost = rgba($bg$fa)"; echo "\$font_ui = ${font_ui//\"/}"
+      for k in r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_display border; do echo "\$$k = ${!k}"; done; } | put hyprlock.conf
+    { echo "return {"
+      for k in bg surface raised hover line dim muted text bright error accent frost_alpha r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 font_ui font_mono \
+        size_small size_body size_title size_display weight_normal weight_bold border cursor_theme cursor_size icon_theme; do
+        v=${!k}; v=${v//\"/}; if [[ $v =~ ^[0-9.]+$ && ${#v} -lt 6 ]]; then echo "  $k = $v,"; else echo "  $k = \"$v\","; fi; done
+      echo "}"; } | put tokens.lua
+    if [[ -n $ch ]]; then pkill -USR2 -x waybar || true; swaync-client -rs &>/dev/null || true; fi ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
   idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7. Never sleeps (server)
