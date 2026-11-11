@@ -83,3 +83,8 @@ Forgot a command? Press `m` on the dashboard, `Super + /` on the desktop, or typ
 ## AI helpers
 
 Claude Code (`claude`) and OpenCode (`opencode`) come installed. Type either one in a terminal.
+
+## Control panel
+
+Click the network, sound or battery icons on the bar, or press `Super + A`: one panel drops from the top right. Tiles for Wi-Fi, Bluetooth, Do Not Disturb, Night light, Mute and Settings (white = on), sliders for brightness, sound and the battery charge limit, what is playing, and below that your notifications grouped by app, with Clear All. `Networks` and `Devices` open Settings on the Wi-Fi network list or the Bluetooth devices; `Power` opens the power menu. A dot on the bar means unread notifications, a crossed bell means Do Not Disturb (banners stay quiet, nothing is lost: they wait in the panel). Esc or a click outside closes it.
+
