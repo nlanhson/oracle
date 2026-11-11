@@ -85,10 +85,10 @@ unset ORACLE_POWER_SUPPLY KBD
 
 # migration: untouched idle + power menu → new; edited copy kept with one line
 rm -rf "$HOME/.local/share/oracle"; ln -s "$R" "$HOME/.local/share/oracle"; C=$HOME/.config; mkdir -p "$C/hypr" "$C/fuzzel"
-cp "$R/test/fixtures/system/hypridle-v1.conf""$C/hypr/hypridle.conf"; { cat "$R/test/fixtures/system/power-menu-v1.sh"; echo '# mine'; } >"$C/fuzzel/power-menu.sh"
+cp "$R/test/fixtures/system/hypridle-v1.conf" "$C/hypr/hypridle.conf"; { cat "$R/test/fixtures/system/power-menu-v1.sh"; printf "\n%s\n" "# mine"; } >"$C/fuzzel/power-menu.sh"
 out=$(bash "$R/migrations/1794383700.sh")
 ck "migration: untouched idle timers replaced, edited power menu kept, one line" 'cmp -s "$C/hypr/hypridle.conf" "$R/config/hypr/hypridle.conf" && grep -q "# mine" "$C/fuzzel/power-menu.sh" && [[ $(grep -c . <<<"$out") == 1 && $out == *"power-menu.sh is your own version"* ]]'
-cp "$R/test/fixtures/system/power-menu-v1.sh""$C/fuzzel/power-menu.sh"; out=$(bash "$R/migrations/1794383700.sh")
+cp "$R/test/fixtures/system/power-menu-v1.sh" "$C/fuzzel/power-menu.sh"; out=$(bash "$R/migrations/1794383700.sh")
 ck "migration: untouched power menu replaced, rerun quiet" 'cmp -s "$C/fuzzel/power-menu.sh" "$R/config/fuzzel/power-menu.sh" && [[ -z $out ]]'
 fake fuzzel 'echo "$*" >>'"$T"'/fz; cat >>'"$T"'/fz; n=$(grep -c dmenu '"$T"'/fz); [[ $n == 1 ]] && echo Shutdown || echo Cancel'
 fake systemctl 'echo "$*" >>'"$T"'/sc'; bash "$C/fuzzel/power-menu.sh"
