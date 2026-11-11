@@ -109,11 +109,11 @@ Done: lid closed → backlight off, keeps running. AMD backlight 0 still glows, 
 Secure Boot own keys (sbctl) + UKI (closes TPM gap); dashboard settings file + file navigator + settings screen + keybind editor; one theme colors file applied to all apps; website/download page.
 Done: `oracle doctor` (bin/oracle-doctor, read-only, sudo -v once, ok/!/x + fix per line, exit 1 if broken): failed units, disk %, kernel reboot, pacman lock, LUKS + TPM token + recovery key, limine editor, snapshots, NM/resolved/stub/internet, repo dirty/behind/migrations, battery limit vs sysfs, lid, docker/tailscale/containers, firstboot pending.
 
-## Feel (2026-11-11, slice 0 waiting for owner OK)
+## Feel (2026-11-11, spec approved, slice 1 in progress)
 Push toward macOS-level look/feel. Brief + rules: `~/ai-memory/agents/fable-oracle-kickoff.md` (Prompt section). Owner says "go Oracle Feel" (or similar) → read it, follow it. Not part of other tasks unless asked.
-- Spec: `docs/feel.md` (principles, touchpoints, slices 1-9, status table). On branch `feel/spec`, merge to main only after owner OK. No building before that.
+- Spec: `docs/feel.md` (principles, touchpoints, slices 1-9, status table). Owner approved spec + order + mono font 2026-11-11.
 - Work in worktree `~/Projects/oracle-feel` (`git worktree add`), NEVER switch branches in `~/.local/share/oracle`: it is the live install (default/ loads live). Owner tries a branch there himself (steps in docs/feel.md).
 - Feel goes in `default/` (live, delivered by update); `config/` is copy-if-missing so existing ~/.config copies need an import line via migration (owner yes first).
 - VM cannot judge motion (no GPU/touchpad): VM = config valid (`hyprctl configerrors`), G14 checklist = real test.
-- Order (owner to confirm): 1 motion, 2 one look (tokens, incl. lock screen), 3 control panel + notifications (swaync), 4 launcher, 5 silent boot + login, 6 screenshot flow, 7 system feel, 8 welcome, 9 Secure Boot/UKI.
-- Done: none · Next: owner OK on spec → slice 1 motion (`feel/motion`, default/hypr/modules/decorations.lua + input.lua gestures) · Parked branches: none
+- Order (owner OK): 1 motion, 2 one look (tokens, incl. lock screen), 3 control panel + notifications (swaync), 4 launcher, 5 silent boot + login, 6 screenshot flow, 7 system feel, 8 welcome, 9 Secure Boot/UKI.
+- Done: slice 0 spec · Next: slice 1 motion (`feel/motion`, default/hypr/modules/decorations.lua + input.lua gestures) · Parked branches: none

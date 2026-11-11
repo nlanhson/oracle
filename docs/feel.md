@@ -99,4 +99,5 @@ Open choices are made inside their slice and shown to you before building: the l
 
 | Slice | State |
 |---|---|
-| 0 Spec | Written, waiting for the owner's OK |
+| 0 Spec | Done 2026-11-11 |
+| 1 Motion | In progress |
