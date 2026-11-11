@@ -10,6 +10,8 @@ U=${1:-}
   T=$(((H - 8) * 2 / 5)); ((T > 0)) || T=1
   printf '\e[0m\e[H\e[2J\e[3J\e[?25l'
   for i in 0 1 2; do at $((T + i)) $(((W - 34) / 2 + 1)); printf '\e[1;37m%s' "${M[i]}"; done
+  # drawing wakes the console driver, which restarts systemd-vconsole-setup; login cuts the tty off (vhangup), so let it finish first
+  udevadm settle -t 3; timeout 5 systemctl start systemd-vconsole-setup.service </dev/null >/dev/null
   F=$(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}' | head -3 | xargs)
   if [[ -n $F ]]; then
     m="! did not start: $F · after login: oracle doctor"
