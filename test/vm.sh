@@ -245,8 +245,8 @@ rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale
 ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
 vm.sh('oracle set nightlight always; oracle set wallpaper $(ls /usr/share/hypr/*.png | head -1)')
 step('tty1 login via monitor sendkey')
-_, out = vm.sh('pgrep -a agetty | grep tty1')
-if 'oracle-login' not in out: vm.keys('son\n'); time.sleep(2)  # Oracle login asks only for the password (user shown); old prompt asks the name first
+rc, _ = vm.sh('pgrep -fx "/usr/bin/login -- son"')  # Oracle login: login already waits for son's password; old prompt asks the name first
+if rc: vm.keys('son\n'); time.sleep(2)
 vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
@@ -292,6 +292,14 @@ rc, out = vm.sh('for i in $(seq 60); do docker ps --format "{{.Names}}" | grep -
                 ' sudo head -n 8 /boot/limine.conf; sudo grep -c "cmdline:.*quiet" /boot/limine.conf;'
                 ' oracle doctor | grep -iE "boot|login|services"; for u in $(systemctl --failed --plain --no-legend | cut -d" " -f1); do journalctl -b -u "$u" -o short-monotonic | tail -n 6; done', 400)
 ok['after a plain power-on: server apps up, nothing failed, tty1 login running'] = 'dockge' in out and 'FAILED=0' in out and re.search(r'^active$', out, re.M)
+step('Oracle login on tty1: a wrong password, then the right one → boot-login-wrong.png')
+screen = lambda: vm.sh('sudo cat /dev/vcs1 | tr -s " " | fold -w 160', show=0)[1]
+print('tty1 shows:', screen()[-160:])
+vm.keys('wrong-pw\n'); time.sleep(8); vm.shot('boot-login-wrong'); t = screen(); print('after a wrong password:', t[-200:])
+if re.search(r'login: *$', t): vm.keys('son\n'); time.sleep(2)
+vm.keys(PW + '\n'); time.sleep(20)
+rc, out = vm.sh('pgrep -a cage; loginctl list-sessions --no-legend')
+ok['Oracle login: wrong password refused, right password starts Shell mode'] = 'incorrect' in t and 'cage' in out and 'tty1' in out
 step(f'boot menu: {MENU_KEY} tapped from power-on → boot-menu-top.png, then Snapshots opened → boot-menu.png')
 vm.send('sudo poweroff\n'); vm.p.wait(120)
 vm = VM([]); vm.film('menu', keys=MENU_KEY)
