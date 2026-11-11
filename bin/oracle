@@ -97,16 +97,17 @@ case ${1:-help} in
     case ${2:-} in
       "" | toggle | open | close) c=${2:-toggle}
         qs_ ipc call panel "$c" &>/dev/null || { pgrep -x 'qs|quickshell' >/dev/null || setsid -f qs -p "$DIR/default/quickshell" &>/dev/null; for _ in {1..30}; do sleep 0.2; qs_ ipc call panel "$c" &>/dev/null && exit 0; done; die "Control Center is not running (qs -p $DIR/default/quickshell)"; } ;;
-      state) # one key=value per line, read by the panel while it is open
-        w=$(nmcli radio wifi 2>/dev/null) || w=; [[ $w == enabled ]] && w=on || w=off
-        echo "wifi=$w"; echo "ssid=$([[ $w == on ]] && nmcli -t -f active,ssid dev wifi 2>/dev/null | sed -n 's/^yes://p;T;q' || true)"
-        bluetoothctl show 2>/dev/null | grep -q 'Powered: yes' && echo bt=on || echo bt=off
-        echo "btdev=$(bluetoothctl devices Connected 2>/dev/null | sed -n 's/^Device [^ ]* //p;T;q')"
-        echo "dnd=$(swaync-client -D 2>/dev/null || echo false)"; echo "night=$("$0" get nightlight off)"
-        echo "bright=$(brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d %)"
-        vol=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || true); echo "vol=$(awk '{print int($2*100+0.5)}' <<<"$vol")"; grep -q MUTED <<<"$vol" && echo mute=true || echo mute=false
-        b=$(ls -d ${ORACLE_PS:-/sys/class/power_supply}/BAT* 2>/dev/null | head -1); if [[ -n $b ]]; then echo "bat=$(<"$b/capacity")"; echo "batstate=$(<"$b/status")"; echo "limit=$("$0" panel charge)"; fi
-        hyprctl monitors all 2>/dev/null | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 0' && echo screen=off || echo screen=on ;;
+      state) # one key=value per line, read by the panel while it is open. Every outside tool gets 1 s (a missing daemon must not freeze the panel)
+        t() { timeout 1 "$@"; }
+        w=$(t nmcli radio wifi 2>/dev/null) || w=; [[ $w == enabled ]] && w=on || w=off
+        echo "wifi=$w"; echo "ssid=$([[ $w == on ]] && t nmcli -t -f active,ssid dev wifi 2>/dev/null | sed -n 's/^yes://p;T;q' || true)"
+        t bluetoothctl show 2>/dev/null | grep -q 'Powered: yes' && echo bt=on || echo bt=off
+        echo "btdev=$(t bluetoothctl devices Connected 2>/dev/null | sed -n 's/^Device [^ ]* //p;T;q' || true)"
+        echo "dnd=$(t swaync-client -D 2>/dev/null || echo false)"; echo "night=$("$0" get nightlight off)"
+        echo "bright=$(t brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d % || true)"
+        vol=$(t wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || true); echo "vol=$(awk '{print int($2*100+0.5)}' <<<"$vol")"; grep -q MUTED <<<"$vol" && echo mute=true || echo mute=false
+        b=$(ls -d ${ORACLE_PS:-/sys/class/power_supply}/BAT* 2>/dev/null | head -1 || true); if [[ -n $b ]]; then echo "bat=$(<"$b/capacity")"; echo "batstate=$(<"$b/status")"; echo "limit=$("$0" panel charge)"; fi
+        t hyprctl monitors all 2>/dev/null | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 0' && echo screen=off || echo screen=on ;;
       vol) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "${3:?usage: oracle panel vol <0-100>}%" ;;
       bright) brightnessctl -q set "${3:?usage: oracle panel bright <5-100>}%" ;;
       output) setsid -f pavucontrol --tab=3 &>/dev/null ;;
