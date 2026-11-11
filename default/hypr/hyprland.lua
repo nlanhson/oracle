@@ -2,7 +2,7 @@
 local D = os.getenv("HOME") .. "/.local/share/oracle/default/hypr/"
 package.path = D .. "?.lua;" .. os.getenv("HOME") .. "/.config/hypr/?.lua;" .. package.path
 
-for _, m in ipairs({ "monitors", "autostart", "binds", "env", "decorations", "layout", "misc", "input", "windowrules" }) do
+for _, m in ipairs({ "monitors", "autostart", "binds", "env", "decorations", "motion", "layout", "misc", "input", "windowrules" }) do
   require("modules." .. m)
 end
 

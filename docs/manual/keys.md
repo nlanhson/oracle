@@ -51,6 +51,9 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Print` | Screenshot of an area (saved in ~/Pictures/Screenshots) |
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
+| 3 fingers left / right | Previous / next workspace (follows your fingers) |
+| 3 fingers up | Window fills the screen, again to put it back |
+| `Super` + pinch | Zoom in on the pointer, pinch back to zoom out |
 
 ## Terminal (Ghostty)
 

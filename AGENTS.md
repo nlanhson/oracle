@@ -116,4 +116,5 @@ Push toward macOS-level look/feel. Brief + rules: `~/ai-memory/agents/fable-orac
 - Feel goes in `default/` (live, delivered by update); `config/` is copy-if-missing so existing ~/.config copies need an import line via migration (owner yes first).
 - VM cannot judge motion (no GPU/touchpad): VM = config valid (`hyprctl configerrors`), G14 checklist = real test.
 - Order (owner OK): 1 motion, 2 one look (tokens, incl. lock screen), 3 control panel + notifications (swaync), 4 launcher, 5 silent boot + login, 6 screenshot flow, 7 system feel, 8 welcome, 9 Secure Boot/UKI.
-- Done: slice 0 spec · Next: slice 1 motion (`feel/motion`, default/hypr/modules/decorations.lua + input.lua gestures) · Parked branches: none
+- Slice 1 motion: `default/hypr/modules/motion.lua` (curves settle/enter/leave/glide, all leaves, swayosd fade rule, gestures: 3 up = maximize, Super+pinch = zoom, swipe cancel 0.3, no new workspace on swipe). Fuzzel stays no_anim (instant). Spring field = `damping` (`dampening` also parses). Check without a VM: `HOME=<dir with .local/share/oracle → worktree> Hyprland --verify-config -c <default/hypr/hyprland.lua>` → "config ok" (catches bad curve names, styles, gesture actions, config keys).
+- Done: slice 0 spec · Now: slice 1 on `feel/motion`, waiting for owner feel-check on the G14, then merge · Next: slice 2 one look · Parked branches: none
