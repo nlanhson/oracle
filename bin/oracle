@@ -103,7 +103,7 @@ case ${1:-help} in
     rgb() { printf '%d,%d,%d' $((16#${1:0:2})) $((16#${1:2:2})) $((16#${1:4:2})); }
     fa=$(printf %02x "$(awk -v a="$frost_alpha" 'BEGIN{printf "%d", a * 255 + 0.5}')") # frost alpha as a hex byte
     { for k in bg surface raised hover line dim muted text bright error accent; do echo "@define-color o_$k #${!k};"; done
-      echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; } | put colors.css
+      echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; echo "@define-color o_bar rgba($(rgb "$bg"),$bar_alpha);"; } | put colors.css
     { echo "font=${font_ui//\"/}:size=$size_body,${font_mono//\"/}:size=$size_body"; echo "icon-theme=$icon_theme"
       echo "horizontal-pad=$sp_4"; echo "vertical-pad=$sp_3"; echo "inner-pad=$sp_2"
       printf '[colors]\nbackground=%s%s\ntext=%sff\nmatch=%sff\nselection=%sff\nselection-text=%sff\nselection-match=%sff\nborder=%sff\nprompt=%sff\n' \

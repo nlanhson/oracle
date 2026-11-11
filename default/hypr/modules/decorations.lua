@@ -36,10 +36,10 @@ hl.config({
         -- Shadow only under floating windows (rule below); tiled windows have none
         shadow = {
             enabled      = true,
-            range        = 24,
-            render_power = 3,
-            offset       = "0 8",
-            color        = 0x99000000,
+            range        = 48, -- wide and soft, like the reference: depth without a dark outline
+            render_power = 2,
+            offset       = "0 16",
+            color        = 0x66000000,
         },
 
         blur = {

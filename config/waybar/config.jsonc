@@ -1,114 +1,112 @@
-/* -SETTING UP WAYBAR- */
+/* Oracle bar, laid out like the macOS Sequoia menu bar: mark + app in use on the left, status icons then date and time on the right.
+   Look: ~/.local/share/oracle/default/waybar/style.css. This file is yours once copied to ~/.config/waybar. */
 
 {
 "layer": "top",
 "position": "top",
-"height": 30,
+"height": 28,
+"spacing": 0,
 
-"modules-left": [
-	"custom/display",
-	"custom/date",
-	"mpris"
-],
-  
-"modules-center": [
-	"hyprland/workspaces"
-],
-  
-"modules-right": [
-	/*"tray",*/
-	"network",
-	"memory",
-	"temperature",
-	"pulseaudio",
-	"battery",
-	"custom/logout"
-],
+"modules-left": ["custom/oracle", "hyprland/window"],
+"modules-center": ["hyprland/workspaces"],
+"modules-right": ["mpris", "custom/display", "pulseaudio", "battery", "network", "custom/search", "custom/panel", "custom/date"],
 
-"hyprland/workspaces": {
-	"format": "{icon}",
-	"format-icons": {
-		"1": "", "2": "", "3": "", "4": "","5": "",
-        "6": "", "7": "", "8": "", "9": "", "10": ""
+"custom/oracle": {
+	"format": "◉",
+	"tooltip-format": "Lock, sleep, restart, shut down",
+	"on-click": "bash ~/.config/fuzzel/power-menu.sh"
+},
+
+"hyprland/window": {
+	"format": "{class}",
+	"max-length": 40,
+	"separate-outputs": true,
+	"rewrite": {
+		"(?:.*\\.)?([^.]+)": "$1",
+		"^Nautilus$": "Files",
+		"^ghostty$": "Ghostty",
+		"^(manual|shell)$": "Oracle",
+		"^brave-origin.*$": "Brave Origin",
+		"^Loupe$": "Image Viewer",
+		"^mousepad$": "Text Editor",
+		"^pavucontrol$": "Sound",
+		"^satty$": "Screenshot",
+		"^btop$": "Activity"
 	}
 },
 
-"temperature": {
-    "format": "{icon} {temperatureC}°C",
-	"format-icons": ["", "", ""],
-	"critical-threshold": 76,
-    "format-critical": "󱗗 {temperatureC}°C"
+"hyprland/workspaces": {
+	"format": "{icon}",
+	"format-icons": { "default": "" }
 },
 
-"memory": {
-    "interval": 30,
-    "format": "󰍛 {used:0.1f}G",
-    "max-length": 10
+"mpris": {
+	"format": "󰐊  {title}",
+	"format-paused": "󰏤  {title}",
+	"max-length": 28
 },
 
 "custom/display": {
-    "exec": "hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1' && echo '{\"text\":\" 󰍹 \",\"tooltip\":\"Laptop screen: ON\",\"class\":\"on\"}' || echo '{\"text\":\" 󰍺 \",\"tooltip\":\"Laptop screen: OFF\",\"class\":\"off\"}'",
+    "exec": "hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1' && echo '{\"text\":\"󰍹\",\"tooltip\":\"Laptop screen: ON\",\"class\":\"on\"}' || echo '{\"text\":\"󰍺\",\"tooltip\":\"Laptop screen: OFF\",\"class\":\"off\"}'",
     "return-type": "json",
     "interval": 2,
     "on-click": "hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1' && hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\", monitor = \"eDP-1\" })' || hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\", monitor = \"eDP-1\" })'"
 },
 
-"mpris": {
-	"format": "▶ ({status}) {title} - {artist}",
-	"format-paused": " ({status}) {title} - {artist}",
-	"max-length": 30
-},
-
-"custom/date": {
-	"format": "{}",
-	"interval": 60,
-	"exec": "date +'%a %-d %b  %-I:%M %p'",
-	"tooltip": false
-},
-
-"battery": {
-    "interval": 60,
-    "format": "{icon} {capacity}%",
-	"format-charging": "{icon} {capacity}%",
-    "format-icons": {
-        "default": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
-        "charging": ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"]
-    },
-	"states": {
-        "warning": 30,
-        "critical": 15
-    }
-},
-
 "pulseaudio": {
-    "format": "{icon} {volume}%",
-    "format-bluetooth": " {volume}%",
-    "format-muted": "󰝟 Muted",
-    "format-icons": {
-        "headphone": "",
-        "hands-free": "",
-        "headset": "",
-        "phone": "",
-        "phone-muted": "",
-        "portable": "",
-        "car": "",
-        "default": ["󰖀", "󰕾"]
-    },
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "format-icons": { "default": ["󰕿", "󰖀", "󰕾"] },
+    "tooltip-format": "{desc} · {volume}%",
     "scroll-step": 1,
     "on-click": "pavucontrol",
     "ignored-sinks": ["Easy Effects Sink"]
 },
 
-"network": {
-	"format-wifi": " {essid}",
-	"format-ethernet": " {ifname}",
-	"format-disconnected": "󰤮"
+"battery": {
+    "interval": 60,
+    "format": "{capacity}%  {icon}",
+    "format-charging": "󱐋 {capacity}%  {icon}",
+    "format-icons": ["", "", "", "", ""],
+    "states": { "warning": 30, "critical": 15 }
 },
 
-"custom/logout": {
-	"format": "⏻",
-	"tooltip": "Power menu",
-	"interval": 0,
-	"on-click": "bash ~/.config/fuzzel/power-menu.sh"
+"network": {
+	"format-wifi": "{icon}",
+	"format-icons": ["󰤟", "󰤢", "󰤥", "󰤨"],
+	"format-ethernet": "󰈀",
+	"format-disconnected": "󰤮",
+	"tooltip-format-wifi": "{essid} · {signalStrength}%",
+	"tooltip-format-ethernet": "{ifname}",
+	"tooltip-format-disconnected": "Offline"
+},
+
+"custom/search": {
+	"format": "󰍉",
+	"tooltip-format": "Search (Super + Space)",
+	"on-click": "fuzzel --show drun"
+},
+
+"custom/panel": {
+	"format": "{icon}",
+	"format-icons": {
+		"none": "󰔡", "notification": "󰔡<span rise='6000' size='6pt'> ●</span>",
+		"dnd-none": "󰂛", "dnd-notification": "󰂛",
+		"inhibited-none": "󰔡", "inhibited-notification": "󰔡<span rise='6000' size='6pt'> ●</span>",
+		"dnd-inhibited-none": "󰂛", "dnd-inhibited-notification": "󰂛"
+	},
+	"return-type": "json",
+	"exec": "swaync-client -swb",
+	"on-click": "swaync-client -t -sw",
+	"tooltip": false,
+	"escape": true
+},
+
+"custom/date": {
+	"format": "{}",
+	"interval": 30,
+	"exec": "date +'%a %-d %b  %-I:%M %p'",
+	"on-click": "swaync-client -t -sw",
+	"tooltip": false
 }
 }

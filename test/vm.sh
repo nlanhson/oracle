@@ -260,7 +260,9 @@ rc, out = vm.sh('pgrep -x hyprlock; pkill -USR1 hyprlock; sleep 3; pgrep -x hypr
 ok['look: lock screen shows, unlocks on signal'] = 'UNLOCKED' in out
 vm.sh('setsid -f nautilus &>/dev/null; sleep 10', 30, show=0)
 vm.mon('screendump /vm/look-gtk.png -f png')
-vm.sh(VMENV + '; pkill -x nautilus; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
+vm.sh(VMENV + '; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
+vm.mon('screendump /vm/look-app.png -f png')  # bar with an app in use
+vm.sh('pkill -x nautilus; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's own wallpaper
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')

@@ -13,6 +13,7 @@ bright=ffffff
 error=8b2e2e
 # frosted = bg at this opacity over Hyprland blur. 0.75 keeps text above 4.5:1 on a white wallpaper
 frost_alpha=0.75
+bar_alpha=0.6 # the top bar is lighter than panels (menu-bar feel); its text is pure white so it still passes 4.5:1 on white
 # corners: s = buttons, inputs, pills, selected rows; m = windows, notification cards; l = launcher, panel, OSD
 r_s=6
 r_m=8
