@@ -329,6 +329,25 @@ if ((!DRY)) && [[ ! -f /etc/systemd/system/oracle-lid.service ]]; then
 fi
 run sudo systemctl enable "${N[@]}" oracle-lid.service
 
+say "battery: notices at 20% and 10%, clean shutdown at 4% (the server's data stays safe). Never sleeps"
+if ((!DRY)) && ! cmp -s "$SRC/system/oracle-power" /usr/local/bin/oracle-power; then sudo install -Dm755 "$SRC/system/oracle-power" /usr/local/bin/oracle-power; sudo systemctl try-restart oracle-power.service 2>/dev/null || true; fi
+PU=$'[Unit]\nDescription=Oracle: battery notices, clean shutdown at 4%\n[Service]\nExecStart=/usr/local/bin/oracle-power\nRestart=on-failure\n[Install]\nWantedBy=multi-user.target'
+if ((!DRY)) && [[ $(cat /etc/systemd/system/oracle-power.service 2>/dev/null) != "$PU" ]]; then echo "$PU" | sudo tee /etc/systemd/system/oracle-power.service >/dev/null; [[ -z ${N[*]} ]] || sudo systemctl daemon-reload; fi
+run sudo systemctl enable "${N[@]}" oracle-power.service
+
+say "alerts in plain words (full disk, failed service, app crash, Wi-Fi sign-in, server app down) + a quiet weekly update check"
+WS=$'[Unit]\nDescription=Oracle: plain-word alerts and the weekly update check\n[Service]\nType=oneshot\nExecStart=%h/.local/share/oracle/bin/oracle-watch\nKillMode=process\nNice=10'
+WT=$'[Unit]\nDescription=Oracle: look for problems every 5 minutes\n[Timer]\nOnStartupSec=5min\nOnUnitActiveSec=5min\nAccuracySec=1min\n[Install]\nWantedBy=timers.target'
+for u in service:"$WS" timer:"$WT"; do
+  f=/etc/systemd/user/oracle-watch.${u%%:*}
+  ((DRY)) || [[ $(cat "$f" 2>/dev/null) == "${u#*:}" ]] || echo "${u#*:}" | sudo tee "$f" >/dev/null
+done
+run sudo systemctl --global enable oracle-watch.timer
+((DRY)) || [[ -z ${N[*]} ]] || { systemctl --user daemon-reload && systemctl --user start oracle-watch.timer; } 2>/dev/null || true
+
+say "clock set automatically (network time)"
+if systemctl is-enabled -q chronyd ntpd 2>/dev/null; then say "  kept your chrony/ntpd"; else run sudo systemctl enable "${N[@]}" systemd-timesyncd.service; fi
+
 say "Setting up automatic disk unlock (TPM): no password at boot"
 L=/boot/loader/loader.conf
 if ((!DRY)) && sudo test -f "$L" && ! sudo grep -q '^editor' "$L"; then run sudo sh -c "echo 'editor no' >> $L"; fi

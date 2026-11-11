@@ -9,14 +9,15 @@ B=$(bat); [[ -n $B ]] || { echo "no battery: nothing to watch"; exit 0; }
 mkdir -p "$RUN"
 note() { # note <urgency> <title> <body>: journal, the dashboard (Shell mode), a notification in every desktop session
   echo "$2. $3"; echo "$2. $3" >"$RUN/battery"
-  local s u
+  local s E=(env)
+  if ((EUID)); then has && timeout 5 notify-send -a Battery -u "$1" -i battery-caution "$2" "$3" &>/dev/null; return 0; fi # by hand or a test: this session
   for s in /run/user/[0-9]*/bus; do
-    [[ -S $s ]] || continue; u=${s%/bus}; u=${u##*/}; ((EUID == 0)) || ((u == EUID)) || continue
-    E=(env DBUS_SESSION_BUS_ADDRESS=unix:path=$s); ((EUID)) || E=(runuser -u "$(id -nu "$u")" -- "${E[@]}")
-    "${E[@]}" busctl --user call org.freedesktop.DBus / org.freedesktop.DBus NameHasOwner s org.freedesktop.Notifications 2>/dev/null | grep -q true || continue
-    "${E[@]}" timeout 5 notify-send -a Battery -u "$1" -i battery-caution "$2" "$3" &>/dev/null &
+    [[ -S $s ]] || continue; E=(runuser -u "$(stat -c %U "$s")" -- env DBUS_SESSION_BUS_ADDRESS=unix:path=$s)
+    "${E[@]}" busctl --user call org.freedesktop.DBus / org.freedesktop.DBus NameHasOwner s org.freedesktop.Notifications 2>/dev/null | grep -q true &&
+      "${E[@]}" timeout 5 notify-send -a Battery -u "$1" -i battery-caution "$2" "$3" &>/dev/null &
   done; wait
 }
+has() { busctl --user call org.freedesktop.DBus / org.freedesktop.DBus NameHasOwner s org.freedesktop.Notifications 2>/dev/null | grep -q true; }
 fired=0 # lowest level already told this discharge (0 = none)
 while :; do
   c=$(<"$B/capacity") s=$(<"$B/status")

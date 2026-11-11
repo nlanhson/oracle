@@ -60,6 +60,7 @@ pipewire
 pipewire-pulse
 wireplumber
 fwupd
+pacman-contrib # checkupdates (~130 KB): the weekly update notice counts waiting updates on a copy of the package list, never touching the real one
 ufw # firewall: only Tailscale gets in (system/oracle-firewall)
 # rollback: snapshots + Limine boot menu
 snapper

@@ -148,7 +148,7 @@ case ${1:-help} in
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
   idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7; on battery 2 and 3. Never sleeps (server)
     case ${2:-} in dim | off | wake) # one idle step (hypridle and swayidle call these); "battery" = only when running on battery
-      [[ ${3:-} != battery ]] || { compgen -G '/sys/class/power_supply/BAT*' >/dev/null && ! grep -qsx 1 /sys/class/power_supply/A*/online; } || exit 0
+      P=${ORACLE_POWER_SUPPLY:-/sys/class/power_supply}; [[ ${3:-} != battery ]] || { compgen -G "$P/BAT*" >/dev/null && ! grep -qsx 1 "$P"/A*/online; } || exit 0
       I=${XDG_RUNTIME_DIR:-/tmp}/oracle-idle; exec 9>"$I.lock"; flock 9; s=$(cat "$I" 2>/dev/null) || true
       kb() { brightnessctl -q -d '*kbd_backlight' info &>/dev/null && brightnessctl -q -d '*kbd_backlight' "$@" || true; } # keyboard light, if there is one
       lv=10%; [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && lv=10 # desktop: the lowest step that still glows
