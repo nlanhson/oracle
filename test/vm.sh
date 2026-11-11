@@ -245,8 +245,8 @@ rc, out = vm.sh('oracle set scale 1.25; oracle set keyboard de; oracle get scale
 ok['settings file: Hyprland reads it, ghostty includes it'] = '1.25' in out and 'config ok' in out and re.search(r'^1$', out, re.M)
 vm.sh('oracle set nightlight always; oracle set wallpaper $(ls /usr/share/hypr/*.png | head -1)')
 step('tty1 login via monitor sendkey')
-rc, _ = vm.sh('pgrep -af "login -- son"')  # Oracle login: login already waits for son's password; old prompt asks the name first
-if rc: vm.keys('son\n'); time.sleep(2)
+rc, _ = vm.sh('ps -t tty1 -o comm= | grep -x agetty')  # old prompt: agetty asks the name; Oracle login: login already waits for son's password
+if rc == 0: vm.keys('son\n'); time.sleep(2)
 vm.keys(PW + '\n'); time.sleep(25)
 rc, out = vm.sh('pgrep -a cage; pgrep -af oracle-home; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'oracle-home' in out and 'home' in out
