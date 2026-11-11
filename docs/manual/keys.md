@@ -37,7 +37,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
 | `Super + Space` | App launcher |
-| `Super + A` | Notifications |
+| `Super + A` | Control panel and notifications (also: click the control-centre icon on the bar) |
 | `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
 | `Super + W` | Restart the top bar |

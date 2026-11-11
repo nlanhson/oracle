@@ -1,5 +1,5 @@
 /* Oracle notifications: swaync's own layout, Oracle greys, frosted. Colours from ~/.config/oracle/look/colors.css (tokens).
-   Owned by Oracle; your lines go in ~/.config/swaync/style.css. Corners: cards 8, panel 14, buttons 6. */
+   Owned by Oracle; your lines go in ~/.config/swaync/style.css. Corners: panel 14 + 8 margin, module cards 14, notification cards 14, buttons 10, pills 99. */
 @import url("file:///etc/xdg/swaync/style.css");
 
 @define-color cc-bg @o_frost;
@@ -20,53 +20,121 @@
 .control-center {
 	background: @o_frost;
 	border: 1px solid @o_line;
-	border-radius: 14px;
+	border-radius: 18px;
 	margin: 8px;
+	padding: 12px 0 0;
 	box-shadow: none;
 }
 
-.control-center .widget-title > label { font-size: 15px; color: @o_bright; }
-
-.control-center .notification-row .notification-background,
-.notification-row .notification-background {
-	background: transparent;
+/* modules: each widget is its own card, a touch lighter than the panel (Sequoia Control Center) */
+.control-center .widget { background: transparent; margin: 0 12px 12px; padding: 0; border-radius: 14px; }
+.control-center .widget-slider {
+	background: @o_frost_up;
+	border: 1px solid @o_line;
+	padding: 12px;
 }
+.widget-slider label { color: @o_text; font-size: 15px; min-width: 24px; margin-right: 8px; }
+scale { padding: 0; }
+scale trough { min-height: 22px; border-radius: 99px; background: @o_line; border: none; }
+scale trough highlight { background: @o_bright; border-radius: 99px; min-height: 22px; }
+scale trough slider { min-width: 0; min-height: 0; margin: 0; border-radius: 99px; background: transparent; border: none; box-shadow: none; outline: none; }
 
+/* tiles (the first grid) and the quiet link row (the second grid). swaync cannot style a widget by its #name, so by position */
+.widget-buttons-grid flowboxchild { padding: 0; }
+.widget-buttons-grid button {
+	background: transparent;
+	border: none;
+	border-radius: 10px;
+	color: @o_muted;
+	min-height: 32px;
+	margin: 0 6px 8px;
+	padding: 0 12px;
+	font-weight: 400;
+	box-shadow: none;
+	transition: background-color 150ms ease-in-out;
+}
+.widget-buttons-grid button:hover { background: @o_hover; color: @o_bright; }
+.widget-buttons-grid:first-child button {
+	background: @o_frost_up;
+	border: 1px solid @o_line;
+	border-radius: 14px;
+	color: @o_text;
+	min-height: 40px;
+	margin: 0 6px 12px;
+	font-weight: 600;
+}
+.widget-buttons-grid:first-child button:hover { background: @o_hover; color: @o_bright; }
+.widget-buttons-grid:first-child button.toggle:checked,
+.widget-buttons-grid:first-child button.active {
+	background: @o_bright;
+	color: @o_bg;
+	border-color: @o_bright;
+}
+.widget-buttons-grid:first-child button.toggle:checked:hover { background: @o_text; }
+
+.control-center .widget-mpris { background: @o_frost_up; border: 1px solid @o_line; padding: 8px; }
+.widget-mpris .widget-mpris-title { color: @o_bright; font-weight: 600; font-size: 13px; }
+.widget-mpris .widget-mpris-subtitle { color: @o_muted; font-size: 11px; }
+.widget-mpris button { color: @o_text; background: transparent; border: none; box-shadow: none; }
+
+/* notifications */
+.control-center .widget-title { margin-top: 4px; margin-bottom: 8px; }
+.control-center .widget-title > label { font-size: 15px; font-weight: 600; color: @o_bright; margin: 0; }
+.control-center .widget-title > button { margin: 0; padding: 2px 12px; font-size: 11px; }
+.control-center .control-center-list-placeholder { opacity: 1; color: @o_dim; }
+
+.notification-row .notification-background { padding: 4px 12px; }
+.control-center .notification-row .notification-background { padding: 4px 0; }
+
+.notification-row .notification-background .notification,
 .notification {
 	background: @o_frost_up;
 	border: 1px solid @o_line;
-	border-radius: 8px;
+	border-radius: 14px;
 	box-shadow: none;
 }
+.control-center .control-center-list .notification { box-shadow: none; }
 
 .notification-row,
 .notification-group,
 .control-center-list,
-.control-center .widget-title,
-.control-center .widget-dnd { background: transparent; box-shadow: none; outline: none; }
+.control-center .widget-title { background: transparent; box-shadow: none; outline: none; }
 
-.notification-content { background: transparent; padding: 10px 12px; }
+.notification-row .notification-background .notification .notification-default-action .notification-content { background: transparent; padding: 12px; }
+.notification-row .notification-background .notification .notification-default-action { background: transparent; border-radius: 14px; padding: 0; }
+.notification-row .notification-background .notification .notification-default-action:hover { background: @o_hover; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .image { border-radius: 8px; margin: 0 8px 0 0; -gtk-icon-size: 36px; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .summary { color: @o_bright; font-size: 13px; font-weight: 600; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .body { color: @o_text; font-size: 13px; font-weight: 400; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .time { color: @o_muted; font-size: 11px; font-weight: 400; margin-right: 24px; }
 
-.notification .summary { color: @o_bright; font-size: 13px; font-weight: 600; }
-.notification .body, .notification .time { color: @o_text; font-size: 13px; }
-.notification .time { color: @o_muted; font-size: 11px; }
+.notification-row .notification-background .notification.critical { box-shadow: inset 3px 0 0 @o_error; }
+.floating-notifications .notification-row .notification-background { padding: 4px 8px; }
+.floating-notifications { padding-top: 4px; }
 
-.notification.critical { border-color: @o_error; }
-
-.notification-action,
-.widget-title > button,
-.widget-dnd > switch {
+.notification-action > button,
+.widget-title > button {
 	background: @o_raised;
 	border: 1px solid @o_line;
-	border-radius: 6px;
+	border-radius: 99px;
 	color: @o_text;
+	box-shadow: none;
 }
-
-.notification-action:hover,
+.notification-action > button:hover,
 .widget-title > button:hover { background: @o_hover; color: @o_bright; }
 
-.widget-dnd > switch:checked { background: @o_dim; }
-.widget-dnd > switch slider { background: @o_bright; border-radius: 6px; }
+.notification-group .notification-group-headers,
+.notification-group .notification-group-buttons { margin: 0 4px; color: @o_muted; }
+.notification-group .notification-group-header { color: @o_muted; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
+.notification-group .notification-group-icon { color: @o_muted; }
+.notification-group .notification-group-close-button .close-button { margin: 4px 8px; }
+.notification-group.collapsed.not-expanded { opacity: 1; }
 
-.close-button { background: @o_hover; color: @o_text; border-radius: 6px; }
-.close-button:hover { background: @o_dim; }
+.close-button { background: @o_hover; color: @o_text; border-radius: 99px; margin: 8px 8px 0 0; min-width: 20px; min-height: 20px; box-shadow: none; }
+.close-button:hover { background: @o_dim; color: @o_bright; }
+
+.widget-dnd > switch:checked { background: @o_dim; }
+.widget-dnd > switch slider { background: @o_bright; border-radius: 99px; }
+
+.notification-row:focus, .notification-group:focus,
+.notification-group.low, .notification-group.normal, .notification-group.critical { background: transparent; box-shadow: none; outline: none; }
