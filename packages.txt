@@ -39,6 +39,9 @@ btop
 fastfetch # ff: system info with the Batman emblem
 xsettingsd # dark theme for older (X11) apps
 wl-clipboard
+wl-clip-persist # what you copied stays after the app quits (macOS); 3 MB
+playerctl # media keys (play, next, previous) for any player; waybar already needs it
+sushi # Quick Look: Space in Files previews a file (about 23 MB download: gjs, papers, gtksourceview)
 xdg-utils
 gnome-themes-extra
 papirus-icon-theme

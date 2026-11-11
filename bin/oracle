@@ -188,7 +188,8 @@ case ${1:-help} in
       setsid -f ghostty --class=oracle.shell --gtk-single-instance=false -e bash -c 'oracle attach; oracle gui' &>/dev/null
       for _ in {1..50}; do hyprctl clients | grep -q $'\tclass: oracle.shell$' && break; sleep 0.1; done
     fi
+    [[ ${2:-} == --hidden ]] && exit 0 # desktop start: the window waits out of sight, so the first open (and the swipe) is instant
     if ! shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi
-    hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;;
+    hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;; # the submap also follows the workspace (behaviour.lua)
   help | *) "$ME/oracle-manual" --list; echo; echo "more (what, when, examples): press Super+/ or type oracle manual" ;;
 esac

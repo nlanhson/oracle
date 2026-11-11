@@ -61,7 +61,7 @@ about it. Each line is a real default from Apple's documentation or System Setti
 
 | Layer | What Sequoia does | What Oracle does |
 |---|---|---|
-| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Same: click to focus, scroll under the pointer. (Before: focus followed the mouse.) Changeable in Settings. |
+| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Focus follows the pointer (the owner's choice, kept). Scrolling goes to whatever is under the pointer. |
 | Apps come forward | Open a link or a file and that app comes to the front, on its own Space if needed. | An app that asks for attention is brought forward, and you are taken to its workspace. |
 | Dialogs | Open, Save and password dialogs are small sheets on top of their window, centred, with the rest dimmed. | Dialogs, file pickers, password prompts and small tools float in the centre, never tiled, with the rest dimmed. |
 | Picture in picture | A small video stays on top in a corner, on every Space. | Same for the browser's picture-in-picture window. |

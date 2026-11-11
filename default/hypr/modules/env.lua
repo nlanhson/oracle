@@ -26,3 +26,6 @@ hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
+
+-- Text: slightly heavier stems like macOS (FreeType stem darkening for CFF + the auto-hinter); fonts.conf turns hinting off
+hl.env("FREETYPE_PROPERTIES", "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0")
