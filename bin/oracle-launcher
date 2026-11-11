@@ -254,7 +254,7 @@ def gui(power_first):
         k = it["kind"]
         if k == "app":
             ic = it["app"].get_icon(); return Gtk.Image.new_from_gicon(ic) if ic else Gtk.Image.new_from_icon_name("application-x-executable")
-        if k == "dlg": return Gtk.Image.new_from_icon_name("dialog-cancel" if it["act"] is None else {"Restart": "system-reboot"}.get(it["title"], "system-shutdown"))
+        if k == "dlg": return Gtk.Image.new_from_icon_name("window-close-symbolic" if it["act"] is None else {"Restart": "system-reboot"}.get(it["title"], "system-shutdown"))
         if k == "cmd": return Gtk.Image.new_from_icon_name("utilities-terminal")
         if k == "sum": return Gtk.Image.new_from_icon_name("accessories-calculator")
         if k == "power": return Gtk.Image.new_from_icon_name({"Lock": "system-lock-screen", "Sleep": "system-suspend", "Restart": "system-reboot"}.get(it["title"], "system-shutdown"))

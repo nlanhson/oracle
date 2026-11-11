@@ -312,7 +312,10 @@ vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's o
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)
-vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm.send('sudo poweroff\n')
+try: vm.p.wait(120)
+except subprocess.TimeoutExpired: vm.p.kill()  # a slow poweroff must not hide the results
+
 step('result')
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
