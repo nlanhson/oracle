@@ -70,7 +70,7 @@ ShellRoot {
                     Rectangle {
                         required property int index
                         x: -index * 2.5; y: 8 - index * 2.5 + 2; width: panel.width + index * 5; height: panel.height + index * 5
-                        radius: 20 + index * 2.5; color: Tokens.alpha("#000000", 0.035)
+                        radius: 20 + index * 2.5; color: Tokens.alpha("#000000", 0.022)
                     }
                 }
                 Rectangle {

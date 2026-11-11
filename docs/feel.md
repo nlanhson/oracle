@@ -43,9 +43,9 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 | Windows | Open, close and fade are switched off. Workspaces slide. Only one gesture (3 fingers sideways). | Open, close, move and fade with tuned springs. Gestures for workspaces and Shell mode. | VM: config loads with no errors. G14: feel checklist. |
 | Colours and shapes | Greys repeated per app. Corners 8 on windows, 18 on the launcher. Default cursor. | One token file feeds everything. One corner scale, one spacing grid, one cursor. | VM screenshots of every surface side by side. |
 | Type | JetBrains Mono everywhere, sizes picked per app. | Inter on the desktop (modern, easy to read, Vietnamese). JetBrains Mono stays in the terminal and Shell mode. One size and weight scale. | Screenshots. |
-| Top bar | Text modules, read only. Tray off. Power button. | Same bar, calmer. Right side opens the control panel. | Screenshots, click test. |
-| Control panel | None. Wi-Fi and Bluetooth need the Settings screen. | One panel: Wi-Fi, Bluetooth, sound, brightness, night light, battery, do not disturb. Deeper settings open `oracle settings`. | VM: each control changes the real setting. |
-| Notifications | Stock look in grey. Not grouped. | Frosted cards, grouped per app, quiet by default, one clear action. | VM: send test notifications, screenshot. |
+| Top bar | Text modules, read only. Tray off. Power button. | Same bar, calmer. The control-centre icon opens the Control Center, the clock the Notification Center. | Screenshots, click test. |
+| Control Center | None. Wi-Fi and Bluetooth need the Settings screen. | Quickshell panel laid out like Sequoia: round toggles with a subtitle, labelled sliders, battery limit, now playing. Deeper settings open `oracle settings`. | Pixel compare with the Sequoia reference, VM: each control changes the real setting. |
+| Notification Center | Stock look in grey. Not grouped. | swaync only: frosted cards float on the desktop (no panel), grouped per app, quiet by default, one clear action. | VM: send test notifications, screenshot. |
 | Launcher | Apps only. | One box: apps, files, sums, `oracle` commands, ranked. Still Super+Space. | VM: scripted searches, screenshot. |
 | Lock screen | Black, clock, password box. Only on demand. | Frosted view of the desktop, same tokens. Still only on demand. | VM screenshot. |
 | Boot | Boot menu every time, scrolling text, text login. | Silent boot with the Oracle mark. Menu only when a key is held. A styled login. Still no autologin. | VM: screenshots every second from power on to desktop, boot time measured. |
@@ -141,6 +141,6 @@ Open choices are made inside their slice and shown to you before building: the l
 | 0 Spec | Done 2026-11-11 |
 | 1 Motion | Built on `feel/motion`, waiting for the feel check on the G14 |
 | 2 One look | Built on `feel/look`, waiting for the feel check |
-| 3 Control panel | Built on `feel/panel`, waiting for the feel check |
+| 3 Control Center | Rebuilt with Quickshell (`feel/cc`), waiting for feel check. Notification Center = swaync only |
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
 | 8 Welcome | Built on `feel/welcome`, waiting for feel check |

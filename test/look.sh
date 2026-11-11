@@ -9,10 +9,11 @@ ck() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; fail=1; fi; }
 bash "$O" look
 ck "oracle look writes colors.css fuzzel.ini hyprlock.conf tokens.lua" '[[ -s $L/colors.css && -s $L/fuzzel.ini && -s $L/hyprlock.conf && -s $L/tokens.lua ]]'
 ck "tokens.lua is valid Lua" '! command -v lua >/dev/null || LL=$L/tokens.lua lua -e "os.exit(assert(loadfile(os.getenv(\"LL\")))().r_l == 14 and 0 or 1)" </dev/null'
+ck "tokens.json is valid JSON with colours, radii, font and accent (the Control Center reads it)" '[[ $(python3 -c "import json,sys; t=json.load(open(sys.argv[1])); print(t[\"r_l\"], t[\"font_ui\"], t[\"accent\"][0], t[\"bright\"])" "$L/tokens.json") == "14 Inter # #ffffff" ]]'
 i=$(stat -c %i "$L/colors.css"); bash "$O" look
 ck "second run writes nothing (files unchanged)" '[[ $i == $(stat -c %i "$L/colors.css") && -z $(ls "$L"/*.new 2>/dev/null) ]]'
 printf 'text=ff00ff\nr_l=20\n' >"$HOME/.config/oracle/tokens"; bash "$O" look
-ck "one token edit changes every generated file" 'grep -qi ff00ff "$L/colors.css" && grep -qi ff00ff "$L/fuzzel.ini" && grep -qi ff00ff "$L/hyprlock.conf" && grep -qi ff00ff "$L/tokens.lua"'
+ck "one token edit changes every generated file" 'grep -qi ff00ff "$L/colors.css" && grep -qi ff00ff "$L/fuzzel.ini" && grep -qi ff00ff "$L/hyprlock.conf" && grep -qi ff00ff "$L/tokens.lua" && grep -qi ff00ff "$L/tokens.json"'
 ck "corner token reaches launcher, lock and Hyprland tokens" 'grep -q "^radius=20" "$L/fuzzel.ini" && grep -q "r_l = 20" "$L/hyprlock.conf" && grep -q "r_l = 20" "$L/tokens.lua"'
 rm "$HOME/.config/oracle/tokens"; bash "$O" look
 C=$HOME/.config; mkdir -p "$C/waybar" "$C/fuzzel" "$C/swaync" "$C/hypr"

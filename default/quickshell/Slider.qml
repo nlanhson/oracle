@@ -32,7 +32,7 @@ Item {
     }
     Rectangle { // knob shadow, faint
         x: fill.width - s.d - 0.5; y: 0.5; width: s.d + 1; height: s.d + 1; radius: width / 2
-        color: Tokens.alpha("#000000", 0.10); z: 1
+        color: Tokens.alpha("#000000", 0.16); z: 1
     }
     Rectangle { x: fill.width - s.d; width: s.d; height: s.d; radius: s.d / 2; color: Tokens.bright; z: 2 }
     Glyph {
