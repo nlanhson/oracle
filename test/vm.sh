@@ -347,6 +347,7 @@ ok['behaviour: Super+Tab goes to the previous app, Super+Tab again comes back (r
 # hold Super, Tab twice: two apps back; letting go commits (mru was mousepad, ghostty? -> after the tabs: mousepad, files, ghostty)
 vm.mon('sendkey meta_l-tab 5000'); time.sleep(1); vm.mon('sendkey tab'); time.sleep(1.5); h1 = act(); time.sleep(5); h2 = act()
 print('hold:', h1 and h1['cls'], h2 and h2['cls'])
+vm.sh('cat /tmp/oracle-mru.log | tail -n 30', show=30)
 ok['behaviour: Super held + Tab twice = two apps back (Command-Tab cycling); not just a toggle'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
 tab('meta_l-shift_l-tab'); s1 = act()
 print('shift-tab:', s1 and s1['cls'])
@@ -371,7 +372,8 @@ if c1:
 vm.mon('screendump /vm/beh-settings-popup.png -f png')
 vm.sh(VMENV + '; pkill -f oracle.settings; sleep 2', 30, show=0)
 # a dialog opens floating, centred, rest dimmed
-vm.sh('printf "#!/bin/sh\\nexec ghostty --class=xdg-desktop-portal-gtk --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\\n" >/tmp/dlg.sh; chmod +x /tmp/dlg.sh', show=0)
+DLG = '#!/bin/sh\nexec ghostty --class=xdg-desktop-portal-gtk --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\n'
+vm.sh(f'echo {base64.b64encode(DLG.encode()).decode()} | base64 -d >/tmp/dlg.sh; chmod +x /tmp/dlg.sh', show=0)
 vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.exec_cmd("/tmp/dlg.sh")\'; sleep 8', 30, show=0)
 d1 = act(); print('dialog:', d1)
 ok['behaviour: a file-chooser-class window opens floating (never tiled)'] = bool(d1) and d1['cls'] == 'xdg-desktop-portal-gtk' and d1['float']
