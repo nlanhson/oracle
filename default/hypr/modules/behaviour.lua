@@ -30,6 +30,8 @@ hl.window_rule({ name = "oracle-small-tools",  match = { class = "^(org\\.pulsea
                 float = true, center = true, size = "900 620" })
 hl.window_rule({ name = "oracle-properties",   match = { title = "^.* Properties$" }, float = true, center = true })
 
+hl.window_rule({ name = "oracle-settings", match = { class = "^oracle\\.settings$" }, float = true, center = true, force_rgbx = true }) -- Super+comma pop-up
+
 -- Picture in picture: small, bottom-right, on top, on every workspace, never takes the keyboard (macOS PiP)
 hl.window_rule({ name = "oracle-pip", match = { title = "^(Picture[ -]in[ -][Pp]icture)$" },
                  float = true, pin = true, keep_aspect_ratio = true, no_initial_focus = true,
@@ -110,7 +112,7 @@ hl.bind(Mod .. " + SHIFT + Tab", function() switch(-1) end) -- Shift-Command-Tab
 hl.bind(Mod .. " + grave",       same_app)                   -- Command-`
 hl.bind(Mod .. " + CTRL + F",    hl.dsp.window.fullscreen({ action = "toggle" })) -- Control-Command-F
 hl.bind(Mod .. " + CTRL + Q",    hl.dsp.exec_cmd("loginctl lock-session"))        -- Control-Command-Q (hypridle locks)
-hl.bind(Mod .. " + comma",       hl.dsp.exec_cmd("ghostty --class=oracle.manual --gtk-single-instance=false --window-width=70 --window-height=30 -e oracle settings")) -- Command-comma
+hl.bind(Mod .. " + comma",       hl.dsp.exec_cmd("ghostty --class=oracle.settings --gtk-single-instance=false --window-width=70 --window-height=34 -e oracle settings")) -- Command-comma
 hl.bind(Mod .. " + ALT + Escape", hl.dsp.exec_cmd("hyprctl kill"))  -- Option-Command-Esc: click the stuck window (Esc cancels)
 
 -- Four-finger pinch in = launcher (Launchpad); 3 fingers up/down = Shell mode, following your fingers
