@@ -22,51 +22,57 @@
 	border: 1px solid @o_line;
 	border-radius: 18px;
 	margin: 8px;
-	padding: 4px 0 0;
+	padding: 12px 0 0;
 	box-shadow: none;
 }
 
 /* modules: each widget is its own card, a touch lighter than the panel (Sequoia Control Center) */
 .control-center .widget { background: transparent; margin: 0 12px 12px; padding: 0; border-radius: 14px; }
-.widget-slider {
+.control-center .widget-slider {
 	background: @o_frost_up;
 	border: 1px solid @o_line;
-	padding: 10px 12px;
+	padding: 12px;
 }
 .widget-slider label { color: @o_text; font-size: 15px; min-width: 24px; margin-right: 8px; }
 scale { padding: 0; }
-scale trough { min-height: 22px; border-radius: 99px; background: @o_hover; border: none; }
+scale trough { min-height: 22px; border-radius: 99px; background: @o_line; border: none; }
 scale trough highlight { background: @o_bright; border-radius: 99px; min-height: 22px; }
-scale trough slider { min-width: 22px; min-height: 22px; margin: 0; border-radius: 99px; background: @o_bright; border: none; box-shadow: none; outline: none; }
+scale trough slider { min-width: 0; min-height: 0; margin: 0; border-radius: 99px; background: transparent; border: none; box-shadow: none; outline: none; }
 
-/* tiles */
+/* tiles (the first grid) and the quiet link row (the second grid). swaync cannot style a widget by its #name, so by position */
 .widget-buttons-grid flowboxchild { padding: 0; }
-.widget-buttons-grid flowboxchild > button,
 .widget-buttons-grid button {
+	background: transparent;
+	border: none;
+	border-radius: 10px;
+	color: @o_muted;
+	min-height: 32px;
+	margin: 0 6px 8px;
+	padding: 0 12px;
+	font-weight: 400;
+	box-shadow: none;
+	transition: background-color 150ms ease-in-out;
+}
+.widget-buttons-grid button:hover { background: @o_hover; color: @o_bright; }
+.widget-buttons-grid:first-child button {
 	background: @o_frost_up;
 	border: 1px solid @o_line;
 	border-radius: 14px;
 	color: @o_text;
 	min-height: 40px;
 	margin: 0 6px 12px;
-	padding: 0 12px;
 	font-weight: 600;
-	box-shadow: none;
-	transition: background-color 150ms ease-in-out;
 }
-.widget-buttons-grid flowboxchild > button:hover { background: @o_hover; color: @o_bright; }
-.widget-buttons-grid flowboxchild > button.toggle:checked,
-.widget-buttons-grid flowboxchild > button.active {
+.widget-buttons-grid:first-child button:hover { background: @o_hover; color: @o_bright; }
+.widget-buttons-grid:first-child button.toggle:checked,
+.widget-buttons-grid:first-child button.active {
 	background: @o_bright;
 	color: @o_bg;
 	border-color: @o_bright;
 }
-.widget-buttons-grid flowboxchild > button.toggle:checked:hover { background: @o_text; }
-.widget-buttons-grid#tiles { margin-bottom: 0; }
-.widget-buttons-grid#links flowboxchild > button { min-height: 32px; font-weight: 400; color: @o_muted; background: transparent; border-color: transparent; margin-bottom: 8px; }
-.widget-buttons-grid#links flowboxchild > button:hover { background: @o_hover; color: @o_bright; }
+.widget-buttons-grid:first-child button.toggle:checked:hover { background: @o_text; }
 
-.widget-mpris { background: @o_frost_up; border: 1px solid @o_line; padding: 8px; }
+.control-center .widget-mpris { background: @o_frost_up; border: 1px solid @o_line; padding: 8px; }
 .widget-mpris .widget-mpris-title { color: @o_bright; font-weight: 600; font-size: 13px; }
 .widget-mpris .widget-mpris-subtitle { color: @o_muted; font-size: 11px; }
 .widget-mpris button { color: @o_text; background: transparent; border: none; box-shadow: none; }
@@ -94,16 +100,17 @@ scale trough slider { min-width: 22px; min-height: 22px; margin: 0; border-radiu
 .control-center-list,
 .control-center .widget-title { background: transparent; box-shadow: none; outline: none; }
 
-.notification .notification-content { background: transparent; padding: 12px; }
-.notification .notification-default-action { background: transparent; border-radius: 14px; }
-.notification .notification-default-action:hover { background: @o_hover; }
-.notification .image { border-radius: 8px; margin: 0 8px 0 0; -gtk-icon-size: 36px; }
-.notification .summary { color: @o_bright; font-size: 13px; font-weight: 600; }
-.notification .body { color: @o_text; font-size: 13px; font-weight: 400; }
-.notification .time { color: @o_muted; font-size: 11px; font-weight: 400; margin-right: 24px; }
-.notification .notification-content .text-box label { filter: none; }
+.notification-row .notification-background .notification .notification-default-action .notification-content { background: transparent; padding: 12px; }
+.notification-row .notification-background .notification .notification-default-action { background: transparent; border-radius: 14px; padding: 0; }
+.notification-row .notification-background .notification .notification-default-action:hover { background: @o_hover; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .image { border-radius: 8px; margin: 0 8px 0 0; -gtk-icon-size: 36px; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .summary { color: @o_bright; font-size: 13px; font-weight: 600; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .body { color: @o_text; font-size: 13px; font-weight: 400; }
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .time { color: @o_muted; font-size: 11px; font-weight: 400; margin-right: 24px; }
 
-.notification.critical { box-shadow: inset 3px 0 0 @o_error; }
+.notification-row .notification-background .notification.critical { box-shadow: inset 3px 0 0 @o_error; }
+.floating-notifications .notification-row .notification-background { padding: 4px 8px; }
+.floating-notifications { padding-top: 4px; }
 
 .notification-action > button,
 .widget-title > button {
