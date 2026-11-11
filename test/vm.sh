@@ -343,7 +343,7 @@ vm.mon('screendump /vm/cc-states.png -f png')  # DND and night light on (the pan
 vm.sh(VMENV + '; oracle panel; oracle panel dnd false; oracle panel night false; oracle set accent cyan; oracle look; sleep 2; oracle panel; sleep 3', 40, show=0)
 vm.mon('screendump /vm/cc-cyan.png -f png')
 vm.sh(VMENV + '; oracle panel; oracle set accent; oracle look; sleep 1', 30, show=0)
-rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"')
+rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; hyprctl layers | grep -c "namespace: oracle-panel"; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"; which wtype')
 ok['control center: Esc closes it'] = ''.join(out.split())[-2:] == '10'
 vm.sh(VMENV + '; oracle panel close; sleep 1', 30, show=0)
 rc, out = vm.sh(VMENV + '; P=$(pgrep -x "qs|quickshell" | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x "qs|quickshell" >/dev/null && echo ALIVE', 90)
@@ -351,7 +351,7 @@ print(out)
 ok['control center: quickshell survives 30 s idle (see CPU/RSS above)'] = 'ALIVE' in out
 rc, out = vm.sh(VMENV + '; swaync-client -t -sw; sleep 2; hyprctl layers | grep -c "namespace: swaync-control-center"; swaync-client -cp -sw')
 ok['notification center: the date click command opens swaync'] = 'swaync-control-center' in out or re.search(r'^1\s*$', out, re.M) is not None
-rc, out = vm.sh(VMENV + '; notify-send -a Messages "Dot" "unread"; sleep 2; swaync-client -swb; hyprctl configerrors')
+rc, out = vm.sh(VMENV + '; notify-send -a Messages "Dot" "unread"; sleep 2; timeout 3 swaync-client -swb; hyprctl configerrors')
 ok['bar: unread dot state still reported by swaync (custom/panel)'] = 'notification' in out
 vm.sh('setsid -f nautilus &>/dev/null; sleep 10', 30, show=0)
 vm.mon('screendump /vm/look-gtk.png -f png')
