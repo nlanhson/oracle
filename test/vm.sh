@@ -260,9 +260,9 @@ lshot('gho', 'launcher-apps'); lshot('upd', 'launcher-oracle'); lshot('12*7', 'l
 vm.sh(LENV + '; oracle launcher power; sleep 1.5', 30, show=0); time.sleep(1); vm.mon('screendump /vm/launcher-power.png -f png'); vm.mon('sendkey esc'); time.sleep(1)
 rc, out = vm.sh('python3 ~/.local/share/oracle/bin/oracle-launcher --power --query ""')
 ok['launcher: power menu lists its 4 entries'] = [l.split('\t')[1] for l in out.splitlines() if l.startswith('power')] == ['Lock', 'Sleep', 'Restart', 'Shut Down']
-vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('mousepad\n'); time.sleep(6)
-rc, out = vm.sh(VMENV + '; hyprctl clients | grep -ci "class: .*mousepad"; pkill -x mousepad; true')
-ok['launcher: Enter on an app starts it (mousepad window appears)'] = out.split()[-1] != '0'
+vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('mousepad\n'); time.sleep(15)
+rc, out = vm.sh(VMENV + '; echo W$(hyprctl clients | grep -ci "class: .*mousepad") P$(pgrep -fc "[m]ousepad"); pkill -f mousepad; true')
+ok['launcher: Enter on an app starts it (mousepad runs, window appears)'] = bool(re.search(r'W[1-9]', out))
 vm.sh(LENV + '; oracle launcher; sleep 1.5', 30, show=0); vm.keys('12*7\n'); time.sleep(2)
 rc, out = vm.sh(VMENV + '; wl-paste')
 ok['launcher: Enter on a sum copies the result'] = '84' in out
