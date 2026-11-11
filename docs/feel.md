@@ -53,6 +53,41 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 | System | Updates, lid and battery work. Errors show as raw text. | Boot time measured and cut. Problems arrive as plain-word notifications with a fix. `oracle doctor` covers every new part. | `systemd-analyze` before and after, doctor run in VM. |
 | First run | Installer ends at a login prompt. | `oracle welcome`: a short first-run guide (Wi-Fi, wallpaper, accent, keys to know). | VM: fresh install to welcome screen. |
 
+## Behaviour: the layers under the look
+
+Looking like macOS is the thin part. It feels considered because of rules you never see: what gets focus, what a key
+always means, what happens when the battery runs low or an app hangs. This is how Sequoia behaves, and what Oracle does
+about it. Each line is a real default from Apple's documentation or System Settings, not a guess.
+
+| Layer | What Sequoia does | What Oracle does |
+|---|---|---|
+| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Same: click to focus, scroll under the pointer. (Before: focus followed the mouse.) Changeable in Settings. |
+| Apps come forward | Open a link or a file and that app comes to the front, on its own Space if needed. | An app that asks for attention is brought forward, and you are taken to its workspace. |
+| Dialogs | Open, Save and password dialogs are small sheets on top of their window, centred, with the rest dimmed. | Dialogs, file pickers, password prompts and small tools float in the centre, never tiled, with the rest dimmed. |
+| Picture in picture | A small video stays on top in a corner, on every Space. | Same for the browser's picture-in-picture window. |
+| A hung app | "Application Not Responding", with Force Quit. Option-Command-Esc force quits. | The not-responding dialog is on. `Super + Alt + Esc`, then click a window, force quits it. |
+| Pointer | Hides while you type, comes back when you move. | Same. |
+| Trackpad | Two-finger click is the right click. Two-finger swipe goes back and forward in the browser. Palm is ignored while typing. | Same three. Tap to click stays on. |
+| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Up and down: Shell mode, Oracle's own mission control, following your fingers. Pinch with four: launcher. |
+| Keys | Command-Tab: last app. Command-`: next window of this app. Control-Command-F: full screen. Control-Command-Q: lock. Command-comma: settings. Shift-Command-3/4/5: screenshots. | The same on `Super`, only on keys that were free. No existing key changes. |
+| Media keys | Play, next, previous work everywhere. | Same (they did nothing before). |
+| Key repeat | Starts after a short pause, then steady. | Tuned to match (shorter pause, even rate). Changeable in Settings. |
+| Clipboard | What you copied stays after the app quits. | Same (on Linux it normally vanishes). |
+| Quick Look | Space in Finder previews a file. | Space in Files previews a file. |
+| Text | Smooth, slightly bold letters, no pixel snapping. | Same rendering rules for the desktop. |
+| Screenshots | Named "Screenshot 2026-11-11 at 2.36.12 PM". | Same name. |
+| Power button | A press never shuts the Mac down. Hold to force off. | A press opens the power menu. Hold forces off. (Before: one press shut the server down.) |
+| Shut down | Restart and Shut Down ask once. Lock and sleep do not. | Same. |
+| Battery | Screen dims and sleeps sooner on battery. Warning at 10%. Saves itself before it dies. | Shorter screen timers on battery. Warning at 20% and 10%. Clean shutdown at 4% so the server's data is safe. |
+| Idle | Screen off, keyboard light off. A playing video keeps it awake. | Same. The machine itself never sleeps (it is the server). |
+| Updates | Checks quietly, tells you, never installs behind your back. | A weekly quiet check, one notice, `oracle update` stays your decision. |
+| When things break | "Brave quit unexpectedly." "Your disk is almost full." Plain words, one action. | Same: crash, full disk, failed service and sign-in Wi-Fi pages become one plain notification each. |
+| Settings | One place, grouped: Trackpad, Keyboard, Displays, Battery, Lock Screen. | `oracle settings` gains Trackpad, Keyboard and Energy groups with the same names. |
+
+What we leave out, and why: the menu bar's File / Edit menus (Linux apps keep their own), Mission Control's window
+overview and Stage Manager (no solid equivalent yet), automatic sleep (this machine is a server), Handoff and other
+Apple-account features.
+
 ## How a slice ships
 
 1. One branch per slice, `feel/<name>`. `main` always installs and updates cleanly.
@@ -81,9 +116,10 @@ Ranked by value for effort. Each ends fully done or is not merged.
 | 4 | **Launcher.** One box for apps, files, sums and `oracle` commands. | M | Medium | The top result is right for 20 scripted searches. Opens instantly. Power menu still works. |
 | 5 | **Boot to desktop.** Silent boot, menu on keypress, styled login. | M | Medium | Power button to login with no scrolling text. Snapshot menu still reachable. Password fallback readable if the TPM fails. |
 | 6 | **Screenshot flow.** Area pick, thumbnail, copy or edit. | S | Low | Print, drag, paste into a chat in under 3 seconds. |
-| 7 | **System feel.** Boot time, plain-word alerts (battery, disk, failed service, update ready), doctor. | M | Low | Boot time down and written here. Every alert has a fix line. |
+| 7 | **System logic.** Power button, battery rules, idle by power source, quiet update check, plain-word alerts (battery, disk, crash, failed service, sign-in Wi-Fi), boot time, doctor. | M | Medium | A power-button press cannot kill the server. Every alert has a fix line. Boot time written here. |
 | 8 | **Welcome.** `oracle welcome` and installer polish. | M | Low | A fresh install ends in a guided first minute. |
 | 9 | **Secure Boot and UKI.** Own keys, closes the disk-unlock gap. | L | High | Boots unattended with Secure Boot on, with a tested way back. Or not merged. |
+| 10 | **Behaviour.** Focus, dialogs, keys, gestures, clipboard, Quick Look, text rendering, Settings groups (table above). | L | Medium | Every row of the Behaviour table is either checked in the VM or on the laptop checklist. |
 
 Changes from the first ranking, and why:
 
