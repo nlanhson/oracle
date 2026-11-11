@@ -17,7 +17,7 @@ zsh-autosuggestions
 starship
 zoxide
 fzf
-# desktop = owner's dotfiles: Hyprland + waybar + fuzzel + swaync
+# desktop = owner's dotfiles: Hyprland + waybar + swaync. Launcher = bin/oracle-launcher (Python + GTK4, replaces fuzzel)
 hyprland
 xdg-desktop-portal-hyprland
 hyprpolkitagent
@@ -26,7 +26,6 @@ hyprlock
 hyprshot
 satty # screenshot editor (arrows, text, blur): the Edit button on the screenshot thumbnail
 waybar
-fuzzel
 swaync
 swaybg
 swayosd
@@ -38,8 +37,11 @@ loupe
 btop
 fastfetch # ff: system info with the Batman emblem
 xsettingsd # dark theme for older (X11) apps
-wl-clipboard
-xdg-utils
+wl-clipboard # also: launcher copies a sum
+xdg-utils # launcher opens files with xdg-open
+python-gobject # launcher (GTK4 in Python): one live-ranked box that fuzzel/rofi cannot be
+gtk4-layer-shell # launcher: layer surface named "launcher" so Hyprland blur and no-animation rules match
+fd # launcher: file-name search in $HOME, parallel, skips hidden + ignored folders
 gnome-themes-extra
 papirus-icon-theme
 ttf-jetbrains-mono-nerd

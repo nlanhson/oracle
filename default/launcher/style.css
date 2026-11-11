@@ -1,0 +1,31 @@
+/* Launcher (Super+Space), GTK CSS. %name% = a token (default/look/tokens), filled in by `oracle look` into ~/.config/oracle/look/launcher.css.
+   Colours (@o_*) come from look/colors.css. Frosted: bg at frost alpha, Hyprland blurs behind (layer namespace "launcher").
+   Sizes follow macOS Sequoia Spotlight: ~660 wide, big field, 40 px rows, small section titles. Text stays on text/bright greys: 4.5:1 on a white wallpaper. */
+window.launcher { background: transparent; }
+window.launcher * { font-family: "%font_ui%", sans-serif; }
+.launcher .box {
+  background-color: @o_frost; border: %border%px solid @o_line; border-radius: %r_l%px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.launcher .fieldrow { padding: 0 %sp_5%px 0 %sp_4%px; }
+.launcher .glass { color: @o_text; margin-right: %sp_3%px; }
+.launcher entry.field {
+  background: none; border: none; box-shadow: none; outline: none; padding: 0; min-height: 60px;
+  color: @o_bright; caret-color: @o_bright; font-size: %size_field%px; font-weight: %weight_normal%;
+}
+.launcher entry.field > placeholder { color: @o_muted; }
+.launcher entry.field selection { background-color: @o_hover; color: @o_bright; }
+.launcher .results { border-top: %border%px solid @o_line; padding: %sp_2%px %sp_3%px %sp_3%px; }
+.launcher .head { color: @o_text; font-size: %size_small%px; font-weight: %weight_bold%; padding: %sp_3%px %sp_2%px %sp_1%px; margin: 0 0 %sp_1%px; border-bottom: %border%px solid @o_line; }
+.launcher .row { min-height: 40px; padding: 0 %sp_3%px; border-radius: %r_s%px; }
+.launcher .row.two { min-height: 48px; }
+.launcher .row.top { min-height: 64px; border-radius: %r_m%px; margin-top: %sp_1%px; }
+.launcher .row .icon { margin-right: %sp_3%px; }
+.launcher .row .title { color: @o_bright; font-size: %size_body%px; font-weight: %weight_normal%; }
+.launcher .row.top .title { font-size: %size_title%px; }
+.launcher .row .title.big { font-size: %size_field%px; font-weight: %weight_bold%; }
+.launcher .row .sub { color: @o_text; font-size: %size_small%px; }
+.launcher .row .hint { color: transparent; font-size: %size_body%px; }
+.launcher .row.sel { background-color: @o_hover; }
+.launcher .row.top.sel { border: %border%px solid @o_line; }
+.launcher .row.sel .sub, .launcher .row.sel .hint { color: @o_bright; }

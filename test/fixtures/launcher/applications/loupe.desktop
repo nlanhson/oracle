@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Loupe
+GenericName=Image Viewer
+Keywords=photo;picture;image
+Exec=true
+Icon=loupe

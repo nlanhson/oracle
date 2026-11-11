@@ -6,7 +6,7 @@
 local Mod          = "SUPER"
 local terminal     = "ghostty"
 local fileManager  = "nautilus"
-local launcher     = "fuzzel --show drun"
+local launcher     = "oracle launcher" -- Oracle: one box (apps, commands, sums, files, power); bin/oracle-launcher
 local browser      = "brave-origin"
 
 
@@ -27,7 +27,7 @@ hl.define_submap("shell", function() -- Oracle: in Shell mode every key goes to 
   hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle gui"))
 end)
 hl.bind(Mod .. " + slash", hl.dsp.exec_cmd("ghostty --class=oracle.manual --gtk-single-instance=false --window-width=110 --window-height=34 -e oracle manual")) -- Oracle: manual pop-up
-hl.bind(Mod .. " + P", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.config/fuzzel/power-menu.sh"))
+hl.bind(Mod .. " + P", hl.dsp.exec_cmd("oracle launcher power"))
 
 -- Sleep/Idle
 -- WARNING: this SUSPENDS the machine, which stops the home server and

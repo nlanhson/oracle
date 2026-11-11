@@ -2,7 +2,7 @@
 # (default/look/tokens). A file you changed keeps its own look: nothing saved over, nothing deleted. Also: bar clock in 12 hours.
 D=$HOME/.local/share/oracle C=$HOME/.config
 swap() { # swap <path under ~/.config> <sha256 of an old Oracle version>…
-  local f=$C/$1 h x; shift; [[ -f $f ]] || return 0
+  local f=$C/$1 r=$1 h x; shift; [[ -f $f && -f $D/config/$r ]] || return 0 # (no stub shipped any more: fuzzel was replaced by the launcher)
   h=$(sha256sum "$f" | cut -d' ' -f1)
   for x in "$@"; do
     [[ $h == "$x" ]] || continue

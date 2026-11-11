@@ -14,7 +14,7 @@
 "custom/oracle": {
 	"format": "◉",
 	"tooltip-format": "Lock, sleep, restart, shut down",
-	"on-click": "bash ~/.config/fuzzel/power-menu.sh"
+	"on-click": "oracle launcher power"
 },
 
 "hyprland/window": {
@@ -84,7 +84,7 @@
 "custom/search": {
 	"format": "󰍉",
 	"tooltip-format": "Search (Super + Space)",
-	"on-click": "fuzzel --show drun"
+	"on-click": "oracle launcher"
 },
 
 "custom/panel": {

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Volume Control
+GenericName=Sound
+Keywords=audio;mixer;pavucontrol
+Exec=true
+Icon=pavucontrol

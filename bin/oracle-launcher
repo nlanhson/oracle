@@ -1,0 +1,395 @@
+#!/usr/bin/env python3
+# oracle launcher (Super+Space): one box, ranked: sums, apps, oracle commands, power, files. Stays running; the key shows/hides it.
+# Look: ~/.config/oracle/look/launcher.css (generated from tokens by `oracle look`; template default/launcher/style.css).
+# Test without a screen: oracle-launcher --query "gho"   (prints the ranked rows: kind, title, subtitle)
+import ast, json, math, os, re, shlex, shutil, subprocess, sys, threading, time
+from gi.repository import Gio, GLib
+
+HOME = os.path.expanduser("~")
+RUN = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+LOOK = os.path.join(HOME, ".config/oracle/look")
+HIST = os.path.join(HOME, ".local/state/oracle/launcher-history.json")
+ME = os.path.dirname(os.path.realpath(__file__))
+DIRS = [os.path.join(HOME, ".local/share/oracle"), os.path.dirname(ME)]
+POWER = [  # title, words, command, asks first   (same commands as the old power menu)
+    ("Lock", "lock screen", ["hyprlock"], False),
+    ("Sleep", "sleep suspend", ["sh", "-c", "loginctl lock-session && systemctl suspend"], False),
+    ("Restart", "restart reboot", ["systemctl", "reboot"], True),
+    ("Shut Down", "shut down shutdown power off", ["systemctl", "poweroff"], True),
+]
+CAPS = {"app": 5, "cmd": 4, "power": 4, "file": 6}
+LABEL = {"sum": "Calculator", "app": "Applications", "cmd": "Commands", "power": "System", "file": "Files"}
+BONUS = {"sum": 1000, "app": 15, "cmd": 10, "power": 12, "file": 0}
+
+
+def load_history():
+    try:
+        with open(HIST) as f: return json.load(f)
+    except Exception: return {}
+
+
+def frecency(h, k):
+    """how much you pick it: each pick counts 1, halving every 2 weeks"""
+    v = h.get(k)
+    if not v: return 0.0
+    n, t = (v, 0) if isinstance(v, int) else (v.get("n", 0), v.get("t", 0))
+    return n * 0.5 ** (max(time.time() - t, 0) / 1209600) if t else float(n)
+
+
+def save_history(h, key, q=""):
+    """a pick is remembered for the item overall and for the first 1-4 letters typed (like Spotlight: 'f' → what you open after 'f')"""
+    q = q.strip().lower()
+    for k in [key] + [f"q:{q[:i]}|{key}" for i in range(1, min(len(q), 4) + 1)]:
+        h[k] = {"n": frecency(h, k) + 1, "t": time.time()}
+    try:
+        os.makedirs(os.path.dirname(HIST), exist_ok=True)
+        with open(HIST + ".new", "w") as f: json.dump(h, f)
+        os.replace(HIST + ".new", HIST)
+    except Exception: pass
+
+
+# ---------- sources ----------
+def match(q, text, fuzzy=True):
+    """0 = no match. exact 100 · prefix 90 · word start 75 · inside 60 · letters in order 20"""
+    t = text.lower()
+    if t == q: return 100
+    if t.startswith(q): return 90
+    if re.search(r"(^|[\s._/-])" + re.escape(q), t): return 75
+    if q in t: return 60
+    if fuzzy and len(q) >= 4:
+        i = 0
+        for c in t:
+            if i < len(q) and c == q[i]: i += 1
+        if i == len(q): return 20
+    return 0
+
+
+def words_score(q, text, fuzzy=True):
+    ws = q.split()
+    if not ws: return 0
+    s = [match(w, text, fuzzy) for w in ws]
+    return min(s) if all(s) else 0
+
+
+def apps():
+    out = []
+    for a in Gio.AppInfo.get_all():
+        if not a.should_show(): continue
+        gen = getattr(a, "get_generic_name", lambda: "")() or ""
+        extra = " ".join([gen, " ".join(getattr(a, "get_keywords", lambda: [])() or []), os.path.basename(a.get_executable() or ""), (a.get_id() or "")[:-8]])
+        out.append({"kind": "app", "title": a.get_name(), "sub": gen or a.get_description() or "",
+                    "extra": extra, "app": a, "key": "app:" + (a.get_id() or a.get_name())})
+    return out
+
+
+def commands():
+    """CMDS in bin/oracle-manual = the one list of oracle commands (auto ones are Oracle's own, not offered)"""
+    for d in [ME] + [os.path.join(x, "bin") for x in DIRS]:
+        p = os.path.join(d, "oracle-manual")
+        if os.path.isfile(p): break
+    else: return []
+    out, on = [], False
+    for line in open(p, encoding="utf-8"):
+        if line.startswith("CMDS=("): on = True; continue
+        if on and line.startswith(")"): break
+        if on and line.startswith('"'):
+            f = line.strip().strip('"').split("|")
+            if len(f) >= 4 and f[2] != "auto":
+                what = re.split(r"[.:] ", f[3])[0].rstrip(".")
+                out.append({"kind": "cmd", "title": f[1], "sub": what, "name": f[0], "words": f[3], "key": "cmd:" + f[0]})
+    return out
+
+
+SAFE = {"sqrt": math.sqrt, "sin": math.sin, "cos": math.cos, "tan": math.tan, "log": math.log10, "ln": math.log, "abs": abs, "round": round}
+CONST = {"pi": math.pi, "e": math.e}
+
+
+def calc(q):
+    """plain maths only: + - * / % ^ ( ) sqrt() sin() … Returns text or None."""
+    s = q.strip().replace("×", "*").replace("÷", "/").replace("^", "**").replace(",", ".")
+    if not re.search(r"\d", s) or not re.search(r"[-+*/%(]|sqrt|sin|cos|tan|log|ln|abs|round", s): return None
+    if re.fullmatch(r"[-+]?[\d.]+", s) or len(s) > 80: return None
+    if re.sub(r"\s|[\d.]|[-+*/%()]|sqrt|sin|cos|tan|log|ln|abs|round|pi|e", "", s): return None
+    def ev(n):
+        if isinstance(n, ast.Expression): return ev(n.body)
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)): return n.value
+        if isinstance(n, ast.Name) and n.id in CONST: return CONST[n.id]
+        if isinstance(n, ast.UnaryOp) and isinstance(n.op, (ast.UAdd, ast.USub)):
+            v = ev(n.operand); return v if isinstance(n.op, ast.UAdd) else -v
+        if isinstance(n, ast.BinOp):
+            a, b = ev(n.left), ev(n.right)
+            if isinstance(n.op, ast.Pow) and abs(b) > 1000: raise ValueError
+            return {ast.Add: lambda: a + b, ast.Sub: lambda: a - b, ast.Mult: lambda: a * b, ast.Div: lambda: a / b,
+                    ast.Mod: lambda: a % b, ast.Pow: lambda: a ** b}[type(n.op)]()
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in SAFE and not n.keywords:
+            return SAFE[n.func.id](*[ev(a) for a in n.args])
+        raise ValueError
+    try:
+        v = ev(ast.parse(s, mode="eval"))
+        if isinstance(v, complex) or math.isnan(v) or math.isinf(v): return None
+    except Exception: return None
+    if float(v).is_integer() and abs(v) < 1e15: return str(int(v))
+    return f"{v:.10g}"
+
+
+def find_files(q, limit=300, secs=0.8, root=None):
+    q = q.strip().lower(); ws = q.split()
+    if not ws or len(q) < 2: return []
+    root = root or os.environ.get("ORACLE_LAUNCHER_ROOT") or HOME
+    try:
+        w = max(ws, key=len)  # fd (fast, skips hidden + ignored); plain find if it is missing
+        cmd = (["fd", "-i", "-F", "--max-results", str(limit), "-d", "10", "--absolute-path", "--", w, root] if shutil.which("fd") else
+               ["find", root, "-maxdepth", "10", "(", "-name", ".*", "-prune", ")", "-o", "-iname", f"*{w}*", "-print"])
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=secs)
+        lines = p.stdout.splitlines()
+    except subprocess.TimeoutExpired as e:
+        lines = (e.stdout.decode() if e.stdout else "").splitlines()
+    except Exception: return []
+    out = []
+    for path in lines:
+        name = os.path.basename(path.rstrip("/"))
+        s = words_score(q, name)
+        if not s: continue
+        d = os.path.dirname(path.rstrip("/")).replace(HOME, "~", 1)
+        out.append({"kind": "file", "title": name, "sub": d, "path": path, "score": s - min(path.count("/"), 15) * 0.5, "key": "file:" + path})
+    return out
+
+
+# ---------- ranking ----------
+def rank(q, A, C, files, hist, power_only=False):
+    """rows in display order: [("head", label)] + items. Groups sit in order of their best hit; the sum always first."""
+    q = q.strip().lower()
+    items = []
+    if power_only and not q:
+        items = [{"kind": "power", "title": p[0], "sub": "", "cmd": p[2], "ask": p[3], "score": 50 - i, "key": "power:" + p[0]} for i, p in enumerate(POWER)]
+    elif q:
+        r = calc(q)
+        if r is not None: items.append({"kind": "sum", "title": r, "sub": q, "score": 1000, "key": "sum"})
+        for a in A:
+            s = max(match(q, a["title"]), words_score(q, a["extra"], False) * 0.6, words_score(q, a["title"]))
+            if s: items.append({**a, "score": s})
+        for c in C:
+            s = max(words_score(q, c["name"]), (words_score(q, c["words"], False) * 0.45 if len(q) >= 4 else 0))
+            if s: items.append({**c, "score": s})
+        for i, p in enumerate(POWER):
+            s = max(words_score(q, p[0]), words_score(q, p[1], False) * 0.9)
+            if s: items.append({"kind": "power", "title": p[0], "sub": "", "cmd": p[2], "ask": p[3], "score": s, "key": "power:" + p[0]})
+        items += files
+    qp = q[:4]
+    for it in items:  # what you pick often (and after these letters) rises; 3 picks beat a prefix-vs-word difference, never an exact name
+        it["score"] += BONUS[it["kind"]] + min(frecency(hist, it["key"]), 8) * 1.5 + (min(frecency(hist, f"q:{qp}|{it['key']}"), 8) * 4 if qp else 0)
+    groups = {}
+    for it in sorted(items, key=lambda x: -x["score"]):
+        g = groups.setdefault(it["kind"], [])
+        if len(g) < CAPS.get(it["kind"], 1): g.append(it)
+    rows = []
+    for kind in sorted(groups, key=lambda k: -groups[k][0]["score"]):
+        if kind != "sum": rows.append(("head", LABEL[kind]))
+        rows += [("item", it) for it in groups[kind]]
+    return rows
+
+
+def dump(q, power=False):
+    hist = load_history()
+    for kind, v in rank(q, apps(), commands(), find_files(q), hist, power):
+        if kind == "item": print(f"{v['kind']}\t{v['title']}\t{v['sub']}")
+
+
+# ---------- actions ----------
+def spawn(argv, **kw):
+    subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True, **kw)
+
+
+def activate(it):
+    k = it["kind"]
+    if k == "sum": spawn(["wl-copy", it["title"]])
+    elif k == "app":  # the .desktop Exec line without its %f/%U field codes, in its own session
+        a = it["app"]; argv = shlex.split(re.sub(r"%[a-zA-Z%]", "", a.get_commandline() or ""))
+        if isinstance(a, Gio.DesktopAppInfo) and a.get_boolean("Terminal"): argv = ["ghostty", "-e"] + argv
+        if argv: spawn(argv)
+        else: a.launch([], None)
+    elif k == "cmd":
+        spawn(["ghostty", "--class=oracle.manual", "--gtk-single-instance=false", "--window-width=110", "--window-height=34",
+               "-e", "oracle", "manual", "--run", it["name"]])
+    elif k == "power": spawn(it["cmd"])
+    elif k == "file": spawn(["xdg-open", it["path"]])
+
+
+# ---------- window ----------
+def gui(power_first):
+    import gi
+    gi.require_version("Gtk", "4.0"); gi.require_version("Gdk", "4.0"); gi.require_version("Gtk4LayerShell", "1.0")
+    from gi.repository import Gtk, Gdk, Gtk4LayerShell as LS
+
+    pidfile = os.path.join(RUN, "oracle-launcher.pid")
+    open(pidfile, "w").write(str(os.getpid()))
+    timing = os.environ.get("ORACLE_LAUNCHER_TIMING")
+    S = {"A": None, "C": None, "hist": load_history(), "rows": [], "sel": 0, "moved": False, "gen": 0, "files": [], "power": False,
+         "confirm": None, "dialog": None, "t0": 0, "css_mtime": 0, "top": 0, "shown": False}
+    prov = Gtk.CssProvider()
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), prov, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
+    def load_css():
+        files = [os.path.join(LOOK, "colors.css"), os.path.join(LOOK, "launcher.css")]
+        m = sum(os.path.getmtime(f) for f in files if os.path.exists(f))
+        if m == S["css_mtime"]: return
+        S["css_mtime"] = m
+        try: prov.load_from_string("".join(open(f).read() for f in files if os.path.exists(f)))
+        except Exception as e: print("launcher css:", e, file=sys.stderr)
+
+    win = Gtk.Window(); win.add_css_class("launcher")
+    LS.init_for_window(win); LS.set_layer(win, LS.Layer.OVERLAY); LS.set_namespace(win, "launcher"); LS.set_exclusive_zone(win, -1)
+    for e in (LS.Edge.TOP, LS.Edge.BOTTOM, LS.Edge.LEFT, LS.Edge.RIGHT): LS.set_anchor(win, e, True)
+    LS.set_keyboard_mode(win, LS.KeyboardMode.EXCLUSIVE)
+    outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); outer.set_halign(Gtk.Align.CENTER); outer.set_valign(Gtk.Align.START)
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); box.add_css_class("box"); box.set_size_request(660, -1); box.set_overflow(Gtk.Overflow.HIDDEN)
+    fieldrow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); fieldrow.add_css_class("fieldrow")
+    glass = Gtk.Image.new_from_icon_name("system-search-symbolic"); glass.add_css_class("glass"); glass.set_pixel_size(22)
+    entry = Gtk.Entry(); entry.set_hexpand(True); entry.add_css_class("field"); entry.set_placeholder_text("Search"); entry.set_has_frame(False)
+    fieldrow.append(glass); fieldrow.append(entry)
+    results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); results.add_css_class("results"); results.set_visible(False)
+    box.append(fieldrow); box.append(results); outer.append(box); win.set_child(outer)
+
+    def icon_for(it):
+        k = it["kind"]
+        if k == "app":
+            ic = it["app"].get_icon(); return Gtk.Image.new_from_gicon(ic) if ic else Gtk.Image.new_from_icon_name("application-x-executable")
+        if k == "dlg": return Gtk.Image.new_from_icon_name("window-close-symbolic" if it["act"] is None else {"Restart": "system-reboot"}.get(it["title"], "system-shutdown"))
+        if k == "cmd": return Gtk.Image.new_from_icon_name("utilities-terminal")
+        if k == "sum": return Gtk.Image.new_from_icon_name("accessories-calculator")
+        if k == "power": return Gtk.Image.new_from_icon_name({"Lock": "system-lock-screen", "Sleep": "system-suspend", "Restart": "system-reboot"}.get(it["title"], "system-shutdown"))
+        if os.path.isdir(it["path"]): return Gtk.Image.new_from_icon_name("folder")
+        ct, _ = Gio.content_type_guess(it["path"], None)
+        return Gtk.Image.new_from_gicon(Gio.content_type_get_icon(ct))
+
+    def render():
+        c = results.get_first_child()
+        while c: n = c.get_next_sibling(); results.remove(c); c = n
+        items = [v for k, v in S["rows"] if k == "item"]
+        results.set_visible(bool(items))
+        if not items: return
+        S["sel"] = min(S["sel"], min(len(items), 8) - 1)
+        if S["dialog"]: rows = S["rows"]
+        else: rows = None
+        rows, need, seen = rows or [], None, 0  # top hit first, no header (like Spotlight), then the sections; at most 8 rows
+        for kind, v in ([] if S["dialog"] else S["rows"]):
+            if kind == "head":
+                if seen: rows.append((kind, v)); need = None
+                else: need = v
+                continue
+            if seen == 8: break
+            if seen == 1 and need: rows.append(("head", need))
+            rows.append((kind, v)); seen += 1
+        i = 0
+        for kind, v in rows:
+            if kind == "head":
+                l = Gtk.Label(label=v, xalign=0); l.add_css_class("head"); results.append(l); continue
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); row.add_css_class("row"); row.add_css_class(v["kind"])
+            if i == 0: row.add_css_class("top")
+            if i == S["sel"]: row.add_css_class("sel")
+            im = icon_for(v); im.set_pixel_size(36 if i == 0 else 28); im.add_css_class("icon"); row.append(im)
+            sub = v["sub"] if v["kind"] in ("file", "cmd", "sum") else ""
+            t = Gtk.Label(label=v["title"], xalign=0); t.add_css_class("title"); t.set_ellipsize(3)
+            s = Gtk.Label(label=sub, xalign=0); s.add_css_class("sub"); s.set_ellipsize(1 if v["kind"] == "file" else 3)
+            if v["kind"] == "sum":
+                t.add_css_class("big"); t.set_hexpand(True); s.set_xalign(1); row.append(t); row.append(s)
+            else:
+                col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); col.set_valign(Gtk.Align.CENTER); col.set_hexpand(True); col.append(t)
+                if sub: col.append(s); row.add_css_class("two")
+                row.append(col)
+            h = Gtk.Label(label="\u21b5"); h.add_css_class("hint"); row.append(h)
+            g = Gtk.GestureClick(); idx = i
+            g.connect("released", lambda *a, idx=idx: (S.update(sel=idx), go()))
+            row.add_controller(g); results.append(row); i += 1
+
+    def search():
+        q = entry.get_text(); S["gen"] += 1; gen = S["gen"]
+        if S["A"] is None: S["A"], S["C"] = apps(), commands()
+        S["files"] = []; refresh()
+        if len(q.strip()) >= 2:
+            def work():
+                f = find_files(q.strip().lower())
+                GLib.idle_add(lambda: (S["gen"] == gen and (S.update(files=f), refresh())) and False)
+            GLib.timeout_add(90, lambda: (S["gen"] == gen and threading.Thread(target=work, daemon=True).start()) and False)
+
+    def refresh():
+        d = S["dialog"]
+        if d:
+            S["rows"] = [("head", d["title"].capitalize() + " now?"), ("item", {"kind": "dlg", "title": "Cancel", "sub": "", "act": None, "key": "dlg:no"}),
+                         ("item", {"kind": "dlg", "title": d["title"], "sub": "", "act": d, "key": "dlg:yes"})]
+        else:
+            S["rows"] = rank(entry.get_text(), S["A"] or [], S["C"] or [], S["files"], S["hist"], S["power"])
+            if not S["moved"]: S["sel"] = 0
+        S["confirm"] = None; render()
+
+    def items(): return [v for k, v in S["rows"] if k == "item"][:8]
+
+    def hide():
+        win.set_visible(False); S["shown"] = False; entry.set_text("")
+
+    def go():
+        its = items()
+        if not its: return
+        it = its[S["sel"]]
+        if it["kind"] == "dlg":
+            if it["act"] is None: S["dialog"] = None; refresh(); return
+            it = it["act"]; S["dialog"] = None
+        elif it.get("ask"):  # Restart / Shut Down: ask once, Cancel first (the safe default)
+            S.update(dialog=it, sel=0, moved=True); refresh(); return
+        save_history(S["hist"], it["key"], entry.get_text()); hide(); activate(it)
+
+    def key(ctl, keyval, code, state):
+        n = Gdk.keyval_name(keyval); ctrl = state & Gdk.ModifierType.CONTROL_MASK
+        n_items = len(items())
+        if n == "Escape":
+            if S["dialog"]: S.update(dialog=None, moved=False); refresh()
+            else: hide()
+            return True
+        if n in ("Down", "Tab") or (ctrl and n == "n"): S.update(sel=min(S["sel"] + 1, max(n_items - 1, 0)), moved=True, confirm=None); render(); return True
+        if n in ("Up", "ISO_Left_Tab") or (ctrl and n == "p"): S.update(sel=max(S["sel"] - 1, 0), moved=True, confirm=None); render(); return True
+        if n in ("Return", "KP_Enter"): go(); return True
+        return False
+    kc = Gtk.EventControllerKey(); kc.set_propagation_phase(Gtk.PropagationPhase.CAPTURE); kc.connect("key-pressed", key); win.add_controller(kc)
+    entry.connect("changed", lambda *_: (S.update(moved=False, dialog=None), search()))
+    out = Gtk.GestureClick(); out.connect("pressed", lambda g, n, x, y: hide() if not box.get_allocation().x <= x <= box.get_allocation().x + box.get_allocation().width
+                                          or not box.get_allocation().y + outer.get_allocation().y <= y <= box.get_allocation().y + outer.get_allocation().y + box.get_allocation().height else None)
+    win.add_controller(out)
+
+    def show(power=False):
+        if S["shown"]: hide(); return
+        S["t0"] = time.monotonic(); load_css(); S.update(power=power, moved=False, sel=0, confirm=None, dialog=None, files=[], shown=True)
+        entry.set_text(""); refresh(); win.set_visible(True); entry.grab_focus()
+        outer.set_margin_top(S["top"] or 150)
+        if timing:  # first picture after the key: in-app ms, written to $XDG_RUNTIME_DIR/oracle-launcher.timing
+            def logit(*_):
+                open(os.path.join(RUN, "oracle-launcher.timing"), "a").write(f"{(time.monotonic() - S['t0']) * 1000:.1f}\n")
+            sf = win.get_surface(); clock = (sf.get_frame_clock() if sf else None) or win.get_frame_clock()
+            if clock:
+                hid = [0]
+                hid[0] = clock.connect("after-paint", lambda c: (logit(), c.disconnect(hid[0])))
+            else: GLib.idle_add(lambda: (logit(), False)[1])
+        GLib.idle_add(place)
+
+    def place():  # about 22% from the top of the screen (Spotlight sits in the upper third)
+        h = win.get_height()
+        if h > 100 and abs(S["top"] - int(h * 0.22)) > 2: S["top"] = int(h * 0.22); outer.set_margin_top(S["top"])
+        return False
+    win.connect("notify::is-active", lambda *_: hide() if S["shown"] and not win.is_active() and time.monotonic() - S["t0"] > 0.4 else None)
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, 10, lambda: (show(False), True)[1])  # SIGUSR1
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, 12, lambda: (show(True), True)[1])   # SIGUSR2
+    GLib.unix_signal_add(GLib.PRIORITY_HIGH, 15, lambda: (os._exit(0), False)[1])
+    S["A"], S["C"] = apps(), commands()
+    if power_first is not None: GLib.idle_add(lambda: (show(power_first), False)[1])
+    try: GLib.MainLoop().run()
+    finally:
+        try: os.remove(pidfile)
+        except OSError: pass
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if a[:1] == ["--pick"]:  # test helper: remember that <query> led to <key> (the window does this on Enter)
+        h = load_history(); save_history(h, a[2], a[1]); sys.exit(0)
+    if "--query" in a: dump(" ".join(a[a.index("--query") + 1:]), "--power" in a); sys.exit(0)
+    first = None if "--daemon" in a else ("--power" in a)
+    gui(first)

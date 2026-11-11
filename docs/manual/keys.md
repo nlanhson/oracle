@@ -27,7 +27,7 @@ Click a workspace number in the top bar to switch. On the dashboard, click `[g]u
 
 ## Desktop (Hyprland)
 
-Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for notifications, hypridle dims the screen after 5 minutes and turns it off after 7 (the computer never sleeps by itself, so the home server stays up).
+Your own desktop setup: waybar at the top, the launcher (Oracle's own search box), swaync for notifications, hypridle dims the screen after 5 minutes and turns it off after 7 (the computer never sleeps by itself, so the home server stays up).
 
 | Key | Does |
 |---|---|
@@ -36,7 +36,7 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
-| `Super + Space` | App launcher |
+| `Super + Space` | Search box: type and it finds apps, `oracle` commands, sums (`12*7`, Enter copies the answer), files in your home folder and lock / sleep / restart / shut down. Up/Down moves, Enter opens, Esc closes |
 | `Super + A` | Control panel and notifications (also: click the control-centre icon on the bar) |
 | `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
