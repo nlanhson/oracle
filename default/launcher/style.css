@@ -15,13 +15,17 @@ window.launcher * { font-family: "%font_ui%", sans-serif; }
 }
 .launcher entry.field > placeholder { color: @o_muted; }
 .launcher entry.field selection { background-color: @o_hover; color: @o_bright; }
-.launcher .results { border-top: %border%px solid @o_line; padding: %sp_2%px; }
-.launcher .head { color: @o_text; font-size: %size_small%px; font-weight: %weight_bold%; padding: %sp_3%px %sp_3%px %sp_1%px; }
+.launcher .results { border-top: %border%px solid @o_line; padding: %sp_2%px %sp_3%px %sp_3%px; }
+.launcher .head { color: @o_text; font-size: %size_small%px; font-weight: %weight_bold%; padding: %sp_3%px %sp_2%px %sp_1%px; margin: 0 0 %sp_1%px; border-bottom: %border%px solid @o_line; }
 .launcher .row { min-height: 40px; padding: 0 %sp_3%px; border-radius: %r_s%px; }
+.launcher .row.two { min-height: 48px; }
+.launcher .row.top { min-height: 56px; border-radius: %r_m%px; margin-top: %sp_1%px; }
 .launcher .row .icon { margin-right: %sp_3%px; }
 .launcher .row .title { color: @o_bright; font-size: %size_body%px; font-weight: %weight_normal%; }
+.launcher .row.top .title { font-size: %size_title%px; }
 .launcher .row .title.big { font-size: %size_field%px; font-weight: %weight_bold%; }
-.launcher .row.sum { min-height: 56px; }
-.launcher .row .sub { color: @o_text; font-size: %size_small%px; margin-left: %sp_3%px; }
+.launcher .row .sub { color: @o_text; font-size: %size_small%px; }
+.launcher .row .hint { color: transparent; font-size: %size_body%px; }
 .launcher .row.sel { background-color: @o_hover; }
-.launcher .row.sel .sub { color: @o_bright; }
+.launcher .row.top.sel { border: %border%px solid @o_line; }
+.launcher .row.sel .sub, .launcher .row.sel .hint { color: @o_bright; }
