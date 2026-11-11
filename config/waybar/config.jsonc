@@ -62,7 +62,7 @@
 "custom/date": {
 	"format": "{}",
 	"interval": 60,
-	"exec": "date +'%-I:%M %p %a, %d/%m'",
+	"exec": "date +'%a %-d %b  %-I:%M %p'",
 	"tooltip": false
 },
 

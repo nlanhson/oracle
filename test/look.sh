@@ -22,7 +22,7 @@ printf '"exec": "date +'"'"'%%I:%%M %%a,%%d/%%m'"'"'",/*Only Time: date '"'"'+%%
 out=$(bash "$R/migrations/1794366900.sh" 2>&1)
 ck "migration: untouched bar, launcher, notifications become stubs" 'grep -q "$HOME/.local/share/oracle/default/waybar/style.css" "$C/waybar/style.css" && grep -q "^include=$HOME/.config/oracle/look/fuzzel.ini" "$C/fuzzel/fuzzel.ini" && grep -q "default/swaync/style.css" "$C/swaync/style.css" && ! grep -q @HOME@ "$C/waybar/style.css" "$C/fuzzel/fuzzel.ini"'
 ck "migration: edited lock screen untouched, one plain line says so" 'cmp -s "$C/hypr/hyprlock.conf" "$T/lock.mine" && [[ $out == *"hypr/hyprlock.conf keeps your own look"* && $(wc -l <<<"$out") == 1 ]]'
-ck "migration: bar clock now 12 hours with AM/PM" 'grep -q "%-I:%M %p %a" "$C/waybar/config.jsonc"'
+ck "migration: bar clock now 12 hours with AM/PM" 'grep -q "%-I:%M %p" "$C/waybar/config.jsonc"'
 cp "$F/fuzzel-v2.ini" "$C/fuzzel/fuzzel.ini"; cp "$F/hyprlock-v1.conf" "$C/hypr/hyprlock.conf"; out=$(bash "$R/migrations/1794366900.sh" 2>&1)
 ck "migration: second Oracle version of a file also recognised, rerun is quiet" 'grep -q "^source = $HOME/.config/oracle/look" "$C/hypr/hyprlock.conf" && grep -q "^include=" "$C/fuzzel/fuzzel.ini" && [[ -z $out ]]'
 ((fail)) && echo "look: FAILED" || echo "look ok"

@@ -10,7 +10,6 @@
 
 window#waybar {
 	background-color: @o_frost;
-	border-bottom: 1px solid @o_line;
 	color: @o_text;
 }
 

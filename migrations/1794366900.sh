@@ -15,7 +15,7 @@ swap fuzzel/fuzzel.ini 1a592881ff00ca3d3a191c288b1913de89611a1473eafed2c77c595c5
 swap swaync/style.css df4509b4d51c40b63e64847ca9c935acc32806e66716cd05209a5e4fcabad9f6
 swap hypr/hyprlock.conf 60c305fb7c331e64a100339ddcaf1c8067181d251811d81bb67b19725c4b0a1c 52400ad30c16ae7714a2936f010c84ee42449e0fcdf62c4181077eeda9d950f0
 W=$C/waybar/config.jsonc # clock: 5:15 PM, not 05:15 (only if the line is still Oracle's)
-[[ ! -f $W ]] || sed -i "s|\"date +'%I:%M %a,%d/%m'\",/\*Only Time: date '+%I:%M %p'\*/|\"date +'%-I:%M %p %a, %d/%m'\",|" "$W"
+[[ ! -f $W ]] || sed -i "s|\"date +'%I:%M %a,%d/%m'\",/\*Only Time: date '+%I:%M %p'\*/|\"date +'%a %-d %b  %-I:%M %p'\",|" "$W"
 [[ ! -f $W ]] || sed -i 's|"format": "󰍛 {used}"|"format": "󰍛 {used:0.1f}G"|' "$W" # memory: 1.3G, not 1.3399999
 bash "$D/bin/oracle" look || true # the stubs need ~/.config/oracle/look/colors.css
 pkill -USR2 -x waybar || true
