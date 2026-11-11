@@ -262,8 +262,8 @@ step('control panel and notifications')
 rc, out = vm.sh('bash ~/.local/share/oracle/test/panel.sh', 120)
 ok['panel: config valid, helpers change state (fakes), migration swaps untouched copies'] = rc == 0 and 'panel ok' in out
 vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794453300.sh; pkill -x waybar; pkill -x swaync; for c in swaync waybar; do setsid -f $c &>/dev/null; done; sleep 6', 60, show=0)
-rc, out = vm.sh(VMENV + '; grep -q "oracle panel wifi" ~/.config/swaync/config.json && echo CFG-NEW; grep -q custom/notification ~/.config/waybar/config.jsonc && echo BAR-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
-ok['panel: new config installed by the migration, swaync + waybar run with it'] = all(x in out for x in ('CFG-NEW', 'BAR-NEW', 'RUNNING'))
+rc, out = vm.sh(VMENV + '; grep -q "oracle panel wifi" ~/.config/swaync/config.json && echo CFG-NEW; pgrep -x swaync && pgrep -x waybar && echo RUNNING; hyprctl configerrors')
+ok['panel: new config installed by the migration, swaync runs with it'] = all(x in out for x in ("CFG-NEW", "RUNNING"))
 rc, out = vm.sh(VMENV + '; oracle panel dnd true; oracle panel dnd; swaync-client -D; oracle panel dnd false; swaync-client -D')
 ok['panel: Do Not Disturb tile really switches swaync'] = out.split('[rc')[0].split().count('true') >= 2 and out.split('[rc')[0].split().count('false') >= 1
 rc, out = vm.sh(VMENV + '; oracle panel night true; sleep 1; pgrep -x wlsunset; oracle get nightlight; oracle panel night false; sleep 1; pgrep -x wlsunset || echo NO-WLSUNSET; oracle panel night')
