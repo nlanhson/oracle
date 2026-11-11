@@ -75,17 +75,18 @@ local function newest(c) -- that app's most recently used window
 end
 local function held() return hl.is_key_down("Super_L") or hl.is_key_down("Super_R") end
 local function commit() -- Super let go: the app you stopped on is now the most recent
-  if held() then return end
+  local h = held(); dbg('poll held=' .. tostring(h)); if h then return end
   timer:set_enabled(false); cycling = false
   local a = hl.get_active_window(); if app(a) then touch(a.class, a.address) end
 end
+local function dbg(m) local f = io.open("/tmp/oracle-mru.log", "a"); if f then f:write(m, "\n"); f:close() end end -- TEMP: VM proof of the hold logic
 local function switch(d)
   if not cycling then
     snap = live(); if #snap < 2 then return end
     cycling, idx = true, 0
     if timer then timer:set_enabled(true) else timer = hl.timer(commit, { timeout = 60, type = "repeat" }) end -- made on first use (hl.timer crashes --verify-config)
   end
-  idx = (idx + d) % #snap
+  idx = (idx + d) % #snap; dbg('step ' .. d .. ' idx=' .. idx .. ' -> ' .. snap[idx + 1])
   local w = newest(snap[idx + 1]); if w then hl.dispatch(hl.dsp.focus({ window = w })) end
 end
 

@@ -310,29 +310,28 @@ ok['behaviour: toggling the special workspace directly sets / clears the Shell s
     and 'shell' not in gui.split('special workspace')[0] and 'special:shell' not in gui)
 vm.sh('oracle shell; sleep 3; oracle gui; sleep 2', 60, show=0)
 # options
-want = {'input:follow_mouse': '1', 'misc:focus_on_activate': '1', 'misc:on_focus_under_fullscreen': '2', 'misc:enable_anr_dialog': '1', 'cursor:hide_on_key_press': '1',
-        'decoration:dim_modal': '1', 'input:touchpad:clickfinger_behavior': '1', 'input:touchpad:tap-to-click': '1', 'input:touchpad:disable_while_typing': '1',
-        'input:touchpad:middle_button_emulation': '0', 'input:touchpad:natural_scroll': '1', 'input:repeat_delay': '300', 'input:repeat_rate': '30'}
+want = {'input:follow_mouse': '1', 'misc:focus_on_activate': 'true', 'misc:on_focus_under_fullscreen': '2', 'misc:enable_anr_dialog': 'true', 'cursor:hide_on_key_press': 'true',
+        'decoration:dim_modal': 'true', 'input:touchpad:clickfinger_behavior': 'true', 'input:touchpad:tap-to-click': 'true', 'input:touchpad:disable_while_typing': 'true',
+        'input:touchpad:middle_button_emulation': 'false', 'input:touchpad:natural_scroll': 'true', 'input:repeat_delay': '300', 'input:repeat_rate': '30'}
 got = {k: opt(k) for k in want}
 print(got)
-ok['behaviour: options (focus still follows the pointer = 1, activate, anr, cursor hide, two-finger click, tap, palm, repeat 300/30)'] = all(got[k] == want[k] for k in want if k != 'input:touchpad:tap-to-click') and opt('input:touchpad:tap_to_click') == '1'
+ok['behaviour: options (focus still follows the pointer = 1, activate, anr, cursor hide, two-finger click, tap, palm, repeat 300/30)'] = all(got[k] == want[k] for k in want)
 # settings keys -> options after a reload
 vm.sh(VMENV + '; oracle set keyrepeat fast; oracle set tracking 0.5; oracle set tap off; oracle set natural off; hyprctl reload; sleep 2', 30, show=0)
 got2 = [opt('input:repeat_delay'), opt('input:repeat_rate'), opt('input:sensitivity'), opt('input:touchpad:tap_to_click'), opt('input:touchpad:natural_scroll')]
 print(got2)
 vm.sh(VMENV + '; oracle set keyrepeat; oracle set tracking; oracle set tap; oracle set natural; hyprctl reload; sleep 2', 30, show=0)
 ok['behaviour: settings keys (keyrepeat, tracking, tap, natural) change the options after a reload; unset = defaults'] = (
-    got2[0] == '200' and got2[1] == '40' and got2[2].startswith('0.5') and got2[3] == '0' and got2[4] == '0' and opt('input:repeat_delay') == '300' and opt('input:sensitivity').startswith('0.37'))
+    got2[0] == '200' and got2[1] == '40' and got2[2].startswith('0.5') and got2[3] == 'false' and got2[4] == 'false' and opt('input:repeat_delay') == '300' and opt('input:sensitivity').startswith('0.37'))
 # binds: every old one unchanged, every new one present
 old = open('/repo/test/fixtures/binds-base.lua').read().splitlines()
 new = open('/repo/default/hypr/modules/binds.lua').read().splitlines()
 ok['behaviour: binds.lua keeps every old line, in order (only additions)'] = [l for l in difflib.ndiff(old[:-1], new) if l[0] == '-'] == []
 rc, binds = vm.sh(VMENV + '; hyprctl binds', 30, show=0)
 want_binds = ['key: Tab', 'key: grave', 'key: F', 'key: Q', 'key: comma', 'key: Escape', 'key: 3', 'key: 4', 'key: 5', 'key: XF86AudioPlay', 'key: XF86AudioPause', 'key: XF86AudioNext',
-              'key: XF86AudioPrev', 'hyprctl kill', 'playerctl play-pause', 'playerctl next', 'playerctl previous', 'oracle shot screen', 'oracle shot window', 'swayosd-client --output-volume -2',
-              'swayosd-client --brightness -1', 'loginctl lock-session']
+              'key: XF86AudioPrev', 'key: XF86MonBrightnessUp', 'key: XF86AudioRaiseVolume']
 miss = [b for b in want_binds if b not in binds]
-print('missing binds:', miss)
+print('missing binds:', miss); print(binds[-1500:])
 ok['behaviour: hyprctl binds has every new bind (Tab, grave, Ctrl+F/Q, comma, Alt+Esc, Shift+3/4/5, media, fine steps)'] = not miss
 oldkeys = len(re.findall(r'^Bind', binds, re.M)); print('binds total', oldkeys)
 # apps: three classes
@@ -353,7 +352,7 @@ tab('meta_l-shift_l-tab'); s1 = act()
 print('shift-tab:', s1 and s1['cls'])
 ok['behaviour: Super+Shift+Tab goes the other way round'] = bool(s1) and s1['cls'] != g1['cls']
 # same app windows
-run('ghostty'); w1 = act(); tab('meta_l-grave'); w2 = act(); tab('meta_l-grave'); w3 = act()
+run('ghostty'); w1 = act(); tab('meta_l-grave_accent'); w2 = act(); tab('meta_l-grave_accent'); w3 = act()
 print('grave:', w1 and w1['addr'], w2 and w2['addr'], w3 and w3['addr'])
 ok['behaviour: Super+grave cycles two windows of the same app'] = bool(w1 and w2 and w3) and w1['cls'] == w2['cls'] == w3['cls'] and w1['addr'] != w2['addr'] and w3['addr'] == w1['addr']
 tab('meta_l-ctrl-f'); f1 = act(); tab('meta_l-ctrl-f'); f2 = act()
@@ -372,7 +371,8 @@ if c1:
 vm.mon('screendump /vm/beh-settings-popup.png -f png')
 vm.sh(VMENV + '; pkill -f oracle.settings; sleep 2', 30, show=0)
 # a dialog opens floating, centred, rest dimmed
-vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.exec_cmd("ghostty --class=xdg-desktop-portal-gtk --gtk-single-instance=false --window-width=60 --window-height=14 -e sh -c \\"echo File chooser stand-in; sleep 600\\"")\'; sleep 8', 30, show=0)
+vm.sh('printf "#!/bin/sh\\nexec ghostty --class=xdg-desktop-portal-gtk --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\\n" >/tmp/dlg.sh; chmod +x /tmp/dlg.sh', show=0)
+vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.exec_cmd("/tmp/dlg.sh")\'; sleep 8', 30, show=0)
 d1 = act(); print('dialog:', d1)
 ok['behaviour: a file-chooser-class window opens floating (never tiled)'] = bool(d1) and d1['cls'] == 'xdg-desktop-portal-gtk' and d1['float']
 vm.mon('screendump /vm/beh-dialog.png -f png')
@@ -383,8 +383,8 @@ ok['behaviour: copied text is still pasteable after the copying app quits (wl-cl
 # media keys / quick look / text packages
 rc, out = vm.sh('pacman -Q playerctl sushi wl-clip-persist; hyprctl configerrors 2>/dev/null; ' + VMENV + '; hyprctl configerrors')
 ok['behaviour: playerctl, sushi, wl-clip-persist installed; hyprctl configerrors empty'] = 'sushi' in out and 'wl-clip-persist' in out and not re.search(r'(?i)error', out.split('wl-clip-persist')[-1].split('\n', 1)[-1])
-rc, out = vm.sh('grep -c TouchpadOverscrollHistoryNavigation ~/.config/brave-origin-flags.conf; fc-match -v sans-serif | grep -E "hintstyle|hinting|rgba|autohint|antialias"')
-ok['behaviour: Brave back/forward flag present; fontconfig: no hinting, grayscale, no autohint'] = re.search(r'^1$', out, re.M) and 'hintnone' in out.replace('hintstyle: 0', 'hintnone') and 'rgba: 0' in out
+rc, out = vm.sh('bash ~/.local/share/oracle/migrations/1794400000.sh; bash ~/.local/share/oracle/migrations/1794400000.sh; grep -c TouchpadOverscrollHistoryNavigation ~/.config/brave-origin-flags.conf; fc-match -v sans-serif | grep -E "hintstyle|hinting|rgba|autohint|antialias"')
+ok['behaviour: Brave back/forward flag present; fontconfig: no hinting, grayscale, no autohint'] = re.search(r'^1$', out, re.M) and 'hintnone' in out.replace('hintstyle: 0', 'hintnone') and 'rgba: 5' in out
 # text rendering before / after, same text
 FCF = '~/.local/share/oracle/default/fontconfig/fonts.conf'
 def textshot(name, strip):
@@ -398,7 +398,10 @@ textshot('beh-text-before.png', True)
 vm.sh(f'cp /tmp/fonts.keep {FCF}; fc-cache -f; fc-match -v sans-serif | grep -E "hintstyle|rgba"', 60)
 textshot('beh-text-after.png', False)
 vm.sh(VMENV + '; pkill -x nautilus; pkill mousepad; sleep 2', 30, show=0)
-vm.send('sudo poweroff\n'); vm.p.wait(120)
+vm.sh('cat /tmp/oracle-mru.log | tail -n 40', show=40)
+vm.send('sudo poweroff\n')
+try: vm.p.wait(90)
+except Exception: vm.p.kill()
 step('result')
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)

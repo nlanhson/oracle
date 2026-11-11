@@ -183,7 +183,8 @@ case ${1:-help} in
   gui) if ! hypr; then echo gui >"$MODE"; pkill -x cage; exit; fi # first time: Hyprland replaces cage
     hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null
     if shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi ;;
-  shell) hypr || exit 0 # desktop stays running behind Shell mode, apps keep their state
+  shell) [[ ${2:-} == --hidden ]] && for _ in {1..40}; do hypr && break; sleep 0.25; done # desktop start: its socket may not be listed yet
+    hypr || exit 0 # desktop stays running behind Shell mode, apps keep their state
     if ! hyprctl clients | grep -q $'\tclass: oracle.shell$'; then
       setsid -f ghostty --class=oracle.shell --gtk-single-instance=false -e bash -c 'oracle attach; oracle gui' &>/dev/null
       for _ in {1..50}; do hyprctl clients | grep -q $'\tclass: oracle.shell$' && break; sleep 0.1; done
