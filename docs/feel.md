@@ -101,3 +101,4 @@ Open choices are made inside their slice and shown to you before building: the l
 |---|---|
 | 0 Spec | Done 2026-11-11 |
 | 1 Motion | In progress |
+| 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |

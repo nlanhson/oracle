@@ -54,7 +54,9 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("swayosd-client --brightness -5
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("swayosd-client --brightness +5"))
 
 -- Screenshot
-hl.bind("PRINT", hl.dsp.exec_cmd("hyprshot -m region -o ~/Pictures/Screenshots"))
+hl.bind("PRINT", hl.dsp.exec_cmd("oracle shot region"))
+hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("oracle shot screen"))
+hl.bind(Mod .. " + PRINT", hl.dsp.exec_cmd("oracle shot window"))
 
 -- Move focus windows
 hl.bind(Mod .. " + left",   hl.dsp.focus({ direction = "left" }))

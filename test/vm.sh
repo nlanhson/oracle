@@ -222,6 +222,13 @@ ok['desktop: waybar, notifications, idle, Vietnamese IME running, fonts installe
 rc, out = vm.sh('sleep 5; pgrep -x wlsunset; pgrep -a swaybg; oracle set nightlight; oracle set wallpaper')
 ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'swaybg -i' in out
 vm.mon('screendump /vm/gui.png -f png')
+rc, out = vm.sh('pacman -Q satty hyprshot wl-clipboard')
+ok['screenshot packages (satty editor)'] = rc == 0
+rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); rm -rf ~/Pictures/Screenshots; swaync-client -C; oracle shot screen; sleep 3; ls ~/Pictures/Screenshots; wl-paste -l; echo COUNT=$(swaync-client -c); echo ACTIONS=$(swaync-client -l 2>&1 | head -c 600)')
+ok['oracle shot screen: PNG saved, image on the clipboard, notification up'] = re.search(r'Screenshot-.*\.png', out) and 'image/png' in out and re.search(r'COUNT=[1-9]', out)
+vm.mon('screendump /vm/shot-notification.png -f png')
+rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.GetCapabilities; grep -c "Print" ~/.local/share/oracle/default/hypr/modules/binds.lua; hyprctl binds | grep -c "oracle shot"; ls -l ~/Pictures/Screenshots | wc -l; oracle shot bogus; echo rc=$?')
+ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^3$', out, re.M) and 'rc=1' in out
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)
