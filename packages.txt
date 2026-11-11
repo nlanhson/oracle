@@ -28,6 +28,7 @@ satty # screenshot editor (arrows, text, blur): the Edit button on the screensho
 waybar
 fuzzel
 swaync
+quickshell # Control Center panel (extra, ~3.7 MB with qt6-wayland, qt6-svg, jemalloc): swaync cannot do Mac-style rows or sliders
 swaybg
 swayosd
 udiskie

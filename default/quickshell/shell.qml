@@ -120,9 +120,9 @@ ShellRoot {
 
                         Card {
                             width: 316; height: 70
-                            Label { x: 12; y: 12; text: "Display"; title: true }
+                            Label { x: 12; y: 9; text: "Display"; title: true }
                             Slider {
-                                x: 12; y: 36; width: parent.width - 24; glyph: "󰃟"
+                                x: 12; y: 34; width: parent.width - 24; glyph: "󰃟"
                                 value: sys.bright; minValue: 5
                                 onMoved: (v) => sys.live("bright", v)
                             }
@@ -130,25 +130,25 @@ ShellRoot {
 
                         Card {
                             width: 316; height: 70
-                            Label { x: 12; y: 12; text: "Sound"; title: true }
+                            Label { x: 12; y: 10; text: "Sound"; title: true }
                             Slider {
-                                x: 12; y: 36; width: parent.width - 24 - 36; glyph: sys.mute ? "󰝟" : "󰕾"
+                                x: 12; y: 34; width: parent.width - 24 - 36; glyph: sys.mute ? "󰝟" : "󰕾"
                                 dimGlyph: sys.mute; glyphTap: true
                                 value: sys.vol
                                 onMoved: (v) => sys.live("vol", v)
                                 onGlyphClicked: sys.set("mute", !sys.mute)
                             }
-                            RoundButton { x: parent.width - 12 - 28; y: 33; glyph: "󰓃"; onClicked: sys.detail("output") }
+                            RoundButton { x: parent.width - 12 - 28; y: 32.5; glyph: "󰓃"; onClicked: sys.detail("output") }
                         }
 
                         Card {
                             visible: sys.bat >= 0
                             width: 316; height: visible ? 70 : 0
-                            Label { x: 12; y: 12; text: "Battery"; title: true }
-                            Label { y: 13; x: parent.width - 12 - width; width: 190; horizontalAlignment: Text.AlignRight
+                            Label { x: 12; y: 10; text: "Battery"; title: true }
+                            Label { y: 11; x: parent.width - 12 - width; width: 190; horizontalAlignment: Text.AlignRight
                                 text: sys.bat + "% · " + (sys.batstate === "Charging" ? "Charging" : sys.batstate === "Full" ? "Full" : "On battery") }
                             Slider {
-                                x: 12; y: 36; width: parent.width - 24; glyph: "󰂄"
+                                x: 12; y: 34; width: parent.width - 24; glyph: "󰂄"
                                 from: 20; to: 100; value: sys.limit
                                 onMoved: (v) => sys.limit = v
                                 onReleased: sys.charge()
@@ -165,13 +165,13 @@ ShellRoot {
                                 return v.length ? v[0] : null
                             }
                             Rectangle {
-                                x: 13; y: 13; width: 44; height: 44; radius: 8
+                                x: 11; y: 11; width: 48; height: 48; radius: 8
                                 color: Tokens.alpha(Tokens.bright, 0.10)
                                 Glyph { anchors.centerIn: parent; text: "󰎆"; px: 20; color: Tokens.alpha(Tokens.bright, 0.6); visible: art.status !== Image.Ready }
                                 Image { id: art; anchors.fill: parent; source: parent.parent.player ? parent.parent.player.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; visible: false }
                             }
                             Column {
-                                x: 69; width: parent.width - 69 - 112 - 8; anchors.verticalCenter: parent.verticalCenter; spacing: 1
+                                x: 71; width: parent.width - 71 - 112 - 8; anchors.verticalCenter: parent.verticalCenter; spacing: 1
                                 Label { width: parent.width; title: true; text: parent.parent.player ? (parent.parent.player.trackTitle || "Not playing") : "" }
                                 Label { width: parent.width; text: parent.parent.player ? parent.parent.player.trackArtist : "" }
                             }
@@ -253,7 +253,7 @@ ShellRoot {
     component Label: Text {
         property bool title: false
         font.family: Tokens.font
-        font.pixelSize: title ? 13 : 11.5
+        font.pixelSize: title ? 13 : 11
         font.weight: title ? Font.DemiBold : Font.Normal
         color: title ? Tokens.bright : Tokens.alpha(Tokens.bright, 0.55)
         elide: Text.ElideRight
@@ -292,8 +292,8 @@ ShellRoot {
         property string glyph
         property bool on: false
         width: 70; height: 70; pressable: true
-        Glyph { x: 0; y: 12; width: parent.width; height: 22; px: 20; text: t.glyph; color: Tokens.alpha(Tokens.bright, t.on ? 0.95 : 0.45) }
-        Label { x: 4; y: 41; width: parent.width - 8; text: t.label; horizontalAlignment: Text.AlignHCenter; maximumLineCount: 2; wrapMode: Text.WordWrap
-            font.pixelSize: 11; font.weight: Font.Medium; color: Tokens.alpha(Tokens.bright, 0.85); elide: Text.ElideNone }
+        Glyph { x: 0; y: 5; width: parent.width; height: 22; px: 20; text: t.glyph; color: Tokens.alpha(Tokens.bright, t.on ? 0.95 : 0.45) }
+        Label { x: 4; y: 34; width: parent.width - 8; text: t.label; horizontalAlignment: Text.AlignHCenter; maximumLineCount: 2; wrapMode: Text.WordWrap; lineHeight: 16; lineHeightMode: Text.FixedHeight
+            font.pixelSize: 12; font.weight: Font.Medium; color: Tokens.alpha(Tokens.bright, 0.85); elide: Text.ElideNone }
     }
 }

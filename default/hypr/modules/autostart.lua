@@ -16,6 +16,7 @@ hl.on("hyprland.start", function ()
   hl.exec_cmd("swayosd-server &")
   hl.exec_cmd("waybar &")
   hl.exec_cmd("swaync &")
+  hl.exec_cmd("qs -p " .. os.getenv("HOME") .. "/.local/share/oracle/default/quickshell &") -- Control Center, started once so it opens at once
   hl.exec_cmd("oracle panel quiet &") -- no banners while locked or screen-sharing
   hl.exec_cmd("udiskie &")
   hl.exec_cmd("oracle pending") -- Oracle: wallpaper (swaybg), night light, a file opened from Shell mode

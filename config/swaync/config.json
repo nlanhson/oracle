@@ -8,13 +8,13 @@
   "layer-shell": true,
   "layer-shell-cover-screen": true,
   "cssPriority": "user",
-  "control-center-width": 360,
+  "control-center-width": 348,
   "control-center-height": 640,
-  "control-center-margin-top": 28,
+  "control-center-margin-top": 0,
   "control-center-margin-right": 0,
   "control-center-margin-bottom": 0,
   "control-center-margin-left": 0,
-  "notification-window-width": 360,
+  "notification-window-width": 352,
   "fit-to-screen": false,
   "timeout": 5,
   "timeout-low": 3,
@@ -33,55 +33,17 @@
   "text-empty": "No Notifications",
   "script-fail-notify": true,
   "widgets": [
-    "buttons-grid#tiles",
-    "slider#display",
-    "slider#sound",
-    "slider#charge",
-    "mpris",
-    "buttons-grid#links",
     "title",
     "notifications"
   ],
   "widget-config": {
-    "title": { "text": "Notifications", "clear-all-button": true, "button-text": "Clear All" },
-    "notifications": { "vexpand": true },
-    "mpris": { "autohide": true, "show-album-art": "when-available", "loop-carousel": false },
-    "slider#display": {
-      "label": "󰃟",
-      "min": 0, "max": 100, "min_limit": 5, "max_limit": 100,
-      "cmd_getter": "brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d %",
-      "cmd_setter": "brightnessctl -q set $value%"
+    "title": {
+      "text": "",
+      "clear-all-button": true,
+      "button-text": "Clear All"
     },
-    "slider#sound": {
-      "label": "󰕾",
-      "min": 0, "max": 100, "min_limit": 0, "max_limit": 100,
-      "cmd_getter": "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100)}'",
-      "cmd_setter": "wpctl set-volume @DEFAULT_AUDIO_SINK@ $value%"
-    },
-    "slider#charge": {
-      "label": "󰂄",
-      "min": 20, "max": 100, "min_limit": 20, "max_limit": 100,
-      "cmd_getter": "oracle panel charge",
-      "cmd_setter": "oracle panel charge $value"
-    },
-    "buttons-grid#tiles": {
-      "buttons-per-row": 2,
-      "actions": [
-        { "label": "󰤨  Wi-Fi", "type": "toggle", "command": "oracle panel wifi $SWAYNC_TOGGLE_STATE", "update-command": "oracle panel wifi" },
-        { "label": "󰂯  Bluetooth", "type": "toggle", "command": "oracle panel bt $SWAYNC_TOGGLE_STATE", "update-command": "oracle panel bt" },
-        { "label": "󰂛  Do Not Disturb", "type": "toggle", "command": "oracle panel dnd $SWAYNC_TOGGLE_STATE", "update-command": "oracle panel dnd" },
-        { "label": "󰖔  Night light", "type": "toggle", "command": "oracle panel night $SWAYNC_TOGGLE_STATE", "update-command": "oracle panel night" },
-        { "label": "󰝟  Mute", "type": "toggle", "command": "oracle panel mute $SWAYNC_TOGGLE_STATE", "update-command": "oracle panel mute" },
-        { "label": "󰒓  Settings", "command": "oracle panel settings" }
-      ]
-    },
-    "buttons-grid#links": {
-      "buttons-per-row": 3,
-      "actions": [
-        { "label": "Networks", "command": "oracle panel settings network" },
-        { "label": "Devices", "command": "oracle panel settings devices" },
-        { "label": "Power", "command": "oracle panel power" }
-      ]
+    "notifications": {
+      "vexpand": true
     }
   }
 }

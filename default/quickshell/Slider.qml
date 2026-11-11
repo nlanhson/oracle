@@ -14,7 +14,7 @@ Item {
     signal moved(real v)
     signal released()
     signal glyphClicked()
-    readonly property real d: 22
+    readonly property real d: 25
     readonly property real frac: Math.max(0, Math.min(1, (value - from) / (to - from)))
     implicitHeight: d
 
@@ -36,7 +36,7 @@ Item {
     }
     Rectangle { x: fill.width - s.d; width: s.d; height: s.d; radius: s.d / 2; color: Tokens.bright; z: 2 }
     Glyph {
-        x: 4; width: 18; height: s.d; z: 3
+        x: (s.d - 18) / 2; width: 18; height: s.d; z: 3
         text: s.glyph; px: 14
         color: Tokens.alpha(Tokens.bg, s.dimGlyph ? 0.45 : 0.85)
     }
