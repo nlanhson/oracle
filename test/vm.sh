@@ -272,7 +272,7 @@ ok['launcher: Super+Space (the real key) opens it'] = out.split()[-1] == '1'
 vm.mon('sendkey meta_l-spc'); time.sleep(1)
 vm.sh(LENV + '; for i in 1 2 3 4 5 6; do oracle launcher; sleep 1; oracle launcher; sleep 1; done; sort -n $XDG_RUNTIME_DIR/oracle-launcher.timing | tr "\\n" " "')
 rc, out = vm.sh('sort -n $XDG_RUNTIME_DIR/oracle-launcher.timing | awk \'{a[NR]=$1} END{print NR, "median", a[int((NR+1)/2)]}\'', 30)
-ok['launcher: time to first picture under 150 ms (median, software rendering)'] = 'median' in out and float(out.split()[-1]) < 150
+ok['launcher: time to first picture under 150 ms (median, software rendering)'] = re.search(r'median [\d.]+', out) is not None and float(out.split()[-1]) < 150
 rc, out = vm.sh('bash ~/.local/share/oracle/test/launcher.sh | tail -n 30', 120)
 ok['launcher: 20+ scripted queries, expected top row (test/launcher.sh)'] = rc == 0 and 'launcher ok' in out
 rc, out = vm.sh('for q in gho upd shut "12*7" quarterly; do python3 ~/.local/share/oracle/bin/oracle-launcher --query "$q" | head -n 1; done')

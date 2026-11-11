@@ -20,7 +20,8 @@ window.launcher * { font-family: "%font_ui%", sans-serif; }
 .launcher .row { min-height: 40px; padding: 0 %sp_3%px; border-radius: %r_s%px; }
 .launcher .row .icon { margin-right: %sp_3%px; }
 .launcher .row .title { color: @o_bright; font-size: %size_body%px; font-weight: %weight_normal%; }
-.launcher .row .title.big { font-size: %size_title%px; font-weight: %weight_bold%; }
+.launcher .row .title.big { font-size: %size_field%px; font-weight: %weight_bold%; }
+.launcher .row.sum { min-height: 56px; }
 .launcher .row .sub { color: @o_text; font-size: %size_small%px; margin-left: %sp_3%px; }
 .launcher .row.sel { background-color: @o_hover; }
 .launcher .row.sel .sub { color: @o_bright; }

@@ -321,14 +321,14 @@ def gui(power_first):
         S["t0"] = time.monotonic(); load_css(); S.update(power=power, moved=False, sel=0, confirm=None, files=[], shown=True)
         entry.set_text(""); refresh(); win.set_visible(True); entry.grab_focus()
         outer.set_margin_top(S["top"] or 150)
-        if timing:
-            clock = win.get_frame_clock()
+        if timing:  # first picture after the key: in-app ms, written to $XDG_RUNTIME_DIR/oracle-launcher.timing
+            def logit(*_):
+                open(os.path.join(RUN, "oracle-launcher.timing"), "a").write(f"{(time.monotonic() - S['t0']) * 1000:.1f}\n")
+            sf = win.get_surface(); clock = (sf.get_frame_clock() if sf else None) or win.get_frame_clock()
             if clock:
                 hid = [0]
-                def painted(c):
-                    open(os.path.join(RUN, "oracle-launcher.timing"), "a").write(f"{(time.monotonic() - S['t0']) * 1000:.1f}\n")
-                    c.disconnect(hid[0])
-                hid[0] = clock.connect("after-paint", painted)
+                hid[0] = clock.connect("after-paint", lambda c: (logit(), c.disconnect(hid[0])))
+            else: GLib.idle_add(lambda: (logit(), False)[1])
         GLib.idle_add(place)
 
     def place():  # about 22% from the top of the screen (Spotlight sits in the upper third)
