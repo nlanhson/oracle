@@ -109,7 +109,7 @@ case ${1:-help} in
     { for k in bg surface raised hover line dim muted text bright error accent; do echo "@define-color o_$k #${!k};"; done
       echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; } | put colors.css
     t=$(<"$DIR/default/launcher/style.css"); size_field=$((size_title * 16 / 10)) # field text = title x1.6 = 24 (Spotlight's field is big, light)
-    for k in font_ui border r_s r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_field weight_normal weight_bold; do t=${t//"%$k%"/${!k//\"/}}; done
+    for k in font_ui border r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_field weight_normal weight_bold; do t=${t//"%$k%"/${!k//\"/}}; done
     printf '%s\n' "$t" | put launcher.css
     { for k in bg surface raised hover line dim muted text bright error accent; do echo "\$$k = rgb(${!k})"; done
       echo "\$frost = rgba($bg$fa)"; echo "\$font_ui = ${font_ui//\"/}"
