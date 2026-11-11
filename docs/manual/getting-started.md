@@ -77,7 +77,6 @@ Every part of the desktop (bar, launcher, notifications, volume pill, lock scree
 ## Power and battery
 
 - **Power button:** a press never turns Oracle off, because it is also your home server. On the desktop a press opens the power menu (the same as `Super + P`); in Shell mode and at the login screen it does nothing. To force it off, hold the button for 5 seconds: Oracle shuts down cleanly.
-- **Restart and Shut Down ask once** in the power menu. **Cancel** is selected first, so Enter or `Esc` keeps you working.
 - **Battery:** when running on battery, Oracle tells you at 20% ("Plug in soon") and at 10% ("Plug in now", this one stays until you close it). At 4% it shuts down cleanly after 60 seconds, so the photo database is never cut off mid-write. Plug in during those 60 seconds and nothing happens. It never sleeps. The percentages are of the real battery, so with a charge limit of 50% you still get the warnings at 20 and 10.
 
 ## When something needs you

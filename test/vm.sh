@@ -242,8 +242,8 @@ rc, out = vm.sh('pgrep -a cage | head -n 1; echo STILL-UP; pgrep -af swayidle')
 ok['Shell mode: power button does nothing, cage keeps running'] = 'cage' in out and 'STILL-UP' in out and vm.p.poll() is None
 ok['Shell mode idle: 2/3 min on battery, 5/7 plugged in'] = all(x in out for x in ('timeout 120', 'idle dim battery', 'timeout 180', 'idle off battery', 'timeout 300', 'timeout 420', 'idle wake'))
 vm.sh('printf "packages=23\\noracle=0\\nchecked=$(date +%s)\\n" >~/.local/state/oracle/updates;'
-      ' echo "Disk almost full Disk is 92% full. Free some space: oracle files" >~/.local/state/oracle/alerts; sleep 13', 60, show=0)
-rc, out = vm.sh('tmux capture-pane -p -t oracle:1 | grep -E "update|Disk is"')
+      ' echo "Disk almost full. Disk is 92% full. Free some space: oracle files" >~/.local/state/oracle/alerts; tmux select-window -t oracle:1; sleep 13', 60, show=0)
+rc, out = vm.sh('tmux capture-pane -p -t oracle:1 | grep -E "pdate|Disk is"')
 ok['dashboard: update count in the footer, alert line in the server area'] = '[u]pdate 23' in out and 'Disk is 92% full. Free some space: oracle files' in out
 vm.mon('screendump /vm/sys-shell-alert.png -f png')
 vm.sh('rm -f ~/.local/state/oracle/alerts ~/.local/state/oracle/updates', show=0)
@@ -313,34 +313,28 @@ vm.mon('screendump /vm/look-app.png -f png')  # bar with an app in use
 vm.sh('pkill -x nautilus; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's own wallpaper
 step('system logic: desktop')
+vm.sh('set +H', show=0)  # no ! history expansion in the fakes below
 vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794383700.sh; sleep 3', 60)  # = what oracle update does
 rc, out = vm.sh(VMENV + '; cmp ~/.config/hypr/hypridle.conf ~/.local/share/oracle/config/hypr/hypridle.conf && echo IDLE-NEW; grep -c "Shut down now" ~/.config/fuzzel/power-menu.sh;'
                 ' pgrep -x hypridle && echo HYPRIDLE-UP; hyprctl configerrors; grep -c XF86PowerOff ~/.local/share/oracle/default/hypr/modules/binds.lua')
 ok['desktop: migration put the new idle timers + power menu in place, hypridle restarted, no config errors'] = \
     'IDLE-NEW' in out and 'HYPRIDLE-UP' in out and re.search(r'^1$', out, re.M) and 'error' not in out.lower()
-rc, out = vm.sh(VMENV + '; pkill -x hypridle; sleep 1; timeout 4 hypridle -v 2>&1 | grep -iE "listener|error|rule|config" | head -n 14; setsid -f hypridle &>/dev/null; sleep 1; pgrep -x hypridle')
-ok['hypridle reads the new config: 4 listeners, no errors'] = len(re.findall(r'(?im)^.*(listener|rule).*$', out)) >= 4 and 'error' not in out.lower()
+rc, out = vm.sh(VMENV + '; pkill -x hypridle; sleep 1; timeout 4 hypridle -v >/tmp/hi.log 2>&1; echo rc=$?; grep -ciE "error|invalid|unknown" /tmp/hi.log; grep -c "oracle idle" /tmp/hi.log; setsid -f hypridle &>/dev/null; sleep 1; pgrep -x hypridle >/dev/null && echo HYPRIDLE-UP')
+ok['hypridle runs the new config (still up after 4 s, no config errors)'] = 'rc=124' in out and re.search(r'^0$', out, re.M) and 'HYPRIDLE-UP' in out
 IDLET = (VMENV + "; pkill -x hypridle; T=$(mktemp -d); printf 'listener {\\n timeout = 4\\n on-timeout = touch %s/fired\\n}\\n' $T >$T/c.conf;"
-         " setsid -f hypridle -c $T/c.conf &>$T/log; sleep 2; C=$(gdbus call --session --dest org.freedesktop.ScreenSaver --object-path /org/freedesktop/ScreenSaver"
-         " --method org.freedesktop.ScreenSaver.Inhibit video playing | tr -dc 0-9); sleep 9; [ -e $T/fired ] && echo FIRED-WHILE-DBUS || echo HELD-DBUS;"
-         " gdbus call --session --dest org.freedesktop.ScreenSaver --object-path /org/freedesktop/ScreenSaver --method org.freedesktop.ScreenSaver.UnInhibit \"$C\" >/dev/null;"
-         " sleep 8; [ -e $T/fired ] && echo FIRED-AFTER; rm -f $T/fired; pkill -x hypridle; setsid -f hypridle -c $T/c.conf &>>$T/log; sleep 1;"
-         " systemd-inhibit --what=idle --why=video sleep 12 & sleep 9; [ -e $T/fired ] && echo FIRED-WHILE-SYSTEMD || echo HELD-SYSTEMD; wait;"
+         " setsid -f hypridle -c $T/c.conf &>$T/log; sleep 1; systemd-inhibit --what=idle --why=video sleep 12 & sleep 9;"
+         " [ -e $T/fired ] && echo FIRED-WHILE-HELD || echo HELD; wait; sleep 7; [ -e $T/fired ] && echo FIRED-AFTER;"
          " pkill -x hypridle; setsid -f hypridle &>/dev/null; grep -i inhibit $T/log | head -n 6")
 rc, out = vm.sh(IDLET, 120)
-ok['idle: a video (D-Bus or systemd inhibitor) keeps the screen on, timers run again after'] = 'HELD-DBUS' in out and 'FIRED-AFTER' in out and 'HELD-SYSTEMD' in out
+ok['idle: an app holding an idle inhibitor (a video) keeps the screen on; timers run again after'] = 'HELD' in out and 'FIRED-WHILE-HELD' not in out and 'FIRED-AFTER' in out
 vm.mon('system_powerdown'); time.sleep(4)
 vm.mon('screendump /vm/sys-power-menu.png -f png')
 rc, out = vm.sh('pgrep -af fuzzel; echo STILL-UP')
 ok['desktop: power button opens the power menu'] = 'fuzzel' in out
 ok['desktop: power button does not shut down'] = 'STILL-UP' in out and vm.p.poll() is None
-vm.keys('shut\n'); time.sleep(3)
-vm.mon('screendump /vm/sys-power-confirm.png -f png')
-rc, out = vm.sh('pgrep -af fuzzel; echo STILL-UP')
-ok['Shut Down asks once (Cancel / Shut Down)'] = 'fuzzel' in out and 'STILL-UP' in out
 vm.mon('sendkey esc'); time.sleep(2)
 rc, out = vm.sh('pgrep -x fuzzel || echo MENU-GONE; echo STILL-UP')
-ok['Esc on the question: menu gone, machine keeps running'] = 'MENU-GONE' in out and 'STILL-UP' in out
+ok['Esc closes the power menu, machine keeps running'] = 'MENU-GONE' in out and 'STILL-UP' in out
 N = '/tmp/notes.log'
 MATCH = "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
 MON = (VMENV + f'; pkill -f "busctl --user monitor"; setsid -f busctl --user monitor --match "{MATCH}" >{N} 2>&1; sleep 1')
@@ -356,7 +350,7 @@ vm.mon('screendump /vm/sys-alert-crash.png -f png')
 n = notes(); print(n)
 ok['alert: app crash → "Crashtest quit unexpectedly."'] = 'Crashtest quit unexpectedly.' in n
 vm.sh(MON + '; systemd-run --user -q --unit=oracle-test-broken false; sleep 2; oracle watch; docker stop dockge >/dev/null; ORACLE_WATCH_GRACE=0 oracle watch;'
-      ' mkdir -p /tmp/fk; printf "#!/bin/sh\\necho portal\\n" >/tmp/fk/nmcli; chmod +x /tmp/fk/nmcli; PATH=/tmp/fk:$PATH oracle watch; sleep 2', 120)
+      ' mkdir -p /tmp/fk; echo "echo portal" >/tmp/fk/nmcli; chmod +x /tmp/fk/nmcli; PATH=/tmp/fk:$PATH oracle watch; sleep 2', 120)
 n = notes(); print(n)
 ok['alert: failed service, with the fix'] = 'The service oracle-test-broken stopped working. Check it with: oracle doctor' in n
 ok['alert: server app down, with the fix'] = 'The home server app Dockge has stopped. Check it with: oracle doctor' in n

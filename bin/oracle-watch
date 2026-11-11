@@ -31,7 +31,7 @@ updates() {
 }
 if [[ ${1:-} == --updates ]]; then
   updates; [[ -t 1 ]] || exit 0
-  if [[ $(sed -n 's/^checked=//p' "$UP" 2>/dev/null) == "$NOW" ]]; then . "$UP"; echo "$packages package update(s) waiting, Oracle $( ((oracle)) && echo "has $oracle new change(s)" || echo "is up to date"). Nothing was installed."
+  if [[ $(sed -n 's/^checked=//p' "$UP" 2>/dev/null) == "$NOW" ]]; then . "$UP"; echo "Updates waiting: $packages, Oracle $( ((oracle)) && echo "has a newer version" || echo "is up to date"). Nothing was installed."
   else echo "Could not check (offline?). Nothing was installed."; fi; exit 0
 fi
 

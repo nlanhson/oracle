@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # System logic, no VM, nothing outside a temp HOME: battery rules (fake power supply, fake poweroff), the update check (fake
-# package list, local repo one change behind), plain-word alerts (fake disk/units/crash/portal), idle steps, the config migration.
+# package list, local repo one change behind), plain-word alerts (fake disk/units/crash/portal), idle steps, the idle-timer migration.
 # Notifications are caught by a fake notify-send. bash test/system.sh
 R=$(cd "$(dirname "$0")/.." && pwd); T=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$T"' EXIT
 export HOME=$T/home XDG_RUNTIME_DIR=$T/xdg; mkdir -p "$HOME/.local/share" "$T/bin" "$XDG_RUNTIME_DIR"
@@ -83,16 +83,13 @@ ck "idle on battery: dim, keyboard light off, screen off, wake restores, each on
 ck "desktop: screen off once and on once (dpms toggles)" '[[ $(grep -c "dpms(\"off\")" "$T/hypr") == 1 && $(grep -c "dpms(\"on\")" "$T/hypr") == 1 ]]'
 unset ORACLE_POWER_SUPPLY KBD
 
-# migration: untouched idle + power menu → new; edited copy kept with one line
-rm -rf "$HOME/.local/share/oracle"; ln -s "$R" "$HOME/.local/share/oracle"; C=$HOME/.config; mkdir -p "$C/hypr" "$C/fuzzel"
-cp "$R/test/fixtures/system/hypridle-v1.conf" "$C/hypr/hypridle.conf"; { cat "$R/test/fixtures/system/power-menu-v1.sh"; printf "\n%s\n" "# mine"; } >"$C/fuzzel/power-menu.sh"
-out=$(bash "$R/migrations/1794383700.sh")
-ck "migration: untouched idle timers replaced, edited power menu kept, one line" 'cmp -s "$C/hypr/hypridle.conf" "$R/config/hypr/hypridle.conf" && grep -q "# mine" "$C/fuzzel/power-menu.sh" && [[ $(grep -c . <<<"$out") == 1 && $out == *"power-menu.sh is your own version"* ]]'
-cp "$R/test/fixtures/system/power-menu-v1.sh" "$C/fuzzel/power-menu.sh"; out=$(bash "$R/migrations/1794383700.sh")
-ck "migration: untouched power menu replaced, rerun quiet" 'cmp -s "$C/fuzzel/power-menu.sh" "$R/config/fuzzel/power-menu.sh" && [[ -z $out ]]'
-fake fuzzel 'echo "$*" >>'"$T"'/fz; cat >>'"$T"'/fz; n=$(grep -c dmenu '"$T"'/fz); [[ $n == 1 ]] && echo Shutdown || echo Cancel'
-fake systemctl 'echo "$*" >>'"$T"'/sc'; bash "$C/fuzzel/power-menu.sh"
-ck "power menu: Shut Down asks once, Cancel is first, Cancel does nothing" 'grep -q "Shut down now?" "$T/fz" && grep -qx Cancel "$T/fz" && grep -A1 -x Cancel "$T/fz" | grep -qx "Shut Down" && [[ ! -e $T/sc ]]'
+# migration: untouched idle timers → new; an edited copy is kept, with one line
+rm -rf "$HOME/.local/share/oracle"; ln -s "$R" "$HOME/.local/share/oracle"; C=$HOME/.config; mkdir -p "$C/hypr"
+{ cat "$R/test/fixtures/system/hypridle-v1.conf"; printf "\n%s\n" "# mine"; } >"$C/hypr/hypridle.conf"; out=$(bash "$R/migrations/1794383700.sh")
+ck "migration: edited idle timers kept, one line says where the new ones are" 'grep -q "# mine" "$C/hypr/hypridle.conf" && [[ $(grep -c . <<<"$out") == 1 && $out == *"hypridle.conf is your own version"* ]]'
+cp "$R/test/fixtures/system/hypridle-v1.conf" "$C/hypr/hypridle.conf"; out=$(bash "$R/migrations/1794383700.sh")
+ck "migration: untouched idle timers replaced, quiet" 'cmp -s "$C/hypr/hypridle.conf" "$R/config/hypr/hypridle.conf" && [[ -z $out ]]'
+out=$(bash "$R/migrations/1794383700.sh"); ck "migration: rerun changes nothing" '[[ -z $out ]] && cmp -s "$C/hypr/hypridle.conf" "$R/config/hypr/hypridle.conf"'
 
 ((fail)) && echo "system: FAILED" || echo "system ok"
 exit $fail
