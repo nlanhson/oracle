@@ -30,7 +30,7 @@ hl.window_rule({ name = "oracle-small-tools",  match = { class = "^(org\\.pulsea
                 float = true, center = true, size = "900 620" })
 hl.window_rule({ name = "oracle-properties",   match = { title = "^.* Properties$" }, float = true, center = true })
 
-hl.window_rule({ name = "oracle-settings", match = { class = "^oracle\\.settings$" }, float = true, center = true, force_rgbx = true }) -- Super+comma pop-up
+hl.window_rule({ name = "oracle-settings", match = { class = "^oracle\\.settings$" }, float = true, center = true, force_rgbx = true, size = "(monitor_w*0.6) (monitor_h*0.88)" }) -- Super+comma pop-up: fits the screen, the list scrolls inside
 
 -- Picture in picture: small, bottom-right, on top, on every workspace, never takes the keyboard (macOS PiP)
 hl.window_rule({ name = "oracle-pip", match = { title = "^(Picture[ -]in[ -][Pp]icture)$" },
@@ -53,36 +53,7 @@ hl.on("workspace.special_active", function(ws)
   end
 end)
 
--- Super+Tab: every press goes to the next open app (by window class), round and round through all of them.
--- (A Mac walks back by last use and commits when Command is let go; Lua cannot see Super being let go, and the owner
--- wants one key that reaches every app, so the order is fixed: the order the apps were first used in.)
-local order, last = {}, {}
 local function app(w) return w and w.class and w.class ~= "" and w.class ~= "oracle.shell" and w.class end
-hl.on("window.active", function(w)
-  if not app(w) then return end
-  last[w.class] = w.address
-  for _, c in ipairs(order) do if c == w.class then return end end
-  order[#order + 1] = w.class
-end)
-local function live() -- classes that have a window now, in their fixed order
-  local seen, list, rest = {}, {}, {}
-  for _, w in ipairs(hl.get_windows()) do if app(w) then seen[w.class] = true end end
-  for _, c in ipairs(order) do if seen[c] then list[#list + 1] = c; seen[c] = nil end end
-  for c in pairs(seen) do rest[#rest + 1] = c end
-  table.sort(rest); for _, c in ipairs(rest) do list[#list + 1] = c end
-  return list
-end
-local function newest(c) -- that app's most recently used window
-  local all = hl.get_windows()
-  for _, w in ipairs(all) do if w.address == last[c] and w.class == c then return w end end
-  for _, w in ipairs(all) do if w.class == c then return w end end
-end
-local function switch()
-  local list = live(); if #list < 2 then return end
-  local cur, i = app(hl.get_active_window()), 0
-  for k, c in ipairs(list) do if c == cur then i = k end end
-  local w = newest(list[i % #list + 1]); if w then hl.dispatch(hl.dsp.focus({ window = w })) end
-end
 
 -- Command-`: the next window of the same app
 local function same_app()
@@ -99,16 +70,16 @@ local function same_app()
   end
 end
 
-local launcher = require("modules.binds").launcher
 local Mod = "SUPER"
 -- macOS-style keys: new binds only, on keys that were free (the old ones stay as they were)
-hl.bind(Mod .. " + Tab", switch) -- next app, cycles through all of them
 hl.bind(Mod .. " + grave",       same_app)                   -- Command-`
 hl.bind(Mod .. " + CTRL + F",    hl.dsp.window.fullscreen({ action = "toggle" })) -- Control-Command-F
 hl.bind(Mod .. " + CTRL + Q",    hl.dsp.exec_cmd("loginctl lock-session"))        -- Control-Command-Q (hypridle locks)
 hl.bind(Mod .. " + comma",       hl.dsp.exec_cmd("ghostty --class=oracle.settings --gtk-single-instance=false --window-width=70 --window-height=34 -e oracle settings")) -- Command-comma
-hl.bind(Mod .. " + ALT + Escape", hl.dsp.exec_cmd("hyprctl kill"))  -- Option-Command-Esc: click the stuck window (Esc cancels)
+hl.bind(Mod .. " + ALT + Escape", hl.dsp.exec_cmd("sh -c 'notify-send -a \"Force Quit\" -u low -t 5000 \"Click a window to force quit it\" \"Esc cancels.\"; hyprctl kill'")) -- Option-Command-Esc: click the stuck window (Esc cancels)
 
--- Four-finger pinch in = launcher (Launchpad); 3 fingers up/down = Shell mode, following your fingers
-hl.gesture({ fingers = 4, direction = "pinchin", action = function() hl.dispatch(hl.dsp.exec_cmd(launcher)) end })
-hl.gesture({ fingers = 4, direction = "vertical", action = "special", workspace_name = "shell" })
+-- 4 fingers up = Shell mode rises from the bottom, 4 fingers down sends it back down (Mission Control: the motion follows the fingers).
+-- Two one-way gestures, not the native `special` one: that one toggles on the same swipe both ways and rose from the bottom on a swipe DOWN.
+local function shell_shown() return hl.get_current_submap() == "shell" end
+hl.gesture({ fingers = 4, direction = "up",   action = function() if not shell_shown() then hl.dispatch(hl.dsp.workspace.toggle_special("shell")) end end })
+hl.gesture({ fingers = 4, direction = "down", action = function() if shell_shown() then hl.dispatch(hl.dsp.workspace.toggle_special("shell")) end end })

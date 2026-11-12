@@ -53,16 +53,6 @@ hl.window_rule({
 })
 
 hl.window_rule({
-    -- Oracle: Settings pop-up from the control panel, floating in the middle
-    name  = "oracle-settings",
-    match = { class = "^oracle\\.settings$" },
-
-    float      = true,
-    center     = true,
-    force_rgbx = true,
-})
-
-hl.window_rule({
     -- Oracle: Quick Look (Space in Files = sushi), a floating preview in the middle that dims nothing and closes with Space/Esc
     name  = "oracle-quicklook",
     match = { class = "^org\\.gnome\\.NautilusPreviewer$" },

@@ -64,7 +64,13 @@ draw() {
   for k in "${ITEMS[@]: -BUTTONS}"; do
     if [[ ${ITEMS[SEL]} == "$k" ]]; then b+="${C}[ $k ]$N   "; else b+="$(button "$k")   "; fi
   done
-  BTNROW=${#LINES[@]}; LINES+=("  $b" ''); place
+  BTNROW=${#LINES[@]}; LINES+=("  $b" ''); OFF=0
+  local R n=${#LINES[@]} max s=0 i; read -r R _ < <(stty size); max=$((R - 3)) # a small window scrolls: the selected row stays in view
+  if ((n > max)); then
+    for i in "${!LINES[@]}"; do [[ ${ROWOF[i]:-} == "$SEL" ]] && s=$i; done; ((SEL >= ${#ITEMS[@]} - BUTTONS)) && s=$BTNROW
+    OFF=$((s - max / 2)); ((OFF < 0)) && OFF=0; ((OFF > n - max)) && OFF=$((n - max)); LINES=("${LINES[@]:OFF:max}")
+  fi
+  place
   printf '\e[?2026h\e[H\e[2J%s' "$MOUSE"; box settings "${MSG:-↑↓ move · ←→ change · enter open · q back}"; printf '\e[?2026l'; MSG=''
 }
 asroot() { printf '\e[2J\e[H\e[?25h%s' "$NOMOUSE"; sudo "$@"; local r=$?; printf '\e[?25l'; return $r; } # may ask your password
@@ -149,7 +155,7 @@ press() { # enter on the selected row
   esac
 }
 click() { # mouse: row = select + act; slider = set to that spot; ◂ / ▸ half of a stepper = down / up; buttons
-  local r=$((MY - BY - 1)) x=$((MX - BX - 2)) p=2 k v
+  local r=$((MY - BY - 1 + OFF)) x=$((MX - BX - 2)) p=2 k v
   if ((r == BTNROW)); then
     for k in "${ITEMS[@]: -BUTTONS}"; do
       ((x >= p && x < p + ${#k} + 4)) && { SEL=${IDX[$k]}; press; return; }

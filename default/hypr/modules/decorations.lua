@@ -65,6 +65,7 @@ local frosted = {
     { "waybar" },
     { "launcher",                    "none" },
     { "oracle-panel",                "none" },
+    { "oracle-media",                "none" },
     { "swaync-control-center" },
     { "swaync-notification-window",  "slide right" },
     { "swayosd",                     "fade" },
