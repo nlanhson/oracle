@@ -751,7 +751,7 @@ j, _ = vm.expect([r'oracle login:'], 240, fail=False); vm.tick = None
 frames(vm); band2, _, lit2 = vm.shot('boot-tpm-after')
 print(f'after typing the password: serial login {j == 0}; screen text-band={band2} lit={lit2}')
 ok['TPM fails: password prompt readable on screen, keyboard unlocks, boots to login'] = band > 0 and band != FW and j == 0
-vm.mon('system_powerdown'); vm.p.wait(120)
+vm.mon('quit'); vm.p.wait(60)  # the power button is ignored by design now (slice 7), so no ACPI powerdown here
 step('result')
 for k, v in ok.items():
     print(('PASS ' if v else 'FAIL ') + k)
