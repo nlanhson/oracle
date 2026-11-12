@@ -243,8 +243,9 @@ ok['Shell mode: power button does nothing, cage keeps running'] = 'cage' in out 
 ok['Shell mode idle: 2/3 min on battery, 5/7 plugged in'] = all(x in out for x in ('timeout 120', 'idle dim battery', 'timeout 180', 'idle off battery', 'timeout 300', 'timeout 420', 'idle wake'))
 vm.sh('printf "packages=23\\noracle=0\\nchecked=$(date +%s)\\n" >~/.local/state/oracle/updates;'
       ' echo "Disk almost full. Disk is 92% full. Free some space: oracle files" >~/.local/state/oracle/alerts; tmux select-window -t oracle:1; sleep 13', 60, show=0)
-rc, out = vm.sh('tmux capture-pane -p -t oracle:1 | grep -E "pdate|Disk is"')
-ok['dashboard: update count in the footer, alert line above it'] = '[u]pdate 23' in out and 'Disk is 92% full. Free some space: oracle files' in out
+rc, out = vm.sh('tmux capture-pane -p -t oracle:1 | grep -E "pdate|Disk is"; tmux new -d -s tall -x 160 -y 60 oracle-home; sleep 5;'  # this VM screen is too short for the whole dashboard
+                ' tmux capture-pane -p -t tall | grep -E "pdate|Disk is"; tmux kill-session -t tall')
+ok['dashboard: update count in the footer, alert line above it (160x60 pane)'] = '[u]pdate 23' in out and 'Disk is 92% full. Free some space: oracle files' in out
 vm.mon('screendump /vm/sys-shell-alert.png -f png')
 vm.sh('rm -f ~/.local/state/oracle/alerts ~/.local/state/oracle/updates', show=0)
 rc, out = vm.sh('pgrep -x wlsunset && pgrep -x swayidle && cat ~/.config/oracle/ghostty; pgrep -x fcitx5 || echo NO-IME')
