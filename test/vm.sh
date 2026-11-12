@@ -5,11 +5,17 @@
 # test/vm.sh iso      our ISO (iso/build.sh → $VM_DIR, reused; rm it to rebuild), its own installer copy, 64G NVMe
 # test/vm.sh oracle   reuse the installed disk from the last run, checks only
 # test/vm.sh secureboot  reuse the installed disk: oracle secureboot setup → Secure Boot on (OVMF secboot + SMM) → checks → undo
+# test/vm.sh try      reuse the installed disk as the owner's laptop (Oracle from main + user edits), oracle try <preview> → reboot → checks → oracle try back →
+#                     reboot → everything identical (test/try-fp.sh) → again once. Served git: main = feel/try-main (main + oracle try), preview = feel/try
 set -euo pipefail
 if [[ ! -f /.dockerenv ]]; then
   ROOT=$(cd "$(dirname "$0")/.." && pwd)
   VM=${VM_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/oracle-vm}
   mkdir -p "$VM"
+  if [[ ${1:-} == try ]]; then # real history, two branches: what the laptop runs (main + oracle try) and the preview
+    rm -rf "$VM/try.git"; git init -q --bare "$VM/try.git"
+    git -C "$ROOT" push -q "$VM/try.git" "${TRY_MAIN:-feel/try-main}:refs/heads/main" "${TRY_PREVIEW:-feel/try}:refs/heads/feel/try"
+  fi
   [[ ${1:-} != iso ]] || compgen -G "$VM/oracle-*.iso" >/dev/null || "$ROOT/iso/build.sh" "$VM"
   exec docker run --rm -i --device /dev/kvm -e OWNER="$(id -u):$(id -g)" -v "$ROOT:/repo:ro" -v "$VM:/vm" archlinux:latest bash /repo/test/vm.sh "$@"
 fi
@@ -19,7 +25,7 @@ echo "== container: qemu, swtpm"
 pacman -Syu --noconfirm --needed --cachedir /vm/pkg qemu-base qemu-hw-display-virtio-{vga,gpu} edk2-ovmf swtpm python git >/dev/null
 
 MODE=${1:-arch} ISO=''
-if [[ $MODE != oracle && $MODE != secureboot ]]; then
+if [[ $MODE != oracle && $MODE != secureboot && $MODE != try ]]; then
   if [[ $MODE == iso ]]; then
     ISO=$(ls -t /vm/oracle-*.iso | head -1) SIZE=64G
   else
@@ -40,6 +46,7 @@ echo "== serve repo (working tree) on 10.0.2.2:8000"
 rm -rf /srv /tmp/w && mkdir /srv && cp -r /repo /tmp/w && rm -rf /tmp/w/.git
 git -C /tmp/w init -q && git -C /tmp/w add -A && git -C /tmp/w -c user.name=t -c user.email=t@t commit -qm test
 git clone -q --bare /tmp/w /srv/oracle.git && git -C /srv/oracle.git update-server-info
+[[ $MODE != try ]] || { rm -rf /srv/oracle.git; cp -r /vm/try.git /srv/oracle.git; git config --global --add safe.directory '*'; git -C /srv/oracle.git update-server-info; cp /repo/test/try-fp.sh /srv/fp.sh; }
 cp /repo/install.sh /repo/archinstall.json /srv/
 python -m http.server -d /srv 8000 >/dev/null 2>&1 &
 
@@ -168,7 +175,7 @@ def clean(t): return re.sub(r'\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x
 def step(t): print(f'\n== {t}', flush=True)
 ok = {}
 
-if MODE not in ('oracle', 'secureboot'):
+if MODE not in ('oracle', 'secureboot', 'try'):
     step(f'stage 1: boot {os.environ["ISO"]}, root shell on serial')
     opts = re.search(r'^options (.*)$', open(glob.glob('/vm/boot/loader/entries/01-*.conf')[0]).read(), re.M)[1]
     vm = VM(['-cdrom', os.environ['ISO'], '-kernel', '/vm/boot/arch/boot/x86_64/vmlinuz-linux',
@@ -295,6 +302,113 @@ if MODE == 'secureboot':  # reuses the installed disk. G14 steps + design: docs/
     step('result')
     for k, v in ok.items(): print(('PASS ' if v else 'FAIL ') + k)
     sys.exit(0 if all(ok.values()) else 1)
+
+if MODE == 'try':  # reuses the installed disk. Design + what is saved/restored: bin/oracle (try), docs/manual/updating.md, test/try-fp.sh
+    sudo = [(r'\[sudo\] password for son:', PW), (r'Disk password: ', PW), (LUKS, PW)]
+    ask = sudo + [(r'\[y/N\] ', 'y')]
+    URL = 'http://10.0.2.2:8000/oracle.git'
+    BUS = 'export XDG_RUNTIME_DIR=/run/user/$(id -u); export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus'
+    VMENV = BUS + '; export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) WAYLAND_DISPLAY=$(cd $XDG_RUNTIME_DIR && ls -d wayland-? | head -1)'
+    def start(label):
+        step(label); v = VM([])
+        i, _ = v.expect([LUKS, r'oracle login:'], 900)
+        if i == 0: v.send(PW + '\n'); v.expect([r'oracle login:'], 300)
+        v.login(seen=True); v.sh('sudo -v', 60, sudo, show=0); v.sh(BUS, show=0)
+        return v
+    def reboot(label):
+        vm.send('sudo reboot\n'); time.sleep(5); return start(label)
+    def fp(name):  # fingerprint into ~/.fp-<name>.txt
+        vm.sh('sudo -v', 60, sudo, show=0)
+        vm.sh('curl -fsS http://10.0.2.2:8000/fp.sh -o ~/.fp.sh && bash ~/.fp.sh >~/.fp-%s.txt 2>~/.fp-%s.err; wc -l ~/.fp-%s.txt; head -n 5 ~/.fp-%s.err' % ((name,) * 4), 300, sudo, 6)
+    def same(a, b, what):
+        rc, out = vm.sh(f'diff ~/.fp-{a}.txt ~/.fp-{b}.txt; echo DIFF-RC=$?', 60, show=60)
+        r = 'DIFF-RC=0' in out; print(f'fingerprint {a} vs {b}: {"IDENTICAL" if r else "DIFFERENT (diff above)"}', flush=True); ok[what] = r
+    def desktop():  # tty1 login → Shell mode → desktop; says what runs
+        rc, _ = vm.sh('ps -t tty1 -o comm= | grep -x agetty')  # old prompt asks the name first
+        if rc == 0: vm.keys('son\n'); time.sleep(2)
+        vm.keys(PW + '\n'); time.sleep(25)
+        vm.sh('oracle gui; sleep 30', 90, show=0)
+        return vm.sh(VMENV + '; echo HYPR=$(pgrep -cx Hyprland) BAR=$(pgrep -cx waybar) NC=$(pgrep -cx swaync) QS=$(pgrep -cx "qs|quickshell") LAUNCH=$(pgrep -fc "python3.*oracle-launcher") CAGE=$(pgrep -cx cage); hyprctl configerrors | head -n 3', 60)
+    def server():
+        return vm.sh('for i in $(seq 120); do docker ps --format "{{.Names}}" | grep -q dockge && break; sleep 5; done; docker ps --format "{{.Names}} {{.Status}}"', 700)
+    vm = start('try 1: the VM is the owner\'s laptop: Oracle from main (the commit with oracle try), then one normal update')
+    rc, out = vm.sh(f'cd ~/.local/share/oracle && (git remote set-url origin {URL} 2>/dev/null || git remote add origin {URL}) && git fetch -q origin main feel/try'
+                    ' && git checkout -q -f -B main origin/main && git branch -q --set-upstream-to=origin/main main && git log --oneline -1 && git status -sb | head -n 2', 300)
+    ok['laptop clone is on main (served from the test git server)'] = rc == 0
+    rc, out = vm.sh('oracle update', 3600, ask, 15)
+    ok['laptop: oracle update from main works'] = rc == 0
+    if rc: sys.exit('main update failed')
+    step('the owner\'s edits: one edited style file, one untouched, accent cyan, wallpaper, two appearance keys, own notes')
+    vm.sh('echo "/* mine */" >>~/.config/waybar/style.css; mkdir -p ~/Documents; echo "my notes" >~/Documents/notes.txt', 30)
+    vm.sh('W=$(ls /usr/share/hypr/*.png | head -n 1); oracle set accent cyan; oracle set wallpaper $W; oracle look; oracle get accent; oracle get wallpaper', 60)
+    vm.sh(BUS + '; dconf write /org/gnome/desktop/interface/color-scheme "\'prefer-dark\'"; dconf write /org/gnome/desktop/interface/accent-color "\'slate\'"; dconf read /org/gnome/desktop/interface/color-scheme', 30)
+    vm = reboot('try 2: restart, then the fingerprint BEFORE (nothing of the preview yet)')
+    fp('before')
+    vm.sh('sha256sum ~/.config/waybar/style.css ~/.config/swaync/config.json | cut -c1-16 >~/.edit-before.txt; ls ~/.local/state/oracle/migrations | wc -l', 30)
+    rc, out = vm.sh('cat /proc/cmdline; ls /etc/systemd/system/getty@tty1.service.d/ 2>&1; ps -t tty1 -o comm= | head -n 2', 30)
+    ok['laptop (main): plain agetty login on tty1, no quiet boot yet'] = 'oracle-login.conf' not in out and not re.search(r'\bquiet\b', out)
+    rc, out = vm.sh('oracle try status', 60, show=4)
+    ok['status: no preview on'] = 'no preview is on' in out
+    step('refusals: dirty clone, not on main')
+    rc, out = vm.sh('cd ~/.local/share/oracle; touch dirty.txt; oracle try feel/try </dev/null; echo RC=$?; rm dirty.txt', 60, show=6)
+    ok['refuses a dirty clone'] = 'local changes' in out and 'RC=1' in out
+    rc, out = vm.sh('cd ~/.local/share/oracle; git switch -q -c elsewhere; oracle try feel/try </dev/null; echo RC=$?; git switch -q main; git branch -q -D elsewhere', 60, show=6)
+    ok['refuses when not on main'] = 'not on main' in out and 'RC=1' in out
+
+    def preview(n):
+        step(f'preview {n}: oracle try feel/try (snapshot, saved copy, update from the preview), then restart')
+        rc, out = vm.sh('oracle try feel/try', 5400, ask, 60)
+        ok[f'round {n}: oracle try feel/try finishes, says to restart and how to go back'] = rc == 0 and 'oracle try back' in out and 'Restart' in out
+        rc, out = vm.sh('sudo -v; oracle try status; oracle try feel/try </dev/null; echo RC=$?; oracle doctor 2>&1 | grep -i preview', 300, sudo, 12)
+        ok[f'round {n}: status says active; a second try is refused; doctor has one calm line'] = 'trying feel/try' in out and 'already on' in out and 'RC=1' in out and 'preview' in out.split('RC=1')[-1]
+        rc, out = vm.sh('B=$(ls -d ~/.local/state/oracle/try/20* | tail -n 1); ls $B; head -n 4 $B/gsettings; wc -l $B/packages $B/config.list; cat ~/.local/state/oracle/try/active', 30, show=40)
+        ok[f'round {n}: saved copy has config, state, packages, gsettings, commit'] = all(x in out for x in ('config', 'state', 'packages', 'gsettings', 'commit', 'branch=feel/try', 'pre=', 'post='))
+        return reboot(f'preview {n}: restarted into the preview')
+    def back(n):
+        step(f'back {n}: oracle try back, then restart')
+        rc, out = vm.sh('oracle try back', 3600, ask, 40)
+        ok[f'round {n}: oracle try back finishes, programs list checked'] = rc == 0 and 'back to how it was' in out and 'programs differ' not in out
+        return reboot(f'back {n}: restarted after going back')
+
+    vm = preview(1)
+    step('preview 1: the Feel things are live')
+    rc, out = vm.sh('cat /proc/cmdline; ls /etc/systemd/system/getty@tty1.service.d/; systemctl is-active getty@tty1; sudo grep -c "cmdline:.*quiet" /boot/limine.conf; sudo grep -E "^(quiet|editor_enabled)" /boot/limine.conf', 60, sudo)
+    ok['preview: quiet kernel line, Limine hidden + locked, Oracle login on tty1'] = bool(re.search(r'\bquiet\b', out) and 'oracle-login.conf' in out and re.search(r'^active$', out, re.M) and 'editor_enabled: no' in out)
+    rc, out = vm.sh('ls ~/.local/state/oracle/migrations | wc -l; ls ~/.local/share/oracle/migrations | wc -l; sha256sum ~/.config/waybar/style.css ~/.config/swaync/config.json | cut -c1-16 >~/.edit-after.txt; diff ~/.edit-before.txt ~/.edit-after.txt; echo EDIT-DONE', 60)
+    n = [int(x) for x in re.findall(r'^(\d+)$', out, re.M)[:2]]
+    ok['preview: every migration marked done'] = len(n) == 2 and n[0] == n[1]
+    ok['preview: the file the owner edited was kept as it was'] = '1c1' not in out and 'EDIT-DONE' in out
+    print(f'(info) the untouched swaync/config.json was replaced by the new one: {"2c2" in out}', flush=True)
+    rc, out = desktop()
+    ok['preview: desktop starts (Hyprland, new bar, quickshell, one launcher daemon, no config errors)'] = bool('HYPR=1' in out and 'BAR=1' in out and re.search(r'QS=[1-9]', out) and 'LAUNCH=1' in out and 'rror' not in out.split('LAUNCH')[-1])
+    rc, out = vm.sh(VMENV + '; pacman -Q quickshell inter-font satty python-gobject gtk4-layer-shell fd wl-clip-persist sushi pacman-contrib; ls ~/.local/share/icons/Oracle | head -n 2; ls ~/.config/oracle/look; dconf read /org/gnome/desktop/interface/font-name', 60)
+    ok['preview: new programs, icon theme, generated look files, font setting present'] = rc == 0 and 'Inter' in out and 'tokens.json' in out
+    vm.mon('screendump /vm/try-preview-desktop.png -f png')
+    vm.sh('echo more notes >>~/Documents/notes.txt; oracle set accent amber; mkdir -p ~/.config/madeduring; echo x >~/.config/madeduring/f', 30, show=0)
+    vm = back(1)
+    fp('after1')
+    same('before', 'after1', 'round 1: after back + restart, the fingerprint is IDENTICAL to before (files, marks, programs, units, boot, settings)')
+    rc, out = vm.sh('ps -t tty1 -o comm= | head -n 2; cat ~/Documents/notes.txt; oracle get accent; ls ~/.config/madeduring 2>&1 | head -n 1; oracle try status; sudo grep -c "cmdline:.*quiet" /boot/limine.conf', 60, sudo)
+    ok['round 1: old login prompt (agetty) and boot are back; own notes kept; accent back to cyan; files the preview era made are gone'] = bool('agetty' in out and 'more notes' in out and 'cyan' in out and 'No such file' in out and 'no preview is on' in out and not re.search(r'\bquiet\b', vm.sh('cat /proc/cmdline', 20, show=0)[1]))
+    rc, out = server()
+    ok['round 1: server containers up (dockge)'] = 'dockge' in out
+    rc, out = desktop()
+    ok['round 1: Shell mode + desktop start on the old system'] = bool('HYPR=1' in out and 'BAR=1' in out and 'NC=1' in out and 'QS=0' in out)
+    fp('mid')
+    vm = preview(2)
+    rc, out = vm.sh('cat /proc/cmdline; ls /etc/systemd/system/getty@tty1.service.d/; ls ~/.local/state/oracle/migrations | wc -l; ls ~/.local/share/oracle/migrations | wc -l', 60)
+    n = [int(x) for x in re.findall(r'^(\d+)$', out, re.M)[:2]]
+    ok['round 2: the preview is live again (quiet boot, Oracle login, all migrations marked: markers were put back so they ran again)'] = bool(re.search(r'\bquiet\b', out) and 'oracle-login.conf' in out and len(n) == 2 and n[0] == n[1])
+    vm = back(2)
+    fp('after2')
+    same('mid', 'after2', 'round 2: after the second back + restart, identical again')
+    rc, out = server()
+    ok['round 2: server containers up (dockge)'] = 'dockge' in out
+    vm.off()
+    step('result')
+    for k, v in ok.items(): print(('PASS ' if v else 'FAIL ') + k)
+    sys.exit(0 if all(ok.values()) else 1)
+
 
 step('stage 3: first boot of the installed system, expect NO password prompt')
 vm = VM([])
