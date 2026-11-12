@@ -26,6 +26,8 @@ D=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}')
 pcrs() { [[ -n $D ]] && cryptsetup luksDump --dump-json-metadata "$D" | python3 -c 'import json, sys
 for t in json.load(sys.stdin)["tokens"].values():
     if t["type"] == "systemd-tpm2": print("+".join(map(str, t.get("tpm2-pcrs", []))) or "none")'; }
+stale() { cryptsetup luksDump --dump-json-metadata "$D" | python3 -c 'import json, sys
+print(",".join(k for t in json.load(sys.stdin)["tokens"].values() if t["type"] == "systemd-tpm2" and t.get("tpm2-pcrs") for k in t["keyslots"]))'; }
 temp() { pcrs | grep -qx none; }
 bound() { [[ $(pcrs) == 7 ]]; } # exactly one TPM key, on PCR 7
 recov() { [[ -n $D ]] && systemd-cryptenroll "$D" 2>/dev/null | grep -qw recovery; }
@@ -62,6 +64,7 @@ arm() { # temporary TPM key, no PCRs (= today's protection while switching); the
   systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs= "$D" >/dev/null
 }
 bind() { # disk key on PCR 7 as measured by this start; wipes the old TPM keys (temporary one too). Recovery key + password stay
+  local o; temp && o=$(stale) && [[ -n $o ]] && systemd-cryptenroll --wipe-slot="$o" "$D" >/dev/null 2>&1 # old bound keys can't open now; the temporary one does
   systemd-cryptenroll --unlock-tpm2-device=auto --tpm2-device=auto --tpm2-pcrs=7 --wipe-slot=tpm2 "$D" >/dev/null 2>&1 && return 0
   [[ -t 0 ]] || return 1
   say "the TPM does not open the disk right now: type your disk password (or the recovery key) once"
