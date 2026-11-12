@@ -9,7 +9,7 @@
 
 "modules-left": ["custom/oracle", "hyprland/window"],
 "modules-center": ["hyprland/workspaces"],
-"modules-right": ["mpris", "custom/display", "pulseaudio", "battery", "network", "custom/search", "custom/panel", "custom/date"],
+"modules-right": ["mpris", "pulseaudio", "battery", "network", "custom/search", "custom/panel", "custom/date"],
 
 "custom/oracle": {
 	"format": "◉",
@@ -43,7 +43,8 @@
 "mpris": {
 	"format": "󰐊  {title}",
 	"format-paused": "󰏤  {title}",
-	"max-length": 28
+	"max-length": 28,
+	"on-click": "oracle panel media"
 },
 
 "custom/display": {

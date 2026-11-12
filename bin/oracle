@@ -201,6 +201,7 @@ case ${1:-help} in
     case ${2:-} in
       "" | toggle | open | close) c=${2:-toggle}
         qs_ ipc call panel "$c" &>/dev/null || { pgrep -x 'qs|quickshell' >/dev/null || setsid -f qs -p "$DIR/default/quickshell" &>/dev/null; for _ in {1..30}; do sleep 0.2; qs_ ipc call panel "$c" &>/dev/null && exit 0; done; die "Control Center is not running (qs -p $DIR/default/quickshell)"; } ;;
+      media) qs_ ipc call media "${3:-toggle}" &>/dev/null || true ;; # Now Playing card: no argument = open/close, key = the pop-up after a media key
       state) # one key=value per line, read by the panel while it is open. Every outside tool gets 1 s (a missing daemon must not freeze the panel)
         t() { timeout 1 "$@"; }
         w=$(t nmcli radio wifi 2>/dev/null) || w=; [[ $w == enabled ]] && w=on || w=off
@@ -210,12 +211,10 @@ case ${1:-help} in
         echo "dnd=$(t swaync-client -D 2>/dev/null || echo false)"; echo "night=$("$0" get nightlight off)"
         echo "bright=$(t brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d % || true)"
         vol=$(t wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || true); echo "vol=$(awk '{print int($2*100+0.5)}' <<<"$vol")"; grep -q MUTED <<<"$vol" && echo mute=true || echo mute=false
-        b=$(ls -d ${ORACLE_PS:-/sys/class/power_supply}/BAT* 2>/dev/null | head -1 || true); if [[ -n $b ]]; then echo "bat=$(<"$b/capacity")"; echo "batstate=$(<"$b/status")"; echo "limit=$("$0" panel charge)"; fi
-        t hyprctl monitors all 2>/dev/null | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 0' && echo screen=off || echo screen=on ;;
+        b=$(ls -d ${ORACLE_PS:-/sys/class/power_supply}/BAT* 2>/dev/null | head -1 || true); if [[ -n $b ]]; then echo "bat=$(<"$b/capacity")"; echo "batstate=$(<"$b/status")"; echo "limit=$("$0" panel charge)"; fi ;;
       vol) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "${3:?usage: oracle panel vol <0-100>}%" ;;
       bright) brightnessctl -q set "${3:?usage: oracle panel bright <5-100>}%" ;;
       output) setsid -f pavucontrol --tab=3 &>/dev/null ;;
-      display) if hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1'; then hyprctl dispatch 'hl.dsp.dpms({ action = "disable", monitor = "eDP-1" })'; else hyprctl dispatch 'hl.dsp.dpms({ action = "enable", monitor = "eDP-1" })'; fi >/dev/null ;;
       wifi) if [[ -n $v ]]; then nmcli radio wifi $o; else st '[[ $(nmcli radio wifi) == enabled ]]'; fi ;;
       bt) if [[ -n $v ]]; then bluetoothctl power $o >/dev/null; else st 'bluetoothctl show | grep -q "Powered: yes"'; fi ;;
       dnd) if [[ -n $v ]]; then swaync-client -d$([[ $v == true ]] && echo n || echo f) >/dev/null; else swaync-client -D; fi ;;
@@ -232,7 +231,7 @@ case ${1:-help} in
           pw-cli ls Node 2>/dev/null | grep -q xdph-streaming && n=1 || n=0; ((n == c)) || { q oracle-share $n; c=$n; }
         done ;;
       power) setsid -f oracle launcher power &>/dev/null ;;
-      *) die "usage: oracle panel [toggle|open|close] | <wifi|bt|dnd|night|mute> [true|false] | state | vol <n> | bright <n> | display | output | charge [20-100] | settings [item] | power | quiet" ;;
+      *) die "usage: oracle panel [toggle|open|close] | <wifi|bt|dnd|night|mute> [true|false] | state | vol <n> | bright <n> | media [key] | output | charge [20-100] | settings [item] | power | quiet" ;;
     esac ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;
   secureboot) exec sudo bash "$DIR/system/oracle-secureboot" "${2:-status}" ;; # status | setup | verify | undo (docs/manual/secure-boot.md)

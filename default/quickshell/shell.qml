@@ -9,6 +9,11 @@ import Quickshell.Services.Mpris
 // Oracle Control Center. `oracle panel` = open/close (qs ipc call panel toggle). Tokens: Tokens.qml. State: `oracle panel state`, polled only while open.
 ShellRoot {
     id: root
+    readonly property var player: { // the one that plays, else the first
+        var v = Mpris.players.values, i
+        for (i = 0; i < v.length; i++) if (v[i].isPlaying) return v[i]
+        return v.length ? v[0] : null
+    }
 
     PanelWindow {
         id: win
@@ -84,7 +89,7 @@ ShellRoot {
                         id: col
                         x: 12; y: 12; width: 316; spacing: 12
 
-                        Row { // Wi-Fi / Bluetooth / Night Light | Do Not Disturb, Laptop Screen, Settings
+                        Row { // Wi-Fi / Bluetooth / Night Light | Do Not Disturb, Settings
                             spacing: 12
                             Card {
                                 width: 152; height: 152
@@ -110,11 +115,7 @@ ShellRoot {
                                         Label { text: sys.dnd ? "On" : "Off"; width: parent.width }
                                     }
                                 }
-                                Row {
-                                    spacing: 12
-                                    Tile { label: "Laptop\nScreen"; glyph: "󰍹"; on: sys.screen; onClicked: sys.display() }
-                                    Tile { label: "Settings"; glyph: "󰒓"; onClicked: sys.detail("settings") }
-                                }
+                                Tile { width: 152; label: "Settings"; glyph: "󰒓"; onClicked: sys.detail("settings") }
                             }
                         }
 
@@ -145,8 +146,8 @@ ShellRoot {
                             visible: sys.bat >= 0
                             width: 316; height: visible ? 70 : 0
                             Label { x: 12; y: 10; text: "Battery"; title: true }
-                            Label { y: 11; x: parent.width - 12 - width; width: 190; horizontalAlignment: Text.AlignRight
-                                text: sys.bat + "% · " + (sys.batstate === "Charging" ? "Charging" : sys.batstate === "Full" ? "Full" : "On battery") }
+                            Label { y: 11; x: parent.width - 12 - width; width: 220; horizontalAlignment: Text.AlignRight // live while dragging the slider
+                                text: sys.bat + "% · " + (sys.batstate === "Charging" ? "Charging" : sys.batstate === "Full" ? "Full" : "On battery") + " · Limit " + Math.round(sys.limit) + "%" }
                             Slider {
                                 x: 12; y: 34; width: parent.width - 24; glyph: "󰂄"
                                 from: 20; to: 100; value: sys.limit
@@ -156,33 +157,65 @@ ShellRoot {
                             Label { visible: false }
                         }
 
-                        Card {
-                            visible: player !== null
-                            width: 316; height: visible ? 70 : 0
-                            property var player: {
-                                var v = Mpris.players.values, i
-                                for (i = 0; i < v.length; i++) if (v[i].isPlaying) return v[i]
-                                return v.length ? v[0] : null
-                            }
-                            Rectangle {
-                                x: 11; y: 11; width: 48; height: 48; radius: 8
-                                color: Tokens.alpha(Tokens.bright, 0.10)
-                                Glyph { anchors.centerIn: parent; text: "󰎆"; px: 20; color: Tokens.alpha(Tokens.bright, 0.6); visible: art.status !== Image.Ready }
-                                Image { id: art; anchors.fill: parent; source: parent.parent.player ? parent.parent.player.trackArtUrl : ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; visible: false }
-                            }
-                            Column {
-                                x: 71; width: parent.width - 71 - 112 - 8; anchors.verticalCenter: parent.verticalCenter; spacing: 1
-                                Label { width: parent.width; title: true; text: parent.parent.player ? (parent.parent.player.trackTitle || "Not playing") : "" }
-                                Label { width: parent.width; text: parent.parent.player ? parent.parent.player.trackArtist : "" }
-                            }
-                            Row {
-                                x: parent.width - 12 - width; anchors.verticalCenter: parent.verticalCenter; spacing: 0
-                                Control { glyph: "󰒮"; onClicked: parent.parent.player.previous() }
-                                Control { glyph: parent.parent.player && parent.parent.player.isPlaying ? "󰏤" : "󰐊"; onClicked: parent.parent.player.togglePlaying() }
-                                Control { glyph: "󰒭"; onClicked: parent.parent.player.next() }
-                            }
-                        }
+                        NowPlaying { visible: root.player !== null; player: root.player; height: visible ? (seekable ? 112 : 76) : 0 }
                     }
+                }
+            }
+        }
+    }
+
+    // Now Playing pop-up: under the bar's right side. `oracle panel media pop` (a media key) shows it for 3 s; `oracle panel media` (bar item) keeps it until you click away
+    PanelWindow {
+        id: pop
+        property bool shown: false
+        property bool sticky: false
+        property real prog: 0
+        readonly property int pad: 24
+        readonly property bool hypr: !!Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
+        visible: shown || prog > 0
+        color: "transparent"
+        anchors { top: true; right: true }
+        margins { top: 6; right: 8 - pad }
+        implicitWidth: 340 + 2 * pad
+        implicitHeight: card.height + 24 + pad * 2
+        exclusionMode: ExclusionMode.Normal
+        WlrLayershell.namespace: "oracle-media"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: shown && sticky ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        NumberAnimation on prog { id: popAnim }
+        function setShown(v) {
+            if (v === shown) return
+            shown = v
+            popAnim.stop(); popAnim.from = prog; popAnim.to = v ? 1 : 0; popAnim.duration = v ? 180 : 120; popAnim.easing.type = Easing.OutCubic; popAnim.start()
+        }
+        Timer { id: popHide; interval: 3000; onTriggered: if (!pop.sticky && !popHover.hovered) pop.setShown(false); else if (!pop.sticky) popHide.restart() }
+        Loader { active: pop.hypr; sourceComponent: HyprlandFocusGrab { windows: [pop]; active: pop.shown && pop.sticky; onCleared: pop.setShown(false) } }
+        IpcHandler {
+            target: "media"
+            function key(): void { if (!root.player || win.open) return; pop.sticky = false; pop.setShown(true); popHide.restart() }
+            function toggle(): void { if (!root.player) return; if (pop.shown && pop.sticky) pop.setShown(false); else { pop.sticky = true; pop.setShown(true); popHide.stop() } }
+        }
+        FocusScope {
+            anchors.fill: parent; focus: true
+            Keys.onEscapePressed: pop.setShown(false)
+            Item {
+                x: pop.pad; y: 0; width: 340; height: card.height + 24 + pop.pad * 2
+                opacity: pop.prog; scale: 0.96 + 0.04 * pop.prog; transformOrigin: Item.TopRight
+                HoverHandler { id: popHover }
+                Repeater {
+                    model: 6
+                    Rectangle {
+                        required property int index
+                        x: -index * 2.5; y: 8 - index * 2.5 + 2; width: frame.width + index * 5; height: frame.height + index * 5
+                        radius: 20 + index * 2.5; color: Tokens.alpha("#000000", 0.022)
+                    }
+                }
+                Rectangle {
+                    id: frame
+                    width: 340; height: card.height + 24; radius: 20
+                    color: Tokens.alpha(Tokens.bg, 0.62)
+                    Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.width: 1; border.color: Tokens.alpha(Tokens.bright, 0.10) }
+                    NowPlaying { id: card; x: 12; y: 12; player: root.player }
                 }
             }
         }
@@ -203,7 +236,6 @@ ShellRoot {
         property real bat: -1
         property string batstate: ""
         property real limit: 100
-        property bool screen: true
         property bool busy: false // dragging or just changed: ignore polls
         property var pending: ({})
 
@@ -225,7 +257,6 @@ ShellRoot {
                 else if (k === "bat") bat = Number(v)
                 else if (k === "batstate") batstate = v
                 else if (k === "limit") limit = Number(v)
-                else if (k === "screen") screen = v === "on"
             }
         }
         function refresh() { if (!poll.running) poll.running = true }
@@ -238,7 +269,6 @@ ShellRoot {
         function live(what, v) { sys.pending[what] = v; sys.busy = true; throttle.start(); hold.restart() }
         function flush() { var w; for (w in sys.pending) run([w, String(sys.pending[w])]); sys.pending = ({}) }
         function charge() { run(["charge", String(Math.round(limit))]); hold.restart() }
-        function display() { screen = !screen; run(["display"]); hold.restart() }
         function cycleNight() { night = night === "off" ? "evening" : night === "evening" ? "always" : "off"; run(["night", "cycle"]); hold.restart() }
         function detail(a) { // open the floating Settings pop-up (or the sound picker), close the panel
             win.setOpen(false)

@@ -1,5 +1,6 @@
-singleton Tokens 1.0 Tokens.qml
 Card 1.0 Card.qml
 Glyph 1.0 Glyph.qml
+NowPlaying 1.0 NowPlaying.qml
 RoundButton 1.0 RoundButton.qml
+singleton Tokens 1.0 Tokens.qml
 Slider 1.0 Slider.qml

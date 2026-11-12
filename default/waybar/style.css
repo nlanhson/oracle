@@ -59,7 +59,6 @@ tooltip label { color: @o_text; text-shadow: none; }
 #custom-oracle,
 #window,
 #mpris,
-#custom-display,
 #pulseaudio,
 #battery,
 #network,
@@ -75,7 +74,6 @@ tooltip label { color: @o_text; text-shadow: none; }
 
 #custom-oracle:hover,
 #mpris:hover,
-#custom-display:hover,
 #pulseaudio:hover,
 #battery:hover,
 #network:hover,
@@ -89,11 +87,10 @@ tooltip label { color: @o_text; text-shadow: none; }
 window#waybar.empty #window { padding: 0; }
 
 /* Status icons a touch larger than text, like menu bar glyphs */
-#custom-display, #pulseaudio, #network, #custom-search, #custom-panel { font-size: 16px; padding: 0 7px; }
+#pulseaudio, #network, #custom-search, #custom-panel { font-size: 16px; padding: 0 7px; }
 #battery { font-size: 13px; }
 #custom-date { padding-right: 6px; }
 
-#custom-display.off,
 #mpris.paused,
 #network.disconnected,
 #pulseaudio.muted { color: alpha(@o_bright, 0.5); }
