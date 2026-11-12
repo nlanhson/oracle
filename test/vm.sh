@@ -344,11 +344,11 @@ def tab(k='meta_l-tab', hold=None): vm.mon('sendkey ' + k + (f' {hold}' if hold 
 tab(); a1 = act(); tab(); a2 = act()
 print('tab, tab:', a1 and a1['cls'], a2 and a2['cls'])
 ok['behaviour: Super+Tab goes to the previous app, Super+Tab again comes back (real key presses)'] = bool(a1 and a2) and a1['cls'] == n1['cls'] and a2['cls'] == m1['cls']
-# hold Super, Tab twice: two apps back; letting go commits (mru was mousepad, ghostty? -> after the tabs: mousepad, files, ghostty)
-vm.mon('sendkey meta_l-tab 5000'); time.sleep(0.4); vm.mon('sendkey tab'); time.sleep(1.5); h1 = act(); time.sleep(5); h2 = act()
+# two Tabs within ~1.5 s (QEMU sendkey cannot keep Super held between commands): two apps back; letting go commits (mru was mousepad, ghostty? -> after the tabs: mousepad, files, ghostty)
+vm.mon('sendkey meta_l-tab'); time.sleep(0.4); vm.mon('sendkey meta_l-tab'); time.sleep(1.5)  # two quick taps = one walk, 2 apps back; h1 = act(); time.sleep(1); h2 = act()
 print('hold:', h1 and h1['cls'], h2 and h2['cls'])
 vm.sh('cat /tmp/oracle-mru.log | tail -n 30', show=30)
-ok['behaviour: Super held + Tab twice = two apps back (Command-Tab cycling); not just a toggle'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
+ok['behaviour: Super+Tab twice in quick succession = two apps back (Command-Tab walk); a pause starts over'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
 tab('meta_l-shift_l-tab'); s1 = act()
 print('shift-tab:', s1 and s1['cls'])
 ok['behaviour: Super+Shift+Tab goes the other way round'] = bool(s1) and s1['cls'] != g1['cls']
