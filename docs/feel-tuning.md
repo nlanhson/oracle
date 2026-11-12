@@ -14,3 +14,7 @@ Owner tests one item at a time; fixes are batched after he stops testing. OK = f
 - Control Center: Battery slider = charge limit, but it shows no number. Show the value while dragging and at rest (e.g. "Limit 50%").
 - Screenshot: Print + area select works, but NO thumbnail notification with Copy / Edit appears on the laptop. Bug.
 - Super+Tab: not yet reported.
+- Super+Tab: works, but the owner says it is not needed on a tiling desktop (he moves focus with arrows / JKLI). Remove it unless he says otherwise.
+- OK: launcher sum, dialogs (centred, dimmed), clipboard after app quit.
+- Notification Center: fully see-through and sits over the windows, hard to read (no blur / backing on the laptop). Needs the frosted material behind the cards and the empty line.
+- Notification Center: "Clear All" should be a plain text button, no pill outline.
