@@ -13,29 +13,49 @@ hypr() { # running desktop → its env (Shell-mode tmux started before it, so it
 }
 shown() { hyprctl monitors | grep -q 'special workspace: .*(special:shell)'; } # Shell mode over the desktop
 
+snap() { command -v snapper >/dev/null && sudo snapper -c root create -c number -p -d "$@" 2>/dev/null; } # rollback point
+TRY=$HOME/.local/state/oracle/try TA=$TRY/active # a preview in progress (oracle try): key=value lines
+tget() { sed -n "s/^$1=//p" "$TA" 2>/dev/null | tail -1; }
+tset() { { grep -v "^$1=" "$TA" || true; echo "$1=$2"; } >"$TA.new"; mv "$TA.new" "$TA"; }
+bootfix() { # the kernel may have changed (rollback, try back): matching boot entry
+  if command -v limine-update >/dev/null; then sudo limine-update >/dev/null
+  else for k in /usr/lib/modules/*/pkgbase; do
+    [[ $(<"$k") == linux ]] || continue; k=${k%/pkgbase}
+    sudo cmp -s "$k/vmlinuz" /boot/vmlinuz-linux || { sudo install -m644 "$k/vmlinuz" /boot/vmlinuz-linux; sudo mkinitcpio -P; }
+  done; fi
+}
+upgrade() { # what an update does after Oracle's own files are in place: migrations, packages, install.sh, AUR, firmware
+  mkdir -p "$STATE"
+  for m in "$DIR"/migrations/*.sh; do
+    [[ -f $m && ! -f $STATE/${m##*/} ]] || continue
+    say "migration ${m##*/}"
+    bash "$m" || die "migration ${m##*/} failed"
+    touch "$STATE/${m##*/}"
+  done
+  say "system: pacman -Syu"; sudo pacman -Syu --noconfirm
+  bash "$DIR/install.sh"
+  if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
+  if command -v fwupdmgr >/dev/null; then # BIOS, SSD, touchpad… when the maker publishes updates (LVFS)
+    say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
+    sudo fwupdmgr update -y --no-reboot-check 2>&1 | grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' || true
+  fi
+  [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
+}
+
 case ${1:-help} in
   update)
-    snap() { command -v snapper >/dev/null && sudo snapper -c root create -c number -p -d "$@" 2>/dev/null; } # rollback point
     PRE=$(snap "oracle update" -t pre || true)
     trap '[[ -n $PRE ]] && snap "oracle update" -t post --pre-number "$PRE" >/dev/null || true' EXIT
     say "oracle: pull"
-    git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
-    mkdir -p "$STATE"
-    for m in "$DIR"/migrations/*.sh; do
-      [[ -f $m && ! -f $STATE/${m##*/} ]] || continue
-      say "migration ${m##*/}"
-      bash "$m" || die "migration ${m##*/} failed"
-      touch "$STATE/${m##*/}"
-    done
-    say "system: pacman -Syu"; sudo pacman -Syu --noconfirm
-    bash "$DIR/install.sh"
-    if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
-    if command -v fwupdmgr >/dev/null; then # BIOS, SSD, touchpad… when the maker publishes updates (LVFS)
-      say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
-      sudo fwupdmgr update -y --no-reboot-check 2>&1 | grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' || true
-    fi
-    [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
-    ;;
+    if [[ -f $TA ]]; then # a preview is on: its own branch is the one that updates (main only once it holds the preview)
+      br=$(tget branch); git -C "$DIR" fetch -q origin main 2>/dev/null || true
+      if git -C "$DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then # the preview became the real thing: forget the try, keep its backup
+        mv "$TA" "$(tget dir)/ended"; git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes?). Fix, then rerun."
+        git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
+      else say "a preview is on ($br): updating that branch, not main"; git -C "$DIR" pull -q --ff-only origin "$br" || die "can't pull $br in $DIR (local changes?). Fix, then rerun."; fi
+    else git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."; fi
+    upgrade
+    exit 0 ;; # the files above may have just been replaced under this running script: stop here
   rollback) # booted an older snapshot from the boot menu → make it the system. Else: pick an update, put back the files it changed
     if grep -q '/\.snapshots/' /proc/cmdline; then exec sudo limine-snapper-restore; fi
     command -v snapper >/dev/null && sudo snapper -c root list >/dev/null 2>&1 || die "no snapshots on this system"
@@ -50,12 +70,88 @@ case ${1:-help} in
     PRE=$(sudo snapper -c root create -c number -p -t pre -d "rollback $d")
     sudo snapper -c root undochange "$a..$b" >/dev/null || die "rollback failed"
     sudo snapper -c root create -c number -t post --pre-number "$PRE" -d "rollback $d"
-    if command -v limine-update >/dev/null; then sudo limine-update >/dev/null # kernel went back too: matching boot entry
-    else for k in /usr/lib/modules/*/pkgbase; do
-      [[ $(<"$k") == linux ]] || continue; k=${k%/pkgbase}
-      sudo cmp -s "$k/vmlinuz" /boot/vmlinuz-linux || { sudo install -m644 "$k/vmlinuz" /boot/vmlinuz-linux; sudo mkinitcpio -P; }
-    done; fi
+    bootfix # kernel went back too
     say "rolled back ($d · ${t:0:40}). Restart now: systemctl reboot. Changed your mind? oracle rollback again, pick \"rollback $d\"" ;;
+  try) # try <branch> | back | status: use a preview branch for a while, then go back exactly (docs/manual/updating.md)
+    S=$HOME/.local/state/oracle X=(.zshrc .zprofile .bash_profile .bashrc .local/share/icons/Oracle) GI=/org/gnome/desktop/interface
+    GK=(font-name monospace-font-name icon-theme color-scheme accent-color cursor-theme cursor-size)
+    [[ -n ${DBUS_SESSION_BUS_ADDRESS:-} || ! -S ${XDG_RUNTIME_DIR:-/run/user/$UID}/bus ]] || export DBUS_SESSION_BUS_ADDRESS=unix:path=${XDG_RUNTIME_DIR:-/run/user/$UID}/bus
+    cfgnames() { # what is saved of ~/.config: everything small; not browser profiles, caches or the dconf database (settings go back by key)
+      local e n; for e in "$HOME"/.config/* "$HOME"/.config/.[!.]*; do [[ -e $e || -L $e ]] || continue; n=${e##*/}
+        case $n in dconf | pulse | *[Cc]ache*) continue ;; esac
+        if [[ -d $e && ! -L $e ]]; then case $n in [Bb]rave* | [Cc]hrom* | google-chrome* | Code* | discord | [Ss]lack | obsidian | Signal | spotify) continue ;; esac; fi
+        if (($(du -sk "$e" | cut -f1) < 20480)); then echo "$n"; fi; done; }
+    statenames() { find "$S" -mindepth 1 -maxdepth 1 -printf '%f\n' | grep -vxE 'try|mode|open' || true; } # mode/open = what runs right now
+    copyin() { # copyin <live dir> <saved dir>, names on stdin: copy those entries out of <live> into <saved>
+      local n; mkdir -p "$2"; while IFS= read -r n; do cp -a --reflink=auto "$1/$n" "$2/" || return 1; done; }
+    putback() { # putback <live dir> <saved dir>, names that exist now on stdin: saved entries come back exactly; entries the preview added are removed
+      local n; while IFS= read -r n; do [[ -e $2/$n || -L $2/$n ]] || rm -rf "${1:?}/$n"; done
+      while IFS= read -r n; do cp -a --reflink=auto "$2/$n" "$1/.$n.tryback" && rm -rf "${1:?}/$n" && mv "$1/.$n.tryback" "$1/$n" || return 1; done < <(find "$2" -mindepth 1 -maxdepth 1 -printf '%f\n'); }
+    case ${2:-status} in
+      status)
+        if [[ -f $TA ]]; then say "trying $(tget branch) since $(tget since)"; echo "  way back: oracle try back"; echo "  saved copy: $(tget dir)"
+        else echo "no preview is on."; l=$(ls -d "$TRY"/20* 2>/dev/null | tail -1 || true); [[ -z $l ]] || echo "last saved copy: $l"; fi ;;
+      back)
+        [[ -f $TA ]] || die "no preview is on, nothing to go back from."
+        B=$(tget dir); [[ -d $B ]] || die "the saved copy is gone ($B): can't go back by myself. Ask for help before you touch anything."
+        say "going back from $(tget branch): Oracle's files, settings, programs and boot go back to how they were at $(tget since)."
+        echo "  Your server (photos, containers) and your own files are not touched."; read -rp "go back? [y/N] " a; [[ $a == [yY]* ]] || exit 0
+        sudo -v || die "need your password to undo the system part"
+        POST=$(tget post)
+        if [[ -z $POST ]]; then POST=$(snap "oracle try back" -t post --pre-number "$(tget pre)" || true); [[ -z $POST ]] || tset post "$POST"; fi
+        [[ -n $POST ]] || die "no system snapshot to go back to. Nothing was changed."
+        bad=
+        git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes there?). Nothing was changed. Fix: git -C $DIR status"
+        [[ $(git -C "$DIR" rev-parse HEAD) == $(<"$B/commit") ]] || say "note: main is not the commit you started from; kept as it is"
+        say "your settings and Oracle's state"
+        cfgnames | putback "$HOME/.config" "$B/config" || die "could not put ~/.config back. The copy is safe in $B/config; nothing else was changed. Fix, then run oracle try back again."
+        statenames | putback "$S" "$B/state" || die "could not put the Oracle state back. The copy is in $B/state. Fix, then run oracle try back again."
+        for e in "${X[@]}"; do rm -rf "${HOME:?}/$e"; [[ ! -e $B/extra/$e && ! -L $B/extra/$e ]] || { mkdir -p "$(dirname "$HOME/$e")"; cp -a --reflink=auto "$B/extra/$e" "$HOME/$e"; }; done
+        if command -v dconf >/dev/null; then while IFS=$'\t' read -r k v; do
+            if [[ $v == UNSET ]]; then dconf reset "$GI/$k"; else dconf write "$GI/$k" "$v"; fi; done <"$B/gsettings" || bad+=" gsettings"; fi
+        say "system: programs and system files"
+        sudo snapper -c root undochange "$(tget pre)..$POST" >/dev/null || die "the system part failed. Your settings are back already. Try again: oracle try back (or oracle rollback)."
+        bootfix; sudo systemctl daemon-reload; systemctl --user daemon-reload 2>/dev/null || true
+        pacman -Qqe | sort >"$B/packages.now"
+        if ! diff -q <(sort "$B/packages") "$B/packages.now" >/dev/null; then bad+=" packages"; echo "programs differ from before:"; diff <(sort "$B/packages") "$B/packages.now" | head -20 || true; fi
+        pacman -Qkq $(head -30 "$B/packages") 2>&1 | grep -v ' 0 altered files' | head -10 || true
+        mv "$TA" "$B/ended"
+        if [[ -n $bad ]]; then say "back, but check:$bad (details above). Restart now: systemctl reboot"; else say "back to how it was. Restart now: systemctl reboot"; fi
+        exit 0 ;;
+      -*) die "usage: oracle try <branch> | back | status" ;;
+      *)
+        b=$2; [[ ! -f $TA ]] || die "a preview is already on ($(tget branch)). See it: oracle try status. Leave it: oracle try back."
+        [[ $(git -C "$DIR" rev-parse --abbrev-ref HEAD) == main ]] || die "Oracle is not on main here. Put it there first: git -C $DIR switch main"
+        [[ -z $(git -C "$DIR" status --porcelain) ]] || die "$DIR has local changes. Save or drop them first: git -C $DIR status"
+        command -v snapper >/dev/null || die "no snapshots on this system (snapper), so there would be no way back. Not starting."
+        git -C "$DIR" fetch -q origin "+refs/heads/$b:refs/remotes/origin/$b" || die "no branch $b on origin."
+        git -C "$DIR" show "origin/$b:bin/oracle" | grep -q '^  try)' || die "$b can't take you back (it has no oracle try). Rebase it on main first."
+        say "trying $b. What happens:"
+        echo "  - Oracle's files switch to that branch, then the usual update runs (programs, settings files, boot and login screen)."
+        echo "  - First I save the way back: a system snapshot and a copy of your Oracle settings (the list is printed)."
+        echo "  - The home server and your photos keep running, untouched."
+        echo "  - At the end you restart once to see it all. oracle try back undoes everything, then you restart again."
+        read -rp "start? [y/N] " a; [[ $a == [yY]* ]] || exit 0
+        sudo -v || die "need your password for the system snapshot"
+        B=$TRY/$(date +%F-%H%M%S); mkdir -p "$B"
+        PRE=$(snap "oracle try $b" -t pre || true); [[ -n $PRE ]] || die "could not make the system snapshot. Nothing was changed."
+        say "saving the way back in $B"
+        cfgnames >"$B/config.list"; copyin "$HOME/.config" "$B/config" <"$B/config.list" || die "could not copy ~/.config. Nothing was changed."
+        echo "  ~/.config: $(tr '\n' ' ' <"$B/config.list")"; echo "  (left out: browser profiles, caches, anything over 20 MB, the dconf database)"
+        statenames >"$B/state.list"; copyin "$S" "$B/state" <"$B/state.list" || die "could not copy the Oracle state. Nothing was changed."
+        for e in "${X[@]}"; do [[ -e $HOME/$e || -L $HOME/$e ]] || continue; mkdir -p "$B/extra/$(dirname "$e")"; cp -a --reflink=auto "$HOME/$e" "$B/extra/$e" || die "could not copy $e. Nothing was changed."; done
+        echo "  also: shell start files, the grey folder icons, the Oracle state (settings, migration marks)"
+        for k in "${GK[@]}"; do v=$(dconf read "$GI/$k" 2>/dev/null || true); printf '%s\t%s\n' "$k" "${v:-UNSET}"; done >"$B/gsettings"
+        pacman -Qqe >"$B/packages"; git -C "$DIR" rev-parse HEAD >"$B/commit"; cp "$ME/oracle" "$TRY/oracle"
+        printf 'branch=%s\nsince=%s\ndir=%s\npre=%s\n' "$b" "$(date '+%F %H:%M')" "$B" "$PRE" >"$TA"
+        trap 'rc=$?; p=$(snap "oracle try $b" -t post --pre-number "$PRE" || true); [[ -z $p ]] || tset post "$p"; ((rc == 0)) || say "stopped. The way back: oracle try back"' EXIT
+        git -C "$DIR" switch -q -C "$b" --track "origin/$b" || die "could not switch to $b. Nothing was installed. Undo: oracle try back"
+        say "updating from $b"
+        upgrade
+        say "done. Restart (systemctl reboot) to see everything: new boot, login screen and desktop."
+        echo "  to go back: oracle try back   (if it ever won't run: bash $TRY/oracle try back)"
+        exit 0 ;;
+    esac ;;
   backup) shift; bash "$DIR/server/server.sh" backup "$@" ;;
   restore) shift; exec bash "$DIR/install.sh" --restore "${1:?usage: oracle restore <backup folder>}" ;;
   session) # tty1 login: shell (cage + ghostty + tmux) → gui (Hyprland, then Shell mode = full-screen window in it). Same mode after exit = logout.
