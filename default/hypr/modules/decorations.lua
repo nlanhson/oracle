@@ -58,17 +58,19 @@ hl.config({
 -- Tiled windows: no shadow
 hl.window_rule({ name = "oracle-no-shadow-tiled", match = { float = false }, no_shadow = true })
 
--- Frosted surfaces: blur behind the dark tint. ignore_alpha keeps the see-through corners and gaps unblurred
-for _, ns in ipairs({ "waybar", "launcher", "oracle-panel", "swaync-control-center", "swaync-notification-window", "swayosd" }) do
-    hl.layer_rule({ match = { namespace = "^(" .. ns .. ")$" }, blur = true, ignore_alpha = 0.2 })
+-- Frosted surfaces: blur behind the dark tint. ignore_alpha keeps the see-through corners and gaps unblurred.
+-- ONE rule per namespace: a second rule for the same namespace replaces the first one's blur (found on the laptop).
+-- animation: Control Center (Quickshell) and launcher fade/appear themselves; the volume pop-up fades; notification cards slide in from the right, where they live (as on macOS Sequoia)
+local frosted = {
+    { "waybar" },
+    { "launcher",                    "none" },
+    { "oracle-panel",                "none" },
+    { "swaync-control-center" },
+    { "swaync-notification-window",  "slide right" },
+    { "swayosd",                     "fade" },
+}
+for _, f in ipairs(frosted) do
+    local rule = { match = { namespace = "^(" .. f[1] .. ")$" }, blur = true, ignore_alpha = 0.2 }
+    if f[2] == "none" then rule.no_anim = true elseif f[2] then rule.animation = f[2] end
+    hl.layer_rule(rule)
 end
-
--- Control Center (Quickshell) fades and scales itself; Hyprland adds nothing. Notification Center cards slide in from the right
-hl.layer_rule({ match = { namespace = "^(oracle-panel)$" }, animation = "none", no_anim = true })
-
--- Launcher (namespace "launcher"): appears at once
-hl.layer_rule({
-    match        = { namespace = "^launcher$" },
-    animation    = "none",
-    no_anim      = true
-})
