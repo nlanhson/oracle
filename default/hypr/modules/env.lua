@@ -16,6 +16,8 @@ hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/Screenshots")
 hl.env("GDK_BACKEND", "wayland,x11,*")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("GDK_SCALE", "1")
+-- GTK 4 switches blur off by itself (ext-background-effect protocol). Without this the launcher, notifications and volume pop-up are not frosted
+hl.env("GDK_WAYLAND_DISABLE", "ext_background_effect_manager_v1")
 
 -- XDG Specifications
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")

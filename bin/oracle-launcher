@@ -3,6 +3,7 @@
 # Look: ~/.config/oracle/look/launcher.css (generated from tokens by `oracle look`; template default/launcher/style.css).
 # Test without a screen: oracle-launcher --query "gho"   (prints the ranked rows: kind, title, subtitle)
 import ast, json, math, os, re, shlex, shutil, subprocess, sys, threading, time
+os.environ["GDK_WAYLAND_DISABLE"] = "ext_background_effect_manager_v1"  # GTK 4 switches blur off by itself; the launcher is frosted by Hyprland
 from gi.repository import Gio, GLib
 
 HOME = os.path.expanduser("~")
