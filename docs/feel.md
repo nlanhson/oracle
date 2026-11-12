@@ -68,7 +68,7 @@ about it. Each line is a real default from Apple's documentation or System Setti
 | A hung app | "Application Not Responding", with Force Quit. Option-Command-Esc force quits. | The not-responding dialog is on. `Super + Alt + Esc`, then click a window, force quits it. |
 | Pointer | Hides while you type, comes back when you move. | Same. |
 | Trackpad | Two-finger click is the right click. Two-finger swipe goes back and forward in the browser. Palm is ignored while typing. | Same three. Tap to click stays on. |
-| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Up and down: Shell mode, Oracle's own mission control, following your fingers. Pinch with four: launcher. |
+| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Four fingers up and down: Shell mode, Oracle's own mission control, following your fingers. Pinch with four: launcher. |
 | Keys | Command-Tab: last app. Command-`: next window of this app. Control-Command-F: full screen. Control-Command-Q: lock. Command-comma: settings. Shift-Command-3/4/5: screenshots. | The same on `Super`, only on keys that were free. No existing key changes. `Super + Tab` is simpler than the Mac's: each press goes to the next open app, through all of them. |
 | Media keys | Play, next, previous work everywhere. | Same (they did nothing before). |
 | Key repeat | Starts after a short pause, then steady. | Tuned to match (shorter pause, even rate). Changeable in Settings. |
