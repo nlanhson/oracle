@@ -721,7 +721,7 @@ print('before shift-tab:', act()['cls'], vm.sh(VMENV + '; hyprctl binds | grep -
 tab('meta_l-shift_l-tab'); s1 = act()
 print('shift-tab:', s1 and s1['cls'])
 if s1 and s1['cls'] == g1['cls']: tab('meta_l-shift_l-tab'); s2 = act(); print('shift-tab again:', s2 and s2['cls'])
-ok['behaviour: Super+Shift+Tab goes the other way round'] = bool(s1) and s1['cls'] != g1['cls']
+ok['behaviour: Super+Shift+Tab goes the other way round (exactly one step back from the end of the list)'] = bool(s1) and s1['cls'] == n1['cls']
 # same app windows
 run('ghostty'); w1 = act(); tab('meta_l-grave_accent'); w2 = act(); tab('meta_l-grave_accent'); w3 = act()
 print('grave:', w1 and w1['addr'], w2 and w2['addr'], w3 and w3['addr'])

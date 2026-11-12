@@ -110,6 +110,7 @@ local Mod = "SUPER"
 -- macOS-style keys: new binds only, on keys that were free (the old ones stay as they were)
 hl.bind(Mod .. " + Tab",         function() switch(1) end)  -- Command-Tab
 hl.bind(Mod .. " + SHIFT + Tab", function() switch(-1) end) -- Shift-Command-Tab
+hl.bind(Mod .. " + SHIFT + ISO_Left_Tab", function() switch(-1) end) -- the same key as the layout reports it with Shift held
 hl.bind(Mod .. " + grave",       same_app)                   -- Command-`
 hl.bind(Mod .. " + CTRL + F",    hl.dsp.window.fullscreen({ action = "toggle" })) -- Control-Command-F
 hl.bind(Mod .. " + CTRL + Q",    hl.dsp.exec_cmd("loginctl lock-session"))        -- Control-Command-Q (hypridle locks)
