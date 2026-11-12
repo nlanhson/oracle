@@ -81,3 +81,4 @@ docker-compose
 docker-buildx
 tailscale
 aur:brave-origin-bin
+aur:airctl-bin # Wi-Fi window (GTK4 + NetworkManager, GPL-3.0, 16 MB prebuilt binary): the Control Center's Wi-Fi row opens it; without it Settings lists networks in the terminal

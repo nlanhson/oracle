@@ -18,6 +18,8 @@ POWER = [  # title, words, command, asks first   (same commands as the old power
     ("Restart", "restart reboot", ["systemctl", "reboot"], True),
     ("Shut Down", "shut down shutdown power off", ["systemctl", "poweroff"], True),
 ]
+NAME = "Signal"  # the name shown in the search field; the one place to change it
+COUNTDOWN = float(os.environ.get("ORACLE_LAUNCHER_COUNTDOWN", "60"))  # seconds before Restart / Shut Down go ahead on their own
 CAPS = {"app": 5, "cmd": 4, "power": 4, "file": 6}
 LABEL = {"sum": "Calculator", "app": "Applications", "cmd": "Commands", "power": "System", "file": "Files"}
 BONUS = {"sum": 1000, "app": 15, "cmd": 10, "power": 12, "file": 0}
@@ -212,7 +214,7 @@ def activate(it):
     elif k == "cmd":
         spawn(["ghostty", "--class=oracle.manual", "--gtk-single-instance=false", "--window-width=110", "--window-height=34",
                "-e", "oracle", "manual", "--run", it["name"]])
-    elif k == "power": spawn(it["cmd"])
+    elif k == "power": spawn(["sh", "-c", "echo \"$0\" >>\"$ORACLE_LAUNCHER_DRY\"", it["title"]] if os.environ.get("ORACLE_LAUNCHER_DRY") else it["cmd"])  # DRY = test: log the choice, never power off
     elif k == "file": spawn(["xdg-open", it["path"]])
 
 
@@ -226,7 +228,7 @@ def gui(power_first):
     open(pidfile, "w").write(str(os.getpid()))
     timing = os.environ.get("ORACLE_LAUNCHER_TIMING")
     S = {"A": None, "C": None, "hist": load_history(), "rows": [], "sel": 0, "moved": False, "gen": 0, "files": [], "power": False,
-         "confirm": None, "dialog": None, "t0": 0, "css_mtime": 0, "top": 0, "shown": False}
+         "confirm": None, "dialog": None, "deadline": 0, "t0": 0, "css_mtime": 0, "top": 0, "shown": False}
     prov = Gtk.CssProvider()
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), prov, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
@@ -246,7 +248,7 @@ def gui(power_first):
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); box.add_css_class("box"); box.set_size_request(660, -1); box.set_overflow(Gtk.Overflow.HIDDEN)
     fieldrow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL); fieldrow.add_css_class("fieldrow")
     glass = Gtk.Image.new_from_icon_name("system-search-symbolic"); glass.add_css_class("glass"); glass.set_pixel_size(22)
-    entry = Gtk.Entry(); entry.set_hexpand(True); entry.add_css_class("field"); entry.set_placeholder_text("Search"); entry.set_has_frame(False)
+    entry = Gtk.Entry(); entry.set_hexpand(True); entry.add_css_class("field"); entry.set_placeholder_text(NAME); entry.set_has_frame(False)
     fieldrow.append(glass); fieldrow.append(entry)
     results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL); results.add_css_class("results"); results.set_visible(False)
     box.append(fieldrow); box.append(results); outer.append(box); win.set_child(outer)
@@ -316,7 +318,8 @@ def gui(power_first):
     def refresh():
         d = S["dialog"]
         if d:
-            S["rows"] = [("head", d["title"].capitalize() + " now?"), ("item", {"kind": "dlg", "title": "Cancel", "sub": "", "act": None, "key": "dlg:no"}),
+            left = max(0, int(S["deadline"] - time.monotonic() + 0.99)); verb = {"Restart": "Restarts", "Shut Down": "Shuts down"}.get(d["title"], d["title"])
+            S["rows"] = [("head", "%s now? %s automatically in %d second%s." % (d["title"], verb, left, "" if left == 1 else "s")), ("item", {"kind": "dlg", "title": "Cancel", "sub": "", "act": None, "key": "dlg:no"}),
                          ("item", {"kind": "dlg", "title": d["title"], "sub": "", "act": d, "key": "dlg:yes"})]
         else:
             S["rows"] = rank(entry.get_text(), S["A"] or [], S["C"] or [], S["files"], S["hist"], S["power"])
@@ -335,8 +338,13 @@ def gui(power_first):
         if it["kind"] == "dlg":
             if it["act"] is None: S["dialog"] = None; refresh(); return
             it = it["act"]; S["dialog"] = None
-        elif it.get("ask"):  # Restart / Shut Down: ask once, Cancel first (the safe default)
-            S.update(dialog=it, sel=0, moved=True); refresh(); return
+        elif it.get("ask"):  # Restart / Shut Down: ask once, Cancel first (the safe default); it goes ahead by itself when the count runs out (macOS: 60 s)
+            S.update(dialog=it, sel=0, moved=True, deadline=time.monotonic() + COUNTDOWN); refresh()
+            def tick(d=it):
+                if S["dialog"] is not d or not S["shown"]: return False
+                if S["deadline"] - time.monotonic() <= 0: S["dialog"] = None; hide(); activate(d); return False
+                refresh(); return True
+            GLib.timeout_add(1000, tick); return
         save_history(S["hist"], it["key"], entry.get_text()); hide(); activate(it)
 
     def key(ctl, keyval, code, state):

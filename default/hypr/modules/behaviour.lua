@@ -25,6 +25,7 @@ local DIALOG = "^(xdg-desktop-portal-gtk|xdg-desktop-portal-kde|hyprpolkitagent|
 local TITLE  = "^(Open Files?|Open Folder|Save Files?|Save As|Select .*|Choose .*|Open With|Rename.*)$"
 hl.window_rule({ name = "oracle-dialog",       match = { class = DIALOG },           float = true, center = true, dim_around = true })
 hl.window_rule({ name = "oracle-dialog-title", match = { title = TITLE },            float = true, center = true, dim_around = true })
+hl.window_rule({ name = "oracle-airctl",       match = { class = "(?i)^(com\\.github\\.pshycodr\\.)?airctl$" }, float = true, center = true, size = "520 680" }) -- Wi-Fi window (airctl)
 hl.window_rule({ name = "oracle-modal",        match = { modal = true },             float = true, center = true })
 hl.window_rule({ name = "oracle-small-tools",  match = { class = "^(org\\.pulseaudio\\.pavucontrol|com\\.gabm\\.satty|nm-connection-editor|blueman-manager)$" },
                 float = true, center = true, size = "900 620" })
@@ -77,6 +78,9 @@ hl.bind(Mod .. " + CTRL + F",    hl.dsp.window.fullscreen({ action = "toggle" })
 hl.bind(Mod .. " + CTRL + Q",    hl.dsp.exec_cmd("loginctl lock-session"))        -- Control-Command-Q (hypridle locks)
 hl.bind(Mod .. " + comma",       hl.dsp.exec_cmd("ghostty --class=oracle.settings --gtk-single-instance=false --window-width=70 --window-height=34 -e oracle settings")) -- Command-comma
 hl.bind(Mod .. " + ALT + Escape", hl.dsp.exec_cmd("sh -c 'notify-send -a \"Force Quit\" -u low -t 5000 \"Click a window to force quit it\" \"Esc cancels.\"; hyprctl kill'")) -- Option-Command-Esc: click the stuck window (Esc cancels)
+
+-- Media keys: binds.lua runs playerctl; this second bind on the same keys shows the Now Playing pop-up for a moment
+for _, k in ipairs({ "XF86AudioPlay", "XF86AudioPause", "XF86AudioNext", "XF86AudioPrev" }) do hl.bind(k, hl.dsp.exec_cmd("oracle panel media key")) end
 
 -- 4 fingers up = Shell mode rises from the bottom, 4 fingers down sends it back down (Mission Control: the motion follows the fingers).
 -- Two one-way gestures, not the native `special` one: that one toggles on the same swipe both ways and rose from the bottom on a swipe DOWN.

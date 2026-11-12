@@ -222,7 +222,7 @@ case ${1:-help} in
         elif [[ -n $v ]]; then "$0" set nightlight $([[ $v == true ]] && echo always); "$0" night; else st '[[ $("$0" get nightlight off) != off ]]'; fi ;;
       mute) if [[ -n $v ]]; then wpctl set-mute @DEFAULT_AUDIO_SINK@ $([[ $v == true ]] && echo 1 || echo 0); else st 'wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q MUTED'; fi ;;
       charge) if [[ -n $v ]]; then "$0" battery "$v" >/dev/null 2>&1 || notify-send -u low "Charge limit" "Could not change it. Try: oracle battery $v"; else cat /etc/oracle/battery-limit 2>/dev/null || echo 100; fi ;;
-      settings) setsid -f ghostty --class=oracle.settings --gtk-single-instance=false --window-width=72 --window-height=30 -e oracle settings ${3:-} &>/dev/null ;;
+      settings) if [[ ${3:-} == network ]] && command -v airctl >/dev/null; then setsid -f airctl &>/dev/null; else setsid -f ghostty --class=oracle.settings --gtk-single-instance=false --window-width=72 --window-height=30 -e oracle settings ${3:-} &>/dev/null ; fi ;;
       quiet) # no banners while the screen is locked or shared (they still collect in the panel): inhibitors, checked every 3 s. Started by the desktop
         q() { if (($2)); then swaync-client -Ia "$1" -sw; else swaync-client -Ir "$1" -sw; fi >/dev/null 2>&1; }
         l=0 c=0

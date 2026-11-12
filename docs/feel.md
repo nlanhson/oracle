@@ -34,7 +34,7 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 | 5 | **Direct and instant.** Things respond within a tenth of a second and follow the finger. | Touchpad gestures track 1:1. Volume and brightness show at once. The launcher is ready the moment it appears. |
 | 6 | **Forgiving.** Undo beats "are you sure?". Only destructive things ask. | Rollback and trash already work this way. Keep it: screenshots are kept, closing is safe, only shutdown and wipe confirm. |
 | 7 | **Plain words.** An error says what happened and what to do next. | The `oracle doctor` style everywhere: one line of what is wrong, one line of how to fix it, one button if there is a fix. |
-| 8 | **Same place, same key, every time.** | Status and controls live top right. Super+Space finds anything. Esc always closes. Keys never move. |
+| 8 | **Same place, same key, every time.** | Status and controls live top right. Super+Space (Signal) finds anything. Esc always closes. Keys never move. |
 
 ## Touchpoints
 
@@ -68,8 +68,8 @@ about it. Each line is a real default from Apple's documentation or System Setti
 | A hung app | "Application Not Responding", with Force Quit. Option-Command-Esc force quits. | The not-responding dialog is on. `Super + Alt + Esc`, then click a window, force quits it. |
 | Pointer | Hides while you type, comes back when you move. | Same. |
 | Trackpad | Two-finger click is the right click. Two-finger swipe goes back and forward in the browser. Palm is ignored while typing. | Same three. Tap to click stays on. |
-| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Four fingers up and down: Shell mode, Oracle's own mission control, following your fingers. Pinch with four: launcher. |
-| Keys | Command-Tab: last app. Command-`: next window of this app. Control-Command-F: full screen. Control-Command-Q: lock. Command-comma: settings. Shift-Command-3/4/5: screenshots. | The same on `Super`, only on keys that were free. No existing key changes. `Super + Tab` is simpler than the Mac's: each press goes to the next open app, through all of them. |
+| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Four fingers up: Shell mode rises, down: it goes back (Oracle's own mission control). No gesture for the launcher. |
+| Keys | Command-`: next window of this app. Control-Command-F: full screen. Control-Command-Q: lock. Command-comma: settings. Shift-Command-3/4/5: screenshots. | The same on `Super`, only on keys that were free. No existing key changes. `Super + Tab` is simpler than the Mac's: each press goes to the next open app, through all of them. |
 | Media keys | Play, next, previous work everywhere. | Same (they did nothing before). |
 | Key repeat | Starts after a short pause, then steady. | Tuned to match (shorter pause, even rate). Changeable in Settings. |
 | Clipboard | What you copied stays after the app quits. | Same (on Linux it normally vanishes). |
