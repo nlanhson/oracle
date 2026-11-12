@@ -4,6 +4,7 @@
 # test/vm.sh          stock Arch ISO, curl install.sh | bash, NVMe of G14 size (sparse)
 # test/vm.sh iso      our ISO (iso/build.sh → $VM_DIR, reused; rm it to rebuild), its own installer copy, 64G NVMe
 # test/vm.sh oracle   reuse the installed disk from the last run, checks only
+# test/vm.sh secureboot  reuse the installed disk: oracle secureboot setup → Secure Boot on (OVMF secboot + SMM) → checks → undo
 set -euo pipefail
 if [[ ! -f /.dockerenv ]]; then
   ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -18,7 +19,7 @@ echo "== container: qemu, swtpm"
 pacman -Syu --noconfirm --needed --cachedir /vm/pkg qemu-base qemu-hw-display-virtio-{vga,gpu} edk2-ovmf swtpm python git >/dev/null
 
 MODE=${1:-arch} ISO=''
-if [[ $MODE != oracle ]]; then
+if [[ $MODE != oracle && $MODE != secureboot ]]; then
   if [[ $MODE == iso ]]; then
     ISO=$(ls -t /vm/oracle-*.iso | head -1) SIZE=64G
   else
@@ -50,11 +51,12 @@ MODE = os.environ['MODE']
 log = open('/vm/serial.log', 'ab')
 
 class VM:
-    def __init__(s, extra):
+    def __init__(s, extra, sb=False):  # sb: OVMF build that can enforce Secure Boot (needs SMM); same vars file
         subprocess.run(['swtpm', 'socket', '--tpm2', '--tpmstate', 'dir=/vm/tpm', '--daemon',
                         '--ctrl', 'type=unixio,path=/vm/tpm.sock'], check=True)
-        s.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35,accel=kvm', '-cpu', 'host', '-smp', '4', '-m', '6144',
-            '-drive', 'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.4m.fd',
+        s.p = subprocess.Popen(['qemu-system-x86_64', '-machine', 'q35,accel=kvm' + (',smm=on' if sb else ''), '-cpu', 'host', '-smp', '4', '-m', '6144',
+            *(['-global', 'driver=cfi.pflash01,property=secure,value=on'] if sb else []),
+            '-drive', f'if=pflash,format=raw,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE{".secboot" if sb else ""}.4m.fd',
             '-drive', 'if=pflash,format=raw,file=/vm/vars.fd',
             '-drive', 'if=none,id=d0,file=/vm/disk.qcow2', '-device', 'nvme,drive=d0,serial=oracle',
             '-chardev', 'socket,id=tpm,path=/vm/tpm.sock', '-tpmdev', 'emulator,id=tpm0,chardev=tpm', '-device', 'tpm-crb,tpmdev=tpm0',
@@ -166,7 +168,7 @@ def clean(t): return re.sub(r'\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x
 def step(t): print(f'\n== {t}', flush=True)
 ok = {}
 
-if MODE != 'oracle':
+if MODE not in ('oracle', 'secureboot'):
     step(f'stage 1: boot {os.environ["ISO"]}, root shell on serial')
     opts = re.search(r'^options (.*)$', open(glob.glob('/vm/boot/loader/entries/01-*.conf')[0]).read(), re.M)[1]
     vm = VM(['-cdrom', os.environ['ISO'], '-kernel', '/vm/boot/arch/boot/x86_64/vmlinuz-linux',
@@ -200,6 +202,99 @@ if MODE != 'oracle':
     vm.send('poweroff\n'); vm.p.wait(120)
     os.system('cd /vm && mv disk.qcow2 arch.qcow2 && qemu-img create -qf qcow2 -b arch.qcow2 -F qcow2 disk.qcow2'
               ' && cp vars.fd arch.vars.fd && cp -a tpm arch.tpm')
+
+if MODE == 'secureboot':  # reuses the installed disk. G14 steps + design: docs/manual/secure-boot.md, system/oracle-secureboot
+    sudo = [(r'\[sudo\] password for son:', PW), (r'Disk password: ', PW), (LUKS, PW)]
+    KEYS = ('systemctl is-system-running --wait >/dev/null; D=$(lsblk -rpno NAME,FSTYPE | awk \'$2=="crypto_LUKS"{print $1; exit}\'); sudo cryptsetup luksDump --dump-json-metadata $D'
+            ' | python3 -c \'import json,sys; print("TPM-KEYS", [t.get("tpm2-pcrs") for t in json.load(sys.stdin)["tokens"].values() if t["type"]=="systemd-tpm2"])\'')
+    UNS = 'efibootmgr | sed -n "s/^Boot\\([0-9A-F]*\\)\\* oracle-unsigned.*/\\1/p"'
+    def start(sb, label, menu=False):
+        step(label)
+        vm = VM([], sb=sb)
+        i, _ = vm.expect([LUKS, r'oracle login:'], 600)
+        if i == 0: vm.send(PW + '\n'); vm.expect([r'oracle login:'], 300)
+        vm.login(seen=True); vm.sh('sudo -v', 60, sudo, show=0)
+        print(f'disk password asked at this start: {i == 0}', flush=True)
+        return vm, i == 0
+    vm, asked = start(True, 'secure boot 1: firmware that can enforce Secure Boot, no keys yet (Setup Mode)')
+    if asked: print('NOTE: swapping the firmware changed PCR 7 (like clearing keys on the G14, where setup arms a temporary key first)')
+    vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')
+    vm.sh('sudo grep -nE "^[a-z_]+:|path:|^ */" /boot/limine.conf | cut -c1-150 | head -n 40; sudo cat /etc/default/limine; ls -l /etc/boot/hooks/*/;'
+          ' pacman -Q limine limine-mkinitcpio-hook limine-snapper-sync systemd; efibootmgr', 60, sudo, 80)
+    rc, out = vm.sh('oracle secureboot', 60, sudo)
+    ok['status before setup: off, firmware in Setup Mode'] = 'Setup Mode' in out
+    rc, out = vm.sh('oracle secureboot setup', 1500, sudo, 80)
+    ok['setup: keys in the firmware, Limine signed + menu locked, says what to switch'] = rc == 0 and 'Enabled' in out
+    vm.sh('sudo tail -n 30 /var/log/oracle-secureboot.log; sudo sbctl verify; ' + KEYS + '; ls -l /etc/initcpio/post /etc/boot/hooks/post.d;'
+          ' sudo grep -nE "path:|^[a-z_]+:" /boot/limine.conf | cut -c1-170 | head -n 30', 120, sudo, 90)
+    rc, out = vm.sh('oracle secureboot verify', 120, sudo)
+    ok['verify before the firmware switch: red (Secure Boot not on yet)'] = rc != 0
+    vm.off()
+    vm, asked = start(True, 'secure boot 2: Secure Boot on → expect NO password (temporary key); that start binds the key to PCR 7')
+    ok['first start with Secure Boot on: no password'] = not asked
+    rc, out = vm.sh('bootctl status 2>&1 | grep -i "secure boot"; sudo sbctl status; ' + KEYS + '; journalctl -b -u oracle-secureboot -o cat', 180, sudo)
+    ok['firmware enforces Secure Boot with our keys, disk key bound to PCR 7 only'] = re.search(r'(?i)secure boot: *(✓ *)?enabled', out) is not None and 'TPM-KEYS [[7]]' in out
+    rc, out = vm.sh('oracle secureboot verify', 120, sudo)
+    ok['oracle secureboot verify: green'] = rc == 0
+    rc, out = vm.sh('oracle doctor | grep -i "secure boot"', 300, sudo)
+    ok['oracle doctor: Secure Boot line ok'] = re.search(r'ok +Secure Boot +on', out) is not None
+    rc, out = vm.sh('sudo pacman -S --noconfirm linux 2>&1 | grep -iE "limine|sign|enroll|error|warn|hash" | tail -n 30; oracle secureboot verify', 1500, sudo, 60)
+    ok['kernel reinstall (pacman -S linux): hooks re-lock + re-sign, verify green'] = rc == 0
+    rc, out = vm.sh('sudo pacman -S --noconfirm cowsay >/dev/null; printf "1\\n" | oracle rollback; command -v cowsay || echo GONE; oracle secureboot verify', 1500, sudo)
+    ok['oracle rollback with Secure Boot on: verify green'] = 'GONE' in out and rc == 0
+    rc, out = vm.sh('sudo sed -i "/^interface_help_colour:/d" /boot/limine.conf; curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.2.2:8000/oracle.git bash 2>&1 | tail -n 4;'
+                    ' sudo grep -c "^interface_help_colour:" /boot/limine.conf; oracle secureboot verify', 2700, sudo, 30)
+    ok['install.sh re-run (oracle update) changes limine.conf and locks it again: verify green'] = rc == 0
+    vm.sh(f'sudo install -D /usr/share/limine/BOOTX64.EFI /boot/EFI/oracle-test/unsigned.efi && sudo efibootmgr -q -c -d /dev/nvme0n1 -p 1 -L oracle-unsigned -l "\\EFI\\oracle-test\\unsigned.efi"'
+          f' && sudo efibootmgr -q -n $({UNS}); efibootmgr', 60, sudo)
+    vm.off()
+    step('secure boot 3: BootNext = an unsigned loader → the firmware must refuse it, then Oracle starts (no password)')
+    vm = VM([], sb=True)
+    i, _ = vm.expect([LUKS, r'oracle login:'], 600)
+    den = re.search(rb'oracle-unsigned[^\r\n]*(Access Denied|Security Violation)', vm.all)
+    print('firmware said:', den and den[0].decode(errors='replace'))
+    if i == 0: vm.send(PW + '\n'); vm.expect([r'oracle login:'], 300)
+    vm.login(seen=True); vm.sh('sudo -v', 60, sudo, show=0)
+    rc, out = vm.sh(f'efibootmgr | head -n 3; echo UNSIGNED=$({UNS})')
+    cur = re.search(r'BootCurrent: *(\w+)', out); uns = re.search(r'UNSIGNED=(\w+)', out)
+    ok['unsigned EFI refused by the firmware, Oracle starts after it, no password'] = i == 1 and den is not None or (i == 1 and cur and uns and cur[1] != uns[1])
+    vm.sh(f'sudo efibootmgr -q -b $({UNS}) -B; sudo rm -rf /boot/EFI/oracle-test', 60, sudo)
+    vm.off()
+    step('secure boot 4: boot menu → Snapshots → newest snapshot (Limine checks its files too), no password')
+    vm = VM([], sb=True); vm.film('sb-menu', keys=MENU_KEY)
+    i, _ = vm.expect([r'oracle login:'], 40, fail=False); vm.tick = None
+    vm.shot('sb-menu-top')
+    for k in ('down', 'ret', 'down', 'ret', 'down'): vm.mon('sendkey ' + k); time.sleep(0.8)
+    vm.shot('sb-menu-snapshot'); vm.mon('sendkey ret')
+    j, _ = vm.expect([LUKS, r'oracle login:'], 300)
+    if j == 0: vm.send(PW + '\n'); vm.expect([r'oracle login:'], 300)
+    vm.login(seen=True)
+    rc, out = vm.sh('cat /proc/cmdline; findmnt -no SOURCE /')
+    ok['newest snapshot boots from the menu with Secure Boot on, no password'] = i == -1 and j == 1 and '.snapshots/' in out
+    vm.off()
+    vm, asked = start(False, 'secure boot 5: Secure Boot off (firmware without it) → the TPM must NOT unlock: password prompt')
+    ok['Secure Boot off: TPM does not unlock, password asked (the gap is closed)'] = asked
+    vm.sh('oracle secureboot', 60, sudo)
+    vm.off()
+    vm, asked = start(True, 'secure boot 6: Secure Boot back on → no password; then oracle secureboot undo')
+    ok['Secure Boot on again: no password'] = not asked
+    rc, out = vm.sh('oracle secureboot undo', 1500, sudo, 40)
+    ok['undo: boot menu unlocked, temporary key, says what to switch off'] = rc == 0 and 'Disabled' in out
+    vm.sh('oracle secureboot; ' + KEYS, 120, sudo)
+    vm.off()
+    vm, asked = start(False, 'secure boot 7: Secure Boot off after undo → no password; that start binds the key like before')
+    ok['after undo, Secure Boot off: no password'] = not asked
+    rc, out = vm.sh(KEYS + '; journalctl -b -u oracle-secureboot -o cat; ls /var/lib/oracle/secureboot 2>/dev/null || echo NO-STATE; oracle secureboot', 180, sudo)
+    ok['undo finished by itself at that start: one TPM key on PCR 7, nothing pending'] = 'TPM-KEYS [[7]]' in out and 'NO-STATE' in out
+    vm.off()
+    vm, asked = start(False, "secure boot 8: plain start again (today's setup) → no password")
+    ok['undo: back to the old working state (Secure Boot off, no password)'] = not asked
+    rc, out = vm.sh('oracle doctor | grep -i "secure boot"', 300, sudo)
+    ok['oracle doctor (off): calm note that oracle secureboot closes the gap'] = 'oracle secureboot setup' in out
+    vm.off()
+    step('result')
+    for k, v in ok.items(): print(('PASS ' if v else 'FAIL ') + k)
+    sys.exit(0 if all(ok.values()) else 1)
 
 step('stage 3: first boot of the installed system, expect NO password prompt')
 vm = VM([])

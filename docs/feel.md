@@ -146,3 +146,4 @@ Open choices are made inside their slice and shown to you before building: the l
 | 5 Boot to desktop | Built, waiting for feel check (branch `feel/boot`) |
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
 | 8 Welcome | Built on `feel/welcome`, waiting for feel check |
+| 9 Secure Boot + UKI | Built on `feel/secureboot` and proven in the VM (`test/vm.sh secureboot`). Opt-in: the owner switches it on at the G14 (`oracle secureboot setup`, docs/manual/secure-boot.md). No UKI: Limine checks kernel, initramfs and cmdline by hash instead |

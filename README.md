@@ -58,6 +58,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 - [Getting started](docs/manual/getting-started.md)
 - [Keys](docs/manual/keys.md)
 - [Updating](docs/manual/updating.md)
+- [Secure Boot](docs/manual/secure-boot.md) (optional: closes the USB-stick gap in the disk unlock)
 - [Backup and home server](docs/manual/backup.md) ([the details](docs/server.md))
 
 ## Your settings

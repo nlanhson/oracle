@@ -32,7 +32,11 @@ case ${1:-help} in
     if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
     if command -v fwupdmgr >/dev/null; then # BIOS, SSD, touchpad… when the maker publishes updates (LVFS)
       say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
-      sudo fwupdmgr update -y --no-reboot-check 2>&1 | grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' || true
+      X=/sys/firmware/efi/efivars/dbx-d719b2cb-3d3a-4596-a3bc-dad00e67656f; x=$(b2sum "$X" 2>/dev/null || true)
+      o=$(sudo fwupdmgr update -y --no-reboot-check 2>&1 || true); grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' <<<"$o" || true
+      if [[ -f /var/lib/oracle/secureboot ]] && { [[ $(b2sum "$X" 2>/dev/null || true) != "$x" ]] || grep -qiE 'success|reboot' <<<"$o"; }; then
+        sudo /usr/local/bin/oracle-secureboot arm && say "firmware changed: the disk key re-binds itself at the next start (Secure Boot)"
+      fi
     fi
     [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
     ;;
@@ -131,6 +135,7 @@ case ${1:-help} in
       *) die "usage: oracle panel [toggle|open|close] | <wifi|bt|dnd|night|mute> [true|false] | state | vol <n> | bright <n> | display | output | charge [20-100] | settings [item] | power | quiet" ;;
     esac ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;
+  secureboot) exec sudo bash "$DIR/system/oracle-secureboot" "${2:-status}" ;; # status | setup | verify | undo (docs/manual/secure-boot.md)
   manual) exec "$ME/oracle-manual" "${@:2}" ;;
   launcher) # Super+Space: show/hide the launcher (a small daemon, so it opens at once). power = power menu, daemon = start hidden at login
     P=${XDG_RUNTIME_DIR:-/tmp}/oracle-launcher.pid; sig=USR1; [[ ${2:-} != power ]] || sig=USR2
