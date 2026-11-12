@@ -407,8 +407,12 @@ vm.sh(VMENV + '; swayosd-client --output-volume 0; sleep 0.7', 30)
 vm.mon('screendump /vm/look-osd.png -f png')
 vm.sh('sleep 3; setsid -f hyprlock &>/dev/null; sleep 6', 30, show=0)
 vm.mon('screendump /vm/look-lock.png -f png')
-rc, out = vm.sh('pgrep -x hyprlock; pkill -USR1 hyprlock; sleep 3; pgrep -x hyprlock || echo UNLOCKED')
-ok['look: lock screen shows, unlocks on signal'] = 'UNLOCKED' in out
+# hyprlock needs a last frame before it lets go (slow on the VM's software renderer): wait up to 20 s and say how long it took;
+# one USR1 is sent, a second only after 10 s, and logged, so a lost signal and a slow exit can be told apart
+rc, out = vm.sh('n=$(pgrep -xc hyprlock); echo LOCKS=$n; ps -o pid,etimes,args -C hyprlock; pkill -USR1 hyprlock; t=0;'
+                ' while pgrep -x hyprlock >/dev/null && ((t < 20)); do sleep 1; ((t++)); ((t == 10)) && { echo RESENT; pkill -USR1 hyprlock; }; done;'
+                ' pgrep -x hyprlock >/dev/null && echo STILL-LOCKED || echo UNLOCKED-AFTER-${t}s; journalctl --user -b --since -2min -o cat | grep -i hyprlock | tail -n 5')
+ok['look: lock screen shows (exactly one), unlocks on signal'] = 'LOCKS=1' in out and 'UNLOCKED-AFTER-' in out and 'RESENT' not in out
 step('control panel and notifications')
 rc, out = vm.sh('bash ~/.local/share/oracle/test/panel.sh', 120)
 ok['panel: config valid, helpers change state (fakes), migration swaps untouched copies'] = rc == 0 and 'panel ok' in out
