@@ -51,7 +51,7 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Print` | Screenshot of an area: saved in ~/Pictures/Screenshots and copied, so you can paste it right away. A small thumbnail offers Copy and Edit; click it to open the picture. Esc cancels |
 | `Shift + Print` | Screenshot of the whole screen |
 | `Super + Print` | Screenshot of the active window |
-| `Super + Tab` / `Super + Shift + Tab` | Switch app: hold `Super`, each `Tab` goes one app further back, let go to stay there |
+| `Super + Tab` | Next app: each press goes to the next open app, round and round through all of them |
 | ``Super + ` `` | Next window of the same app |
 | `Super + Ctrl + F` | Full screen on / off |
 | `Super + Ctrl + Q` | Lock the screen |

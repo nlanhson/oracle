@@ -709,19 +709,13 @@ run('ghostty'); g1 = act(); run('nautilus'); n1 = act(); run('mousepad /tmp/t.tx
 print(g1, n1, m1)
 ok['behaviour: three apps open (ghostty, Files, mousepad), each gets focus'] = bool(g1 and n1 and m1) and len({g1['cls'], n1['cls'], m1['cls']}) == 3
 def tab(k='meta_l-tab', hold=None): vm.mon('sendkey ' + k + (f' {hold}' if hold else '')); time.sleep(2.5)
-tab(); a1 = act(); tab(); a2 = act()
-print('tab, tab:', a1 and a1['cls'], a2 and a2['cls'])
-ok['behaviour: Super+Tab goes to the previous app, Super+Tab again comes back (real key presses)'] = bool(a1 and a2) and a1['cls'] == n1['cls'] and a2['cls'] == m1['cls']
-# two Tabs within ~1.5 s (QEMU sendkey cannot keep Super held between commands): two apps back (order before: mousepad, Files, ghostty)
-vm.mon('sendkey meta_l-tab'); time.sleep(0.4); vm.mon('sendkey meta_l-tab'); time.sleep(1.5)  # two quick taps = one walk, 2 apps back
-h1 = act(); time.sleep(1); h2 = act()
-print('hold:', h1 and h1['cls'], h2 and h2['cls'])
-ok['behaviour: Super+Tab twice in quick succession = two apps back (Command-Tab walk); a pause starts over'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
-print('before shift-tab:', act()['cls'], vm.sh(VMENV + '; hyprctl binds | grep -B4 -A4 "key: Tab"', 30, show=0)[1][-900:])
-tab('meta_l-shift_l-tab'); s1 = act()
-print('shift-tab:', s1 and s1['cls'])
-if s1 and s1['cls'] == g1['cls']: tab('meta_l-shift_l-tab'); s2 = act(); print('shift-tab again:', s2 and s2['cls'])
-ok['behaviour: Super+Shift+Tab goes the other way round (exactly one step back from the end of the list)'] = bool(s1) and s1['cls'] == n1['cls']
+seq = []
+for _ in range(3): tab(); a1 = act(); seq.append(a1 and a1['cls'])
+print('tab x3:', seq)
+ok['behaviour: Super+Tab cycles through every open app and comes back round (3 apps, 3 presses, real keys)'] = \
+    len(set(seq)) == 3 and seq[2] == m1['cls'] and set(seq) == {g1['cls'], n1['cls'], m1['cls']}
+rc, out = vm.sh(VMENV + '; hyprctl binds | grep -c "key: .*Tab"', 30, show=0)
+ok['behaviour: one Tab bind only (no Super+Shift+Tab)'] = out.strip().splitlines()[-1] == '1'
 # same app windows
 run('ghostty'); w1 = act(); tab('meta_l-grave_accent'); w2 = act(); tab('meta_l-grave_accent'); w3 = act()
 print('grave:', w1 and w1['addr'], w2 and w2['addr'], w3 and w3['addr'])

@@ -53,41 +53,35 @@ hl.on("workspace.special_active", function(ws)
   end
 end)
 
--- Command-Tab: apps (by window class) in order of last use. Hold Super, Tab goes one further back, letting go of Super commits.
-local mru, last, snap, idx, cycling, lastt = {}, {}, {}, 0, false, 0
+-- Super+Tab: every press goes to the next open app (by window class), round and round through all of them.
+-- (A Mac walks back by last use and commits when Command is let go; Lua cannot see Super being let go, and the owner
+-- wants one key that reaches every app, so the order is fixed: the order the apps were first used in.)
+local order, last = {}, {}
 local function app(w) return w and w.class and w.class ~= "" and w.class ~= "oracle.shell" and w.class end
-local function touch(c, a) -- c to the front of the list
-  for i, x in ipairs(mru) do if x == c then table.remove(mru, i) break end end
-  table.insert(mru, 1, c); last[c] = a or last[c]
-end
 hl.on("window.active", function(w)
-  if cycling and os.time() - (lastt or 0) >= 2 then cycling = false end -- the Tab walk is over
-  if not cycling and app(w) then touch(w.class, w.address) end
+  if not app(w) then return end
+  last[w.class] = w.address
+  for _, c in ipairs(order) do if c == w.class then return end end
+  order[#order + 1] = w.class
 end)
-local function live() -- classes that have a window now, most recently used first
-  local seen, list = {}, {}
+local function live() -- classes that have a window now, in their fixed order
+  local seen, list, rest = {}, {}, {}
   for _, w in ipairs(hl.get_windows()) do if app(w) then seen[w.class] = true end end
-  for _, c in ipairs(mru) do if seen[c] then list[#list + 1] = c; seen[c] = nil end end
-  for c in pairs(seen) do list[#list + 1] = c end
+  for _, c in ipairs(order) do if seen[c] then list[#list + 1] = c; seen[c] = nil end end
+  for c in pairs(seen) do rest[#rest + 1] = c end
+  table.sort(rest); for _, c in ipairs(rest) do list[#list + 1] = c end
   return list
 end
 local function newest(c) -- that app's most recently used window
   local all = hl.get_windows()
-  for _, w in ipairs(all) do if w.address == last[c] then return w end end
+  for _, w in ipairs(all) do if w.address == last[c] and w.class == c then return w end end
   for _, w in ipairs(all) do if w.class == c then return w end end
 end
--- Letting go of Super is not visible to Lua (hl.timer + hl.is_key_down never reported it), so: Tabs less than ~1.5 s apart
--- keep walking back through the apps (hold Super, tap Tab); a pause starts over from the app you stopped on.
-local function switch(d)
-  local now = os.time()
-  if cycling and now - lastt >= 2 then cycling = false; local a = hl.get_active_window(); if app(a) then touch(a.class, a.address) end end
-  lastt = now
-  if not cycling then
-    snap = live(); if #snap < 2 then return end
-    cycling, idx = true, 0
-  end
-  idx = (idx + d) % #snap
-  local w = newest(snap[idx + 1]); if w then hl.dispatch(hl.dsp.focus({ window = w })) end
+local function switch()
+  local list = live(); if #list < 2 then return end
+  local cur, i = app(hl.get_active_window()), 0
+  for k, c in ipairs(list) do if c == cur then i = k end end
+  local w = newest(list[i % #list + 1]); if w then hl.dispatch(hl.dsp.focus({ window = w })) end
 end
 
 -- Command-`: the next window of the same app
@@ -108,9 +102,7 @@ end
 local launcher = require("modules.binds").launcher
 local Mod = "SUPER"
 -- macOS-style keys: new binds only, on keys that were free (the old ones stay as they were)
-hl.bind(Mod .. " + Tab",         function() switch(1) end)  -- Command-Tab
-hl.bind(Mod .. " + SHIFT + Tab", function() switch(-1) end) -- Shift-Command-Tab
-hl.bind(Mod .. " + SHIFT + ISO_Left_Tab", function() switch(-1) end) -- the same key as the layout reports it with Shift held
+hl.bind(Mod .. " + Tab", switch) -- next app, cycles through all of them
 hl.bind(Mod .. " + grave",       same_app)                   -- Command-`
 hl.bind(Mod .. " + CTRL + F",    hl.dsp.window.fullscreen({ action = "toggle" })) -- Control-Command-F
 hl.bind(Mod .. " + CTRL + Q",    hl.dsp.exec_cmd("loginctl lock-session"))        -- Control-Command-Q (hypridle locks)
