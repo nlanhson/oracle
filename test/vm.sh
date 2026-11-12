@@ -90,9 +90,13 @@ class VM:
         time.sleep(0.5); s.p.stdin.write(text.replace('\n', '\r').encode()); s.p.stdin.flush()
 
     def off(s):  # a slow poweroff must not hide the results
-        s.send('sudo poweroff\n')
+        s.send('sudo poweroff\n'); t = time.time()
+        try:  # the sudo ticket is gone after 15 quiet minutes: answer the prompt, or poweroff never runs
+            if s.expect([r'\[sudo\] password for son:'], 4, fail=False)[0] == 0: s.send(PW + '\n')
+        except SystemExit: pass  # qemu already gone
         try: s.p.wait(180)
-        except subprocess.TimeoutExpired: s.p.kill(); s.p.wait(30)
+        except subprocess.TimeoutExpired: s.p.kill(); s.p.wait(30); os.system('pkill -x swtpm')
+        s.off_s = round(time.time() - t, 1)
     def sh(s, cmd, timeout=300, answers=(), show=60):
         s.buf = b''
         s.send(cmd + '; echo __RC=$?__\n')
@@ -439,7 +443,7 @@ vm.mon('screendump /vm/cc-states.png -f png')  # DND and night light on (the pan
 vm.sh(VMENV + '; oracle panel; oracle panel dnd false; oracle panel night false; oracle set accent cyan; oracle look; sleep 2; oracle panel; sleep 3', 40, show=0)
 vm.mon('screendump /vm/cc-cyan.png -f png')
 vm.sh(VMENV + '; oracle panel; oracle set accent; oracle look; sleep 1', 30, show=0)
-rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; hyprctl layers | grep -c "namespace: oracle-panel"; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"; which wtype')
+rc, out = vm.sh('sudo pacman -S --noconfirm --needed wtype >/dev/null 2>&1; ' + VMENV + '; oracle panel; sleep 2; hyprctl layers | grep -c "namespace: oracle-panel"; wtype -k Escape; sleep 1.5; hyprctl layers | grep -c "namespace: oracle-panel"; which wtype', 300, sudo)
 ok['control center: Esc closes it'] = bool(re.search(r'^1\s*\n0\s*\n', out, re.M))
 vm.sh(VMENV + '; oracle panel close; sleep 1', 30, show=0)
 rc, out = vm.sh(VMENV + '; P=$(pgrep -x "qs|quickshell" | head -n 1); t() { awk "{print \\$14+\\$15}" /proc/$P/stat; }; a=$(t); sleep 30; b=$(t); echo CPUTICKS=$((b-a)) of $(getconf CLK_TCK)/s over 30s; grep VmRSS /proc/$P/status; pgrep -x "qs|quickshell" >/dev/null && echo ALIVE', 90)
@@ -464,6 +468,8 @@ def frames(vm):
     return [f for f in vm.frames if f[2]]
 step('boot: power on, no key pressed (unattended), screenshot ~1/s → boot-N.png')
 vm.off()
+print(f'poweroff from the desktop took {vm.off_s}s')
+ok['shutdown from the desktop takes under 30 s'] = vm.off_s < 30
 vm = VM([]); vm.film('boot')
 i, _ = vm.expect([LUKS, r'oracle login:'], 300)
 t_login = round(time.time() - vm.t0, 1)
