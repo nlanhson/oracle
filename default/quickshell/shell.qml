@@ -206,12 +206,12 @@ ShellRoot {
                     model: 6
                     Rectangle {
                         required property int index
-                        x: -index * 2.5; y: 8 - index * 2.5 + 2; width: frame.width + index * 5; height: frame.height + index * 5
+                        x: -index * 2.5; y: 8 - index * 2.5 + 2; width: popframe.width + index * 5; height: popframe.height + index * 5
                         radius: 20 + index * 2.5; color: Tokens.alpha("#000000", 0.022)
                     }
                 }
                 Rectangle {
-                    id: frame
+                    id: popframe
                     width: 340; height: card.height + 24; radius: 20
                     color: Tokens.alpha(Tokens.bg, 0.62)
                     Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.width: 1; border.color: Tokens.alpha(Tokens.bright, 0.10) }
