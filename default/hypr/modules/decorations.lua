@@ -71,7 +71,7 @@ local frosted = {
     { "swayosd",                     "fade" },
 }
 for _, f in ipairs(frosted) do
-    local rule = { match = { namespace = "^(" .. f[1] .. ")$" }, blur = true, ignore_alpha = 0.2 }
+    local rule = { match = { namespace = "^(" .. f[1] .. ")$" }, blur = true, ignore_alpha = f[1] == "waybar" and 0.2 or 0.5 } -- 0.5: the soft shadows (alpha < 0.5) are not frosted, only the panel itself
     if f[2] == "none" then rule.no_anim = true elseif f[2] then rule.animation = f[2] end
     hl.layer_rule(rule)
 end
