@@ -24,3 +24,7 @@ Owner tests one item at a time; fixes are batched after he stops testing. OK = f
 - OK: motion. Lock screen works (ask: blurred desktop or black?).
 - Force quit (Super+Alt+Esc): owner saw nothing happen and expected a list of windows. Today it is click-to-kill with no visible cue. Make it obvious (a hint, or a list like macOS's Force Quit window), and check the bind fires.
 - Files preview: Space opened the Properties dialog, not a preview. sushi not installed / not working on the laptop: check.
+- OK: lock screen (blurred desktop), browser two-finger back/forward, Super+P confirm, key repeat.
+- Four-finger pinch → launcher: did nothing, and the owner does not want a gesture for it (Super+Space is enough). Remove.
+- Shut down / restart confirm: add a countdown (macOS: "will shut down automatically in 60 seconds").
+- Settings rows (Trackpad/Keyboard): owner will test later.
