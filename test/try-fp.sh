@@ -9,7 +9,7 @@ sums() { # sums <dir> [find prune names…]: mode + sha256 (files) or target (li
 echo "## ~/.config"; sums "$HOME/.config" \( -path ./dconf -o -path ./pulse -o -iname '*cache*' -o -name 'Brave*' -o -name 'chrom*' \) -prune -o
 echo "## ~/.local/state/oracle (migration marks, settings state; not try/mode/open)"; sums "$S" \( -path ./try -o -path ./mode -o -path ./open \) -prune -o
 echo "## migration marks"; ls -1 "$S/migrations" 2>/dev/null | wc -l
-echo "## shell files + icon theme"; for f in .zshrc .zprofile .bash_profile .bashrc; do sums "$HOME/$f"; done; ( cd "$HOME/.local/share/icons" 2>/dev/null && sums Oracle ) || echo "(no icon theme)"
+echo "## shell files + icon theme"; for f in .zshrc .zprofile .bash_profile .bashrc; do if [[ -e $HOME/$f ]]; then echo "$f $(stat -c %a "$HOME/$f") $(sha256sum "$HOME/$f" | cut -c1-16)"; else echo "(absent) $f"; fi; done; if [[ -d $HOME/.local/share/icons ]]; then echo "icons dir exists"; sums "$HOME/.local/share/icons/Oracle"; else echo "(no icons dir)"; fi
 echo "## gsettings"; for k in font-name monospace-font-name icon-theme color-scheme accent-color cursor-theme cursor-size; do echo "$k=$(dconf read /org/gnome/desktop/interface/$k 2>/dev/null)"; done
 echo "## server files (never part of try/back)"; for f in "$HOME"/dockge/compose.yaml "$HOME"/docker/*/compose.y*ml "$HOME"/docker/*/.env; do [[ -f $f ]] && echo "$f $(sha256sum "$f" | cut -c1-16)"; done
 echo "## packages (pacman -Qqe)"; pacman -Qqe | sort
@@ -22,4 +22,5 @@ done
 echo "## units"; for u in $(systemctl list-unit-files --no-legend 2>/dev/null | awk '/oracle|getty@|snapper|limine|docker|tailscale|watch/{print $1}' | sort); do echo "$u $(systemctl is-enabled "$u" 2>/dev/null)"; done
 echo "## boot"; sed 's/BOOT_IMAGE=[^ ]* //; s/root=[^ ]*//; s/rootflags=[^ ]*//' /proc/cmdline
 $SU sed -n '1,/^\//p' /boot/limine.conf 2>/dev/null | head -n 30
+echo "## boot loader files (EFI)"; $SU find /boot/EFI -type f -exec sha256sum {} + 2>/dev/null | cut -c1-16,65- | sort
 echo "## kernel files on /boot"; $SU find /boot -maxdepth 2 -type f \( -name 'vmlinuz*' -o -name 'initramfs*' -o -name '*.efi' \) -printf '%p %s\n' 2>/dev/null | sort
