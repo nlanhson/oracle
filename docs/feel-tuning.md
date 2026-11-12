@@ -1,30 +1,19 @@
 # Feel: tuning list from the laptop check (2026-11-12, preview on the G14)
 
-Owner tests one item at a time; fixes are batched after he stops testing. OK = fine as is.
+Status after the tuning round: FIXED = done and seen on the real desktop (screenshots in the helper's notes), OPEN = still to do.
 
-- OK: power button opens the power menu. OK: bar without memory/temperature, power under the Oracle mark. OK: Super+Ctrl+F.
-- Settings pop-up (Super+comma) does not fit the screen height.
-- Launcher: no frosted blur on the laptop, it is plain see-through. Wants blur like the other surfaces.
-- Launcher: wants a name of its own (as Spotlight has). Owner to pick.
-- Shell-mode gesture (4 fingers): direction is reversed (swipe down opens it and it rises from the bottom; closing moves against the fingers). Make it follow the fingers both ways.
-- 3 fingers down/up = close/fullscreen come from the owner's own `~/.config/hypr/restored.lua` (ghostty asks before closing). Ask whether he still wants them.
-- Explain alerts + weekly update notice (done in chat).
-- Control Center: mostly good. Remove the Laptop Screen button from the Control Center AND the screen icon from the bar (lid close does that now; feature no longer used).
-- Control Center: Wi-Fi should open a GUI Wi-Fi settings window, not the terminal one. Owner said "air control" / likes it: find out which tool he means.
-- Control Center: Battery slider = charge limit, but it shows no number. Show the value while dragging and at rest (e.g. "Limit 50%").
-- Screenshot: Print + area select works, but NO thumbnail notification with Copy / Edit appears on the laptop. Bug.
-- Super+Tab: not yet reported.
-- Super+Tab: works, but the owner says it is not needed on a tiling desktop (he moves focus with arrows / JKLI). Remove it unless he says otherwise.
-- OK: launcher sum, dialogs (centred, dimmed), clipboard after app quit.
-- Notification Center: fully see-through and sits over the windows, hard to read (no blur / backing on the laptop). Needs the frosted material behind the cards and the empty line.
-- Notification Center: "Clear All" should be a plain text button, no pill outline.
-- OK: bar blur, text rendering (very clear), two-finger right click, launcher learning. Media keys work.
-- Now Playing: wants a small window showing what is playing with previous / play-pause / next AND a draggable progress bar (seek). Today the keys only play/pause and it feels plain. Design: a Now Playing card (art, title, artist, controls, seek bar) reachable from the bar while something plays, and shown briefly on a media key press; same card in the Control Center.
-- Blur bug (one cause likely): launcher, Notification Center and the volume pop-up are see-through with NO frosted blur on the laptop; the bar is blurred fine. Check layer namespaces / blur + ignore_alpha rules on real Hyprland (`hyprctl layers`).
-- OK: motion. Lock screen works (ask: blurred desktop or black?).
-- Force quit (Super+Alt+Esc): owner saw nothing happen and expected a list of windows. Today it is click-to-kill with no visible cue. Make it obvious (a hint, or a list like macOS's Force Quit window), and check the bind fires.
-- Files preview: Space opened the Properties dialog, not a preview. sushi not installed / not working on the laptop: check.
-- OK: lock screen (blurred desktop), browser two-finger back/forward, Super+P confirm, key repeat.
-- Four-finger pinch → launcher: did nothing, and the owner does not want a gesture for it (Super+Space is enough). Remove.
-- Shut down / restart confirm: add a countdown (macOS: "will shut down automatically in 60 seconds").
-- Settings rows (Trackpad/Keyboard): owner will test later.
+1. FIXED Blur missing. Two causes. (a) GTK 4 switches blur off by itself (ext-background-effect protocol): launcher, swaync and swayosd are GTK 4, the bar is GTK 3 and Quickshell is Qt, so those two were fine. Fix: `GDK_WAYLAND_DISABLE=ext_background_effect_manager_v1` (env.lua; `systemctl --user set-environment` for the swaync unit; set inside bin/oracle-launcher). (b) Each of launcher, panel, swaync notifications and swayosd had two layer rules; the second replaced the first one's blur. Now ONE rule per namespace (decorations.lua). Also ignore_alpha 0.5 so soft shadows are not frosted.
+2. OPEN, not reproduced. `oracle shot` works on the real desktop in region, screen and window modes, started from Hyprland like the key does: the banner with Copy / Edit shows. Likely the owner had Do Not Disturb on, or the swaync of that moment had no blur and the banner was hard to see. Re-test.
+3. FIXED. Sushi works (`org.gnome.NautilusPreviewer2` activates, Space in a real Files window opens the preview). It opened as a tiled window: now a floating window rule. If Space still shows Properties: `nautilus -q`, reopen Files (Files started before sushi was installed).
+4. FIXED. Super+Alt+Esc shows "Click a window to force quit it / Esc cancels." then `hyprctl kill`. Bind registered; the click itself was not exercised (no way to inject a click here).
+5. FIXED, to re-test by hand. Two one-way gestures: 4 fingers UP opens Shell mode (rises from the bottom), 4 fingers DOWN closes it. Not 1:1 with the fingers any more (the gesture fires when the swipe ends); the old native `special` gesture toggled on the same swipe both ways.
+6. FIXED. (a) pinch gesture removed. (b) Super+Tab removed (bind, code, vm test, manual, checklist). (c) Laptop-screen control removed from the bar config, bar CSS, Control Center and `oracle panel`; migration 1794500000 swaps an untouched previous bar config. Control Center right column = Do Not Disturb + one wide Settings tile.
+7. FIXED. Battery title row reads "22% · On battery · Limit 20%", live while dragging.
+8. PARTLY. Clear All is plain muted text, brighter on hover, hidden when empty. The "No Notifications" line still sits mid-screen (swaync centres it in the full-height list; CSS margin tricks did not move it reliably; needs a config change `vexpand: false` plus a different layout). Judgement call, left as is.
+9. FIXED. Restart / Shut Down confirm counts down ("Shuts down automatically in 60 seconds"), goes ahead at zero, Cancel is the default, Enter on Shut Down acts at once. Tested with a stub (`ORACLE_LAUNCHER_DRY`, `ORACLE_LAUNCHER_COUNTDOWN`).
+10. FIXED. Now Playing: `default/quickshell/NowPlaying.qml` in the Control Center, an `oracle-media` pop-up (3 s after a media key, or kept by clicking the song name on the bar), `oracle panel media [key]`. Progress bar only if the player can seek. Tested with a fake MPRIS player (reads, pause, track change); dragging the bar was not exercised (no way to inject a drag).
+11. FIXED. Settings pop-up is sized to the screen (60% x 88%) and the list scrolls inside it.
+12. FIXED. Launcher name = "Signal" (placeholder; `NAME` in bin/oracle-launcher is the one place; command stays `oracle launcher`).
+13. Wi-Fi row opens `airctl` (AUR `airctl-bin`, GTK 4 + NetworkManager, GPL-3.0) when installed, floating; otherwise the terminal list.
+14. Nothing of Oracle's uses three fingers vertically (the owner removed his own 3-finger-up fullscreen; 3-finger-down = close stays his).
+15. Judgement calls: the volume pop-up speaker glyph is large; waybar's mpris item stays visible while paused.
