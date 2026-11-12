@@ -18,3 +18,5 @@ Owner tests one item at a time; fixes are batched after he stops testing. OK = f
 - OK: launcher sum, dialogs (centred, dimmed), clipboard after app quit.
 - Notification Center: fully see-through and sits over the windows, hard to read (no blur / backing on the laptop). Needs the frosted material behind the cards and the empty line.
 - Notification Center: "Clear All" should be a plain text button, no pill outline.
+- OK: bar blur, text rendering (very clear), two-finger right click, launcher learning. Media keys work.
+- Now Playing: wants a small window showing what is playing with previous / play-pause / next AND a draggable progress bar (seek). Today the keys only play/pause and it feels plain. Design: a Now Playing card (art, title, artist, controls, seek bar) reachable from the bar while something plays, and shown briefly on a media key press; same card in the Control Center.
