@@ -51,10 +51,20 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Print` | Screenshot of an area: saved in ~/Pictures/Screenshots and copied, so you can paste it right away. A small thumbnail offers Copy and Edit; click it to open the picture. Esc cancels |
 | `Shift + Print` | Screenshot of the whole screen |
 | `Super + Print` | Screenshot of the active window |
+| `Super + Tab` / `Super + Shift + Tab` | Switch app: hold `Super`, each `Tab` goes one app further back, let go to stay there |
+| ``Super + ` `` | Next window of the same app |
+| `Super + Ctrl + F` | Full screen on / off |
+| `Super + Ctrl + Q` | Lock the screen |
+| `Super + ,` | Settings (pop-up) |
+| `Super + Alt + Esc` | Force quit: click the stuck window (Esc cancels) |
+| `Super + Shift + 3` / `4` / `5` | Screenshot of the screen / an area / a window (same as the Print keys) |
+| Play / pause, next, previous keys | Control any media player |
+| `Shift + Alt` + volume or brightness keys | Fine steps (a quarter of the normal step) |
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 | 3 fingers left / right | Previous / next workspace (follows your fingers) |
-| 3 fingers up | Window fills the screen, again to put it back |
+| 3 fingers up or down | Shell mode rises over the desktop (and goes away again), following your fingers |
+| 4 fingers pinch in | App launcher |
 | `Super` + pinch | Zoom in on the pointer, pinch back to zoom out |
 
 ## Terminal (Ghostty)
@@ -88,3 +98,11 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"))
 ```
 
 Log out of the desktop and back in to apply.
+
+### Also built in
+
+- Dialogs (file pickers, password prompts, Properties, volume control) open floating in the middle, with the rest dimmed.
+- Picture-in-picture video floats small in the bottom-right corner, on top, on every workspace.
+- Two-finger click is the right click; two-finger swipe goes back and forward in Brave Origin; tap to click is on; the pointer hides while you type.
+- What you copy stays on the clipboard after the app quits. Space in Files previews a file.
+- Settings has Trackpad and Keyboard groups (tracking speed, tap to click, natural scrolling, key repeat).

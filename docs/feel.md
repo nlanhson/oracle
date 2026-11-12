@@ -61,7 +61,7 @@ about it. Each line is a real default from Apple's documentation or System Setti
 
 | Layer | What Sequoia does | What Oracle does |
 |---|---|---|
-| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Same: click to focus, scroll under the pointer. (Before: focus followed the mouse.) Changeable in Settings. |
+| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Focus follows the pointer (the owner's choice, kept). Scrolling goes to whatever is under the pointer. |
 | Apps come forward | Open a link or a file and that app comes to the front, on its own Space if needed. | An app that asks for attention is brought forward, and you are taken to its workspace. |
 | Dialogs | Open, Save and password dialogs are small sheets on top of their window, centred, with the rest dimmed. | Dialogs, file pickers, password prompts and small tools float in the centre, never tiled, with the rest dimmed. |
 | Picture in picture | A small video stays on top in a corner, on every Space. | Same for the browser's picture-in-picture window. |
@@ -145,8 +145,10 @@ Open choices are made inside their slice and shown to you before building: the l
 | 4 Launcher | Built on `feel/launcher` (stacked on `feel/look`), waiting for the feel check. Own small GTK4 program, fuzzel removed |
 | 5 Boot to desktop | Built, waiting for feel check (branch `feel/boot`) |
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
-| 8 Welcome | Built on `feel/welcome`, waiting for feel check |
 | 7 System logic | Built on `feel/system`, waiting for feel check. Power button, battery rules, idle by power source, quiet update check, plain-word alerts, doctor lines. Boot time measured below |
+| 8 Welcome | Built on `feel/welcome`, waiting for feel check |
+| 9 Secure Boot and UKI | Not started (needs the laptop and the recovery key) |
+| 10 Behaviour | Built on `feel/behaviour`, waiting for feel check |
 
 ## Boot time (slice 7)
 

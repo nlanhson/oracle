@@ -42,5 +42,4 @@ hl.layer_rule({ match = { namespace = "^(swaync-notification-window)$" }, animat
 
 -- Touchpad. 3 fingers sideways = workspaces (input.lua). A short flick is enough to switch.
 hl.config({ gestures = { workspace_swipe_cancel_ratio = 0.3, workspace_swipe_create_new = false } })
-hl.gesture({ fingers = 3, direction = "up",    action = "fullscreen", mode = "maximize" }) -- window fills the screen, again = back
 hl.gesture({ fingers = 2, direction = "pinch", mods = "SUPER", action = "cursor_zoom", zoom_level = 1, mode = "live" }) -- Super + pinch = zoom in on the pointer

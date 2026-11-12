@@ -94,3 +94,20 @@ hl.bind(Mod .. " + 5", hl.dsp.focus({ workspace = 5}))
 --    hl.bind(Mod .. " + " .. key,             hl.dsp.focus({ workspace = i}))
 --    hl.bind(Mod .. " + SHIFT + " .. key,     hl.dsp.window.move({ workspace = i }))
 -- end
+
+-- macOS-style keys live in behaviour.lua (Super+Tab, Super+`, Super+Ctrl+F/Q, Super+comma, Super+Alt+Esc, gestures).
+-- Here: the ones that are plain exec binds.
+hl.bind(Mod .. " + SHIFT + 3", hl.dsp.exec_cmd("oracle shot screen"))  -- Shift-Command-3
+hl.bind(Mod .. " + SHIFT + 4", hl.dsp.exec_cmd("oracle shot region"))  -- Shift-Command-4
+hl.bind(Mod .. " + SHIFT + 5", hl.dsp.exec_cmd("oracle shot window"))  -- Shift-Command-5 (window)
+hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"))
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"))
+hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"))
+hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"))
+-- Shift + Alt + volume / brightness = fine steps (a quarter of the normal step)
+hl.bind("SHIFT + ALT + XF86AudioLowerVolume",   hl.dsp.exec_cmd("swayosd-client --output-volume -2"))
+hl.bind("SHIFT + ALT + XF86AudioRaiseVolume",   hl.dsp.exec_cmd("swayosd-client --output-volume 2"))
+hl.bind("SHIFT + ALT + XF86MonBrightnessDown",  hl.dsp.exec_cmd("swayosd-client --brightness -1"))
+hl.bind("SHIFT + ALT + XF86MonBrightnessUp",    hl.dsp.exec_cmd("swayosd-client --brightness +1"))
+
+return { launcher = launcher }

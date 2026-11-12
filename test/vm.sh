@@ -254,7 +254,7 @@ ok['battery watcher installed (no battery in the VM: exits quietly), alerts time
     'Result=success' in out and 'no battery' in out and re.search(r'^enabled$', out, re.M) and re.search(r'^active$', out, re.M) and re.search(r'^yes$', out, re.M)
 rc, out = vm.sh('timeout 200 oracle update --check </dev/null; cat ~/.local/state/oracle/updates; git -C ~/.local/share/oracle status --short | head -n 3', 260)
 ok['oracle update --check (real): counts, writes the state file, installs nothing'] = 'packages=' in out and 'checked=' in out
-rc, _ = vm.sh('pacman -Q waybar python-gobject gtk4-layer-shell fd swaync hypridle swaybg fwupd fcitx5-bamboo loupe bluez micro nautilus noto-fonts')
+rc, _ = vm.sh('pacman -Q waybar python-gobject gtk4-layer-shell fd playerctl sushi wl-clip-persist pacman-contrib swaync hypridle swaybg fwupd fcitx5-bamboo loupe bluez micro nautilus noto-fonts')
 ok['desktop packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
 ok['new hyprland config verifies'] = rc == 0 and 'config ok' in out
@@ -317,13 +317,15 @@ ok['desktop: waybar, notifications, idle, Vietnamese IME running, fonts installe
 rc, out = vm.sh('sleep 5; pgrep -x wlsunset; pgrep -a swaybg; oracle set nightlight; oracle set wallpaper')
 ok['desktop start: night light on, wallpaper applied'] = re.search(r'^\d+$', out, re.M) and 'swaybg -i' in out
 vm.mon('screendump /vm/gui.png -f png')
+rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl submap')
+ok['behaviour: Shell mode window waits hidden from desktop start (first open instant)'] = re.search(r'^1$', out, re.M) and 'special:shell' not in out
 rc, out = vm.sh('pacman -Q satty hyprshot wl-clipboard')
 ok['screenshot packages (satty editor)'] = rc == 0
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); export WAYLAND_DISPLAY=$(cd $XDG_RUNTIME_DIR; ls wayland-[0-9] | tail -1); rm -rf ~/Pictures/Screenshots; swaync-client -C; oracle shot screen; sleep 3; ls ~/Pictures/Screenshots; wl-paste -l; echo COUNT=$(swaync-client -c)')
 ok['oracle shot screen: PNG saved, image on the clipboard, notification up'] = re.search(r'Screenshot .*\.png', out) and 'image/png' in out and re.search(r'COUNT=[1-9]', out)
 vm.mon('screendump /vm/shot-notification.png -f png')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.GetCapabilities; grep -c "oracle shot" ~/.local/share/oracle/default/hypr/modules/binds.lua; oracle shot bogus; echo rc=$?')
-ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^3$', out, re.M) and 'rc=1' in out
+ok['Print / Shift+Print / Super+Print bound to oracle shot; actions supported'] = 'actions' in out and re.search(r'^6$', out, re.M) and 'rc=1' in out
 step('one look: every surface on a white wallpaper')
 import base64, struct, zlib
 def png(w, h):  # plain white picture, made here (the VM has no image tools)
@@ -506,12 +508,12 @@ rc, out = vm.sh(IDLET, 120)
 ok['idle: an app holding an idle inhibitor (a video) keeps the screen on; timers run again after'] = 'HELD' in out and 'FIRED-WHILE-HELD' not in out and 'FIRED-AFTER' in out
 vm.mon('system_powerdown'); time.sleep(4)
 vm.mon('screendump /vm/sys-power-menu.png -f png')
-rc, out = vm.sh('pgrep -af fuzzel; echo STILL-UP')
-ok['desktop: power button opens the power menu'] = 'fuzzel' in out
+rc, out = vm.sh(VMENV + '; hyprctl layers | grep -c "namespace: launcher"; echo STILL-UP')
+ok['desktop: power button opens the power menu'] = re.search(r'^1$', out, re.M) is not None
 ok['desktop: power button does not shut down'] = 'STILL-UP' in out and vm.p.poll() is None
 vm.mon('sendkey esc'); time.sleep(2)
-rc, out = vm.sh('pgrep -x fuzzel || echo MENU-GONE; echo STILL-UP')
-ok['Esc closes the power menu, machine keeps running'] = 'MENU-GONE' in out and 'STILL-UP' in out
+rc, out = vm.sh(VMENV + '; hyprctl layers | grep -c "namespace: launcher" || echo MENU-GONE; echo STILL-UP')
+ok['Esc closes the power menu, machine keeps running'] = re.search(r'^0$', out, re.M) is not None and 'STILL-UP' in out
 N = '/tmp/notes.log'
 MATCH = "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
 MON = (VMENV + f'; pkill -f "busctl --user monitor"; setsid -f busctl --user monitor --match "{MATCH}" >{N} 2>&1; sleep 1')
@@ -555,7 +557,119 @@ vm.sh('pkill -f "busctl --user monitor"; swaync-client -C', show=0)
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)
+step('behaviour: the rules under the look')
+import difflib
+ACT = ('import json,sys;w=json.load(sys.stdin);print("ACT",w["class"],w["address"],w["floating"],w["fullscreen"],w["at"],w["size"],w["workspace"]["name"])')
+vm.sh(f'echo {base64.b64encode(("hyprctl -j activewindow | python3 -c " + repr(ACT)).encode()).decode()} | base64 -d >/tmp/act.sh', show=0)
+def act():
+    rc, out = vm.sh(VMENV + '; bash /tmp/act.sh', 30, show=0)
+    m = re.search(r'ACT (\S+) (\S+) (True|False) (\d+) \[(-?\d+), (-?\d+)\] \[(\d+), (\d+)\] (\S+)', out)
+    return m and dict(cls=m[1], addr=m[2], float=m[3] == 'True', fs=int(m[4]), x=int(m[5]), y=int(m[6]), w=int(m[7]), h=int(m[8]), ws=m[9])
+def opt(k): return vm.sh(VMENV + f'; hyprctl getoption {k} | head -n 1', 30, show=0)[1].split(':')[-1].strip()
+# Shell mode and keys agree whichever way it is toggled
+vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.workspace.toggle_special("shell")\'; sleep 2', 30, show=0)
+rc, hid = vm.sh(VMENV + '; hyprctl submap; hyprctl monitors | grep "special workspace"')
+vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.workspace.toggle_special("shell")\'; sleep 2', 30, show=0)
+rc, shw = vm.sh(VMENV + '; hyprctl submap; hyprctl monitors | grep "special workspace"')
+vm.sh('oracle gui; sleep 2', 30, show=0)
+rc, gui = vm.sh(VMENV + '; hyprctl submap; hyprctl monitors | grep "special workspace"')
+ok['behaviour: toggling the special workspace directly sets / clears the Shell submap (oracle gui too)'] = (
+    'shell' not in hid.split('special workspace')[0] and 'special:shell' not in hid and 'shell' in shw.split('special workspace')[0] and 'special:shell' in shw
+    and 'shell' not in gui.split('special workspace')[0] and 'special:shell' not in gui)
+vm.sh('oracle shell; sleep 3; oracle gui; sleep 2', 60, show=0)
+# options
+want = {'input:follow_mouse': '1', 'misc:focus_on_activate': 'true', 'misc:on_focus_under_fullscreen': '2', 'misc:enable_anr_dialog': 'true', 'cursor:hide_on_key_press': 'true',
+        'decoration:dim_modal': 'true', 'input:touchpad:clickfinger_behavior': 'true', 'input:touchpad:tap-to-click': 'true', 'input:touchpad:disable_while_typing': 'true',
+        'input:touchpad:middle_button_emulation': 'false', 'input:touchpad:natural_scroll': 'true', 'input:repeat_delay': '300', 'input:repeat_rate': '30'}
+got = {k: opt(k) for k in want}
+print(got)
+ok['behaviour: options (focus still follows the pointer = 1, activate, anr, cursor hide, two-finger click, tap, palm, repeat 300/30)'] = all(got[k] == want[k] for k in want)
+# settings keys -> options after a reload
+vm.sh(VMENV + '; oracle set keyrepeat fast; oracle set tracking 0.5; oracle set tap off; oracle set natural off; hyprctl reload; sleep 2', 30, show=0)
+got2 = [opt('input:repeat_delay'), opt('input:repeat_rate'), opt('input:sensitivity'), opt('input:touchpad:tap_to_click'), opt('input:touchpad:natural_scroll')]
+print(got2)
+vm.sh(VMENV + '; oracle set keyrepeat; oracle set tracking; oracle set tap; oracle set natural; hyprctl reload; sleep 2', 30, show=0)
+ok['behaviour: settings keys (keyrepeat, tracking, tap, natural) change the options after a reload; unset = defaults'] = (
+    got2[0] == '200' and got2[1] == '40' and got2[2].startswith('0.5') and got2[3] == 'false' and got2[4] == 'false' and opt('input:repeat_delay') == '300' and opt('input:sensitivity').startswith('0.37'))
+# binds: every old one unchanged, every new one present
+old = open('/repo/test/fixtures/binds-base.lua').read().splitlines()
+new = open('/repo/default/hypr/modules/binds.lua').read().splitlines()
+ok['behaviour: binds.lua keeps every old line, in order (only additions)'] = [l for l in difflib.ndiff(old[:-1], new) if l[0] == '-'] == []
+rc, binds = vm.sh(VMENV + '; hyprctl binds', 30, show=0)
+want_binds = ['key: Tab', 'key: grave', 'key: F', 'key: Q', 'key: comma', 'key: Escape', 'key: 3', 'key: 4', 'key: 5', 'key: XF86AudioPlay', 'key: XF86AudioPause', 'key: XF86AudioNext',
+              'key: XF86AudioPrev', 'key: XF86MonBrightnessUp', 'key: XF86AudioRaiseVolume']
+miss = [b for b in want_binds if b not in binds]
+print('missing binds:', miss); print(binds[-1500:])
+ok['behaviour: hyprctl binds has every new bind (Tab, grave, Ctrl+F/Q, comma, Alt+Esc, Shift+3/4/5, media, fine steps)'] = not miss
+oldkeys = len(re.findall(r'^Bind', binds, re.M)); print('binds total', oldkeys)
+# apps: three classes
+vm.sh(VMENV + '; pkill -x nautilus; pkill -fx ghostty; pkill mousepad; sleep 2; echo hello > /tmp/t.txt', 30, show=0)
+def run(c): vm.sh(VMENV + f'; hyprctl dispatch \'hl.dsp.exec_cmd("{c}")\'; sleep 6', 30, show=0)
+run('ghostty'); g1 = act(); run('nautilus'); n1 = act(); run('mousepad /tmp/t.txt'); m1 = act()
+print(g1, n1, m1)
+ok['behaviour: three apps open (ghostty, Files, mousepad), each gets focus'] = bool(g1 and n1 and m1) and len({g1['cls'], n1['cls'], m1['cls']}) == 3
+def tab(k='meta_l-tab', hold=None): vm.mon('sendkey ' + k + (f' {hold}' if hold else '')); time.sleep(2.5)
+tab(); a1 = act(); tab(); a2 = act()
+print('tab, tab:', a1 and a1['cls'], a2 and a2['cls'])
+ok['behaviour: Super+Tab goes to the previous app, Super+Tab again comes back (real key presses)'] = bool(a1 and a2) and a1['cls'] == n1['cls'] and a2['cls'] == m1['cls']
+# two Tabs within ~1.5 s (QEMU sendkey cannot keep Super held between commands): two apps back (order before: mousepad, Files, ghostty)
+vm.mon('sendkey meta_l-tab'); time.sleep(0.4); vm.mon('sendkey meta_l-tab'); time.sleep(1.5)  # two quick taps = one walk, 2 apps back
+h1 = act(); time.sleep(1); h2 = act()
+print('hold:', h1 and h1['cls'], h2 and h2['cls'])
+ok['behaviour: Super+Tab twice in quick succession = two apps back (Command-Tab walk); a pause starts over'] = bool(h1 and h2) and h1['cls'] == g1['cls'] and h2['cls'] == g1['cls']
+tab('meta_l-shift_l-tab'); s1 = act()
+print('shift-tab:', s1 and s1['cls'])
+ok['behaviour: Super+Shift+Tab goes the other way round'] = bool(s1) and s1['cls'] != g1['cls']
+# same app windows
+run('ghostty'); w1 = act(); tab('meta_l-grave_accent'); w2 = act(); tab('meta_l-grave_accent'); w3 = act()
+print('grave:', w1 and w1['addr'], w2 and w2['addr'], w3 and w3['addr'])
+ok['behaviour: Super+grave cycles two windows of the same app'] = bool(w1 and w2 and w3) and w1['cls'] == w2['cls'] == w3['cls'] and w1['addr'] != w2['addr'] and w3['addr'] == w1['addr']
+tab('meta_l-ctrl-f'); f1 = act(); tab('meta_l-ctrl-f'); f2 = act()
+print('fullscreen:', f1 and f1['fs'], f2 and f2['fs'])
+ok['behaviour: Super+Ctrl+F toggles full screen'] = bool(f1 and f2) and f1['fs'] > 0 and f2['fs'] == 0
+vm.sh(VMENV + '; pkill -fx ghostty; sleep 2', 30, show=0)
+vm.mon('sendkey meta_l-comma'); time.sleep(8); c1 = act()
+print('comma:', c1)
+ok['behaviour: Super+comma opens oracle.settings floating in the centre'] = bool(c1) and c1['cls'] == 'oracle.settings' and c1['float']
+if c1:
+    rc, mon = vm.sh(VMENV + '; hyprctl -j monitors | python3 -c "import json,sys;m=json.load(sys.stdin)[0];print(\'MON\',int(m[\'width\']/m[\'scale\']),int(m[\'height\']/m[\'scale\']),m[\'x\'],m[\'y\'])"', 30, show=0)
+    mm = re.search(r'MON (\d+) (\d+) (-?\d+) (-?\d+)', mon)
+    cx = c1['x'] + c1['w'] / 2; cy = c1['y'] + c1['h'] / 2
+    print('centre', cx, cy, mm and mm.groups())
+    ok['behaviour: that pop-up is centred on the screen'] = bool(mm) and abs(cx - (int(mm[3]) + int(mm[1]) / 2)) < 80 and abs(cy - (int(mm[4]) + int(mm[2]) / 2)) < 80
+vm.mon('screendump /vm/beh-settings-popup.png -f png')
+vm.sh(VMENV + '; pkill -f oracle.settings; sleep 2', 30, show=0)
+# a dialog opens floating, centred, rest dimmed
+DLG = '#!/bin/sh\nexec ghostty --class=org.oracle.testdialog --title=\"Save As\" --gtk-single-instance=false --window-width=60 --window-height=14 -e sleep 600\n'
+vm.sh(f'echo {base64.b64encode(DLG.encode()).decode()} | base64 -d >/tmp/dlg.sh; chmod +x /tmp/dlg.sh', show=0)
+vm.sh(VMENV + '; hyprctl dispatch \'hl.dsp.exec_cmd("/tmp/dlg.sh")\'; sleep 8', 30, show=0)
+d1 = act(); print('dialog:', d1)
+ok['behaviour: a dialog-titled window (Save As) opens floating (never tiled)'] = bool(d1) and d1['cls'] == 'org.oracle.testdialog' and d1['float']
+vm.mon('screendump /vm/beh-dialog.png -f png')
+vm.sh(VMENV + '; pkill -f org.oracle.testdialog; sleep 2', 30, show=0)
+# clipboard survives the app
+rc, out = vm.sh(VMENV + '; pgrep -x wl-clip-persist; echo survives | wl-copy; sleep 1; pkill -x wl-copy; sleep 1; wl-paste', 30)
+ok['behaviour: copied text is still pasteable after the copying app quits (wl-clip-persist)'] = 'survives' in out and re.search(r'^\d+$', out, re.M)
+# media keys / quick look / text packages
+rc, out = vm.sh('pacman -Q playerctl sushi wl-clip-persist; hyprctl configerrors 2>/dev/null; ' + VMENV + '; hyprctl configerrors')
+ok['behaviour: playerctl, sushi, wl-clip-persist installed; hyprctl configerrors empty'] = 'sushi' in out and 'wl-clip-persist' in out and not re.search(r'(?i)error', out.split('wl-clip-persist')[-1].split('\n', 1)[-1])
+rc, out = vm.sh('bash ~/.local/share/oracle/migrations/1794400000.sh; bash ~/.local/share/oracle/migrations/1794400000.sh; grep -c TouchpadOverscrollHistoryNavigation ~/.config/brave-origin-flags.conf; fc-match -v sans-serif | grep -E "hintstyle|hinting|rgba|autohint|antialias"')
+ok['behaviour: Brave back/forward flag present; fontconfig: no hinting, grayscale, no autohint'] = re.search(r'^1$', out, re.M) and 'hintnone' in out.replace('hintstyle: 0', 'hintnone') and 'rgba: 5' in out
+# text rendering before / after, same text
+FCF = '~/.local/share/oracle/default/fontconfig/fonts.conf'
+def textshot(name, strip):
+    vm.sh(VMENV + '; pkill -x nautilus; pkill mousepad; sleep 2', 30, show=0)
+    pre = 'env -u FREETYPE_PROPERTIES ' if strip else ''
+    vm.sh(VMENV + f'; printf "The quick brown fox jumps over the lazy dog. 0123456789\\nTiếng Việt: Xin chào, đã lưu ảnh.\\n" >/tmp/t.txt; hyprctl dispatch \'hl.dsp.exec_cmd("{pre}mousepad /tmp/t.txt")\'; sleep 4;'
+          f' hyprctl dispatch \'hl.dsp.exec_cmd("{pre}nautilus")\'; sleep 6', 30, show=0)
+    vm.mon(f'screendump /vm/{name} -f png')
+vm.sh(f'cp {FCF} /tmp/fonts.keep; python3 - <<EOF\nimport re,os\np=os.path.expanduser("{FCF}");s=open(p).read();open(p,"w").write(re.sub(r"<!-- Text like macOS.*?</match>","",s,flags=re.S))\nEOF\nfc-cache -f; fc-match -v sans-serif | grep -E "hintstyle|rgba"', 60)
+textshot('beh-text-before.png', True)
+vm.sh(f'cp /tmp/fonts.keep {FCF}; fc-cache -f; fc-match -v sans-serif | grep -E "hintstyle|rgba"', 60)
+textshot('beh-text-after.png', False)
+vm.sh(VMENV + '; pkill -x nautilus; pkill mousepad; sleep 2', 30, show=0)
 step('boot time after (this branch applied)')
+vm.sh('sudo -v', 60, sudo, show=0)
 vm.send('sudo reboot\n'); time.sleep(5); vm.login()
 rc, out = vm.sh(BOOT, 600, show=60)
 rc, out = vm.sh('busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager HandlePowerKey')

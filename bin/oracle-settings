@@ -8,7 +8,7 @@ source "$H/theme.sh"
 source "$H/pick.sh"
 DIR=$HOME/.local/share/oracle SEL=0 MSG='' BW=64
 ITEMS=(brightness nightlight textsize scale volume mute output battery wifi network bluetooth devices
-       timezone keyboard accent wallpaper about update rollback restart shutdown)
+       tracking tap natural keyrepeat keyboard timezone accent wallpaper about update rollback restart shutdown)
 BUTTONS=4 # last 4 items are the buttons row
 declare -A IDX; for i in "${!ITEMS[@]}"; do IDX[${ITEMS[i]}]=$i; done
 [[ -n ${1:-} && -n ${IDX[${1:-}]:-} ]] && SEL=${IDX[$1]} # oracle settings [item]: start on that row (the control panel uses it)
@@ -26,6 +26,7 @@ select_() { printf "%s[ %s%-24s%s v ]%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # [ 
 stepper() { printf "%s◂ %s%-24s%s ▸%s" "$D" "$W" "${1:0:24}" "$D" "$N"; } # ◂ value ▸ = ←→ change
 button() { printf "%s[ %s%s%s ]%s" "$D" "$W" "$1" "$D" "$N"; }
 
+trk() { awk -v t="${S[tracking]:-0.37}" 'BEGIN{print int((t+1)*50+0.5)}'; } # -1..1 -> 0..100
 get() {
   declare -gA S=(); local k v
   while IFS='=' read -r k v; do [[ -n $k ]] && S[$k]=$v; done 2>/dev/null <"$HOME/.config/oracle/settings"
@@ -54,7 +55,10 @@ draw() {
   row battery battery "$(slider "$BAT" "stop charging")"; LINES+=('')
   row wifi wifi "$(toggle "$WIFI")"; row network network "$(select_ "${SSID:-not connected}")"
   row bluetooth bluetooth "$(toggle "$BT")"; row devices devices "$(select_ "${BTDEV:-none connected}")"; LINES+=('')
-  row timezone "time zone" "$(select_ "${TZ_:-?}")"; row keyboard keyboard "$(select_ "${S[keyboard]:-us}")"
+  LINES+=("  ${D}Trackpad${N}"); row tracking "tracking" "$(slider "$(trk)")"; row tap "tap to click" "$(toggle "${S[tap]:-on}")"
+  row natural "natural" "$(toggle "${S[natural]:-on}")"; LINES+=('')
+  LINES+=("  ${D}Keyboard${N}"); row keyrepeat "key repeat" "$(stepper "${S[keyrepeat]:-normal}")"; row keyboard "layout" "$(select_ "${S[keyboard]:-us}")"; LINES+=('')
+  row timezone "time zone" "$(select_ "${TZ_:-?}")"
   row accent accent "$(stepper "${S[accent]:-white}")"; row wallpaper wallpaper "$(select_ "${WP##*/}")"
   row about about "$(select_ "$USER@$(cat /etc/hostname 2>/dev/null)")"; LINES+=('')
   for k in "${ITEMS[@]: -BUTTONS}"; do
@@ -104,6 +108,8 @@ about() {
   done
   LINES+=(''); place; printf '\e[?2026h\e[H\e[2J'; box about "any key or click: back"; printf '\e[?2026l'; key
 }
+live() { [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl reload >/dev/null; } # desktop running: apply now
+tr_set() { oracle set tracking "$1"; live; }
 cycle() { # cycle <current> <+1|-1> <values...> → V
   local c=$1 d=$2 i; shift 2; local a=("$@")
   for ((i = 0; i < $#; i++)); do [[ ${a[i]} == "$c" ]] && break; done; ((i == $#)) && i=0
@@ -111,6 +117,9 @@ cycle() { # cycle <current> <+1|-1> <values...> → V
 }
 change() { # change <+1|-1> for the selected row
   case ${ITEMS[SEL]} in
+    tracking) tr_set "$(awk -v t="${S[tracking]:-0.37}" -v d="$1" 'BEGIN{t+=d*0.05; if(t<-1)t=-1; if(t>1)t=1; printf "%.2f", t}')" ;;
+    tap | natural) [[ ${S[${ITEMS[SEL]}]:-on} == on ]] && oracle set "${ITEMS[SEL]}" off || oracle set "${ITEMS[SEL]}" on; live ;;
+    keyrepeat) cycle "${S[keyrepeat]:-normal}" "$1" slow normal fast; oracle set keyrepeat "$V"; live ;;
     brightness) brightnessctl -q set "$((BRI + $1 * 5 < 1 ? 1 : BRI + $1 * 5))%" ;;
     volume) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$((VOL + $1 * 5 < 0 ? 0 : VOL + $1 * 5))%" ;;
     mute) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
@@ -150,13 +159,14 @@ click() { # mouse: row = select + act; slider = set to that spot; ◂ / ▸ half
   [[ -n ${ROWOF[r]:-} ]] || return
   SEL=${ROWOF[r]} x=$((x - 16)) # controls start after "> " + 14-wide label
   case ${ITEMS[SEL]} in
-    brightness | volume | battery) ((x >= 0 && x <= 24)) || return; v=$((x * 100 / 24))
+    brightness | volume | battery | tracking) ((x >= 0 && x <= 24)) || return; v=$((x * 100 / 24))
       case ${ITEMS[SEL]} in
+        tracking) tr_set "$(awk -v v="$v" 'BEGIN{printf "%.2f", v/50-1}')" ;;
         brightness) brightnessctl -q set "$((v < 1 ? 1 : v))%" ;;
         volume) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "$v%" ;;
         battery) v=$(((v + 2) / 5 * 5)); oracle battery "$((v < 20 ? 20 : v))" >/dev/null ;;
       esac 2>/dev/null ;;
-    nightlight | textsize | scale | accent) ((x < 0)) && return; if ((x < 14)); then change -1; else change 1; fi ;;
+    nightlight | textsize | scale | accent | keyrepeat) ((x < 0)) && return; if ((x < 14)); then change -1; else change 1; fi ;;
     *) ((x >= 0)) && press ;;
   esac
 }

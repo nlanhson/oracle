@@ -2,7 +2,7 @@
 local D = os.getenv("HOME") .. "/.local/share/oracle/default/hypr/"
 package.path = D .. "?.lua;" .. os.getenv("HOME") .. "/.config/hypr/?.lua;" .. package.path
 
-for _, m in ipairs({ "monitors", "autostart", "binds", "env", "decorations", "motion", "layout", "misc", "input", "windowrules" }) do
+for _, m in ipairs({ "monitors", "autostart", "binds", "env", "decorations", "motion", "layout", "misc", "input", "behaviour", "windowrules" }) do
   require("modules." .. m)
 end
 
@@ -14,13 +14,8 @@ for k, v in pairs({ QT_IM_MODULE = "fcitx", XMODIFIERS = "@im=fcitx", SDL_IM_MOD
   hl.env(k, v)
 end
 
--- Oracle settings screen (~/.config/oracle/settings): screen scale, keyboard layout
-local S = {}
-local f = io.open(os.getenv("HOME") .. "/.config/oracle/settings")
-if f then
-  for l in f:lines() do local k, v = l:match("^([%w_]+)=(.*)$"); if k then S[k] = v end end
-  f:close()
-end
+-- Oracle settings screen (~/.config/oracle/settings): screen scale, keyboard layout (the rest is read in input.lua / behaviour.lua)
+local S = require("modules.settings")
 if S.scale then hl.monitor({ output = "eDP-1", mode = "preferred", position = "1920x0", scale = S.scale }) end
 if S.keyboard then hl.config({ input = { kb_layout = S.keyboard } }) end
 
