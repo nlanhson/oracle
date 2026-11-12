@@ -31,7 +31,6 @@
 /* notifications */
 .control-center .widget-title { margin: 0 0 4px; }
 .control-center .widget-title > label { font-size: 0; margin: 0; }
-.control-center .widget-title > button { margin: 0; padding: 2px 12px; font-size: 11px; background: @o_frost; border: 1px solid alpha(@o_bright, 0.10); }
 .control-center .control-center-list-placeholder { opacity: 1; color: @o_dim; }
 
 .notification-row .notification-background { padding: 4px 0; }
@@ -62,16 +61,24 @@
 .floating-notifications .notification-row .notification-background { padding: 4px 8px 4px 0; }
 .floating-notifications { padding-top: 4px; }
 
-.notification-action > button,
-.widget-title > button {
+.notification-action > button {
 	background: @o_raised;
 	border: 1px solid @o_line;
 	border-radius: 99px;
 	color: @o_text;
 	box-shadow: none;
 }
-.notification-action > button:hover,
-.widget-title > button:hover { background: @o_hover; color: @o_bright; }
+.notification-action > button:hover { background: @o_hover; color: @o_bright; }
+
+/* Clear All: plain text, muted, brighter on hover; gone when there is nothing to clear */
+.control-center .widget-title > button,
+.widget-title > button {
+	background: none; border: none; box-shadow: none; outline: none;
+	margin: 0 6px 0 0; padding: 2px 6px; border-radius: 6px;
+	font-size: 12px; font-weight: 500; color: @o_muted;
+}
+.widget-title > button:hover { background: none; color: @o_bright; }
+.widget-title > button:disabled { opacity: 0; }
 
 .notification-group .notification-group-headers,
 .notification-group .notification-group-buttons { margin: 0 4px; color: @o_muted; }
