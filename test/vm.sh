@@ -309,14 +309,16 @@ if MODE == 'try':  # reuses the installed disk. Design + what is saved/restored:
     URL = 'http://10.0.2.2:8000/oracle.git'
     BUS = 'export XDG_RUNTIME_DIR=/run/user/$(id -u); export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus'
     VMENV = BUS + '; export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) WAYLAND_DISPLAY=$(cd $XDG_RUNTIME_DIR && ls -d wayland-? | head -1)'
-    def start(label):
-        step(label); v = VM([])
+    def start(label, v=None):  # v = the running VM after a reboot (qemu stays up, the guest restarts)
+        step(label); v = v or VM([])
         i, _ = v.expect([LUKS, r'oracle login:'], 900)
         if i == 0: v.send(PW + '\n'); v.expect([r'oracle login:'], 300)
         v.login(seen=True); v.sh('sudo -v', 60, sudo, show=0); v.sh(BUS, show=0)
         return v
     def reboot(label):
-        vm.send('sudo reboot\n'); time.sleep(5); return start(label)
+        vm.buf = b''; vm.send('sudo reboot\n')
+        if vm.expect([r'\[sudo\] password for son:'], 4, fail=False)[0] == 0: vm.send(PW + '\n')
+        return start(label, vm)
     def fp(name):  # fingerprint into ~/.fp-<name>.txt
         vm.sh('sudo -v', 60, sudo, show=0)
         vm.sh('curl -fsS http://10.0.2.2:8000/fp.sh -o ~/.fp.sh && bash ~/.fp.sh >~/.fp-%s.txt 2>~/.fp-%s.err; wc -l ~/.fp-%s.txt; head -n 5 ~/.fp-%s.err' % ((name,) * 4), 300, sudo, 6)
@@ -333,7 +335,8 @@ if MODE == 'try':  # reuses the installed disk. Design + what is saved/restored:
         return vm.sh('for i in $(seq 120); do docker ps --format "{{.Names}}" | grep -q dockge && break; sleep 5; done; docker ps --format "{{.Names}} {{.Status}}"', 700)
     vm = start('try 1: the VM is the owner\'s laptop: Oracle from main (the commit with oracle try), then one normal update')
     rc, out = vm.sh(f'cd ~/.local/share/oracle && (git remote set-url origin {URL} 2>/dev/null || git remote add origin {URL}) && git fetch -q origin main feel/try'
-                    ' && git checkout -q -f -B main origin/main && git branch -q --set-upstream-to=origin/main main && git log --oneline -1 && git status -sb | head -n 2', 300)
+                    ' && git checkout -q -f -B main origin/main && git branch -q --set-upstream-to=origin/main main && git --no-pager log --oneline -1 && git status -sb | head -n 2', 300)
+    if rc: sys.exit('could not put the clone on main')
     ok['laptop clone is on main (served from the test git server)'] = rc == 0
     rc, out = vm.sh('oracle update', 3600, ask, 15)
     ok['laptop: oracle update from main works'] = rc == 0
