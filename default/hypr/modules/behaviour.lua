@@ -111,4 +111,4 @@ hl.bind(Mod .. " + ALT + Escape", hl.dsp.exec_cmd("hyprctl kill"))  -- Option-Co
 
 -- Four-finger pinch in = launcher (Launchpad); 3 fingers up/down = Shell mode, following your fingers
 hl.gesture({ fingers = 4, direction = "pinchin", action = function() hl.dispatch(hl.dsp.exec_cmd(launcher)) end })
-hl.gesture({ fingers = 3, direction = "vertical", action = "special", workspace_name = "shell" })
+hl.gesture({ fingers = 4, direction = "vertical", action = "special", workspace_name = "shell" })

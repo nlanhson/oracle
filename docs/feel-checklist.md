@@ -21,7 +21,7 @@ Work through it on the G14, note what feels off in plain words, and say which it
 | Screen dims at 2 min and turns off at 3 min on battery (5 and 7 plugged in) | edit `~/.config/hypr/hypridle.conf` |
 | Key repeat is faster | Settings → Keyboard → key repeat: slow |
 | Two-finger click is right click; touchpad corners do nothing special | `clickfinger_behavior = false` in your `~/.config/hypr/hyprland.lua` |
-| Three fingers up/down = Shell mode (was: nothing) | tell me |
+| Four fingers up/down = Shell mode (your own three-finger gestures stay yours) | tell me |
 | Bar: no memory, temperature or power button; power menu is under the Oracle mark | tell me |
 | Launcher is Oracle's own, fuzzel is no longer used | tell me |
 | Boot menu is hidden: tap M in the first second to open it | set `timeout: 5` in `/boot/limine.conf` |
@@ -64,7 +64,7 @@ Work through it on the G14, note what feels off in plain words, and say which it
 **Behaviour**
 - [ ] Super+Tab walks through every open app and comes round again.
 - [ ] Super+` moves between two windows of one app. Super+Ctrl+F full screen. Super+comma opens Settings.
-- [ ] Three fingers up/down: Shell mode follows your fingers; Super+M still works both ways.
+- [ ] Four fingers up/down: Shell mode follows your fingers; Super+M still works both ways.
 - [ ] Four-finger pinch opens the launcher. Super+pinch zooms.
 - [ ] Two-finger click = right click. Brave Origin: two-finger swipe goes back and forward.
 - [ ] A file picker and a password prompt float in the centre with the rest dimmed. Picture-in-picture stays in the corner.

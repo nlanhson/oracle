@@ -63,7 +63,7 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 | 3 fingers left / right | Previous / next workspace (follows your fingers) |
-| 3 fingers up or down | Shell mode rises over the desktop (and goes away again), following your fingers |
+| 4 fingers up or down | Shell mode rises over the desktop (and goes away again), following your fingers |
 | 4 fingers pinch in | App launcher |
 | `Super` + pinch | Zoom in on the pointer, pinch back to zoom out |
 
