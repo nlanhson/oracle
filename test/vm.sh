@@ -46,7 +46,7 @@ python -m http.server -d /srv 8000 >/dev/null 2>&1 &
 MODE=$MODE ISO=$ISO python -u - <<'PY'
 import glob, os, re, select, socket, struct, subprocess, sys, time, zlib
 PW = 'oracle-test-pw'
-LUKS = r'(?i)passphrase for [^\r\n]*: '
+LUKS = r'(?i)(passphrase|recovery key) for [^\r\n]*: '  # systemd: "passphrase or recovery key for disk … (root): "
 MODE = os.environ['MODE']
 log = open('/vm/serial.log', 'ab')
 
