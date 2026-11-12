@@ -1,87 +1,28 @@
 # Feel: laptop checklist
 
-Everything in `docs/feel.md` is built and passes the full VM install (200 checks). This list is what a VM cannot judge.
-Work through it on the G14, note what feels off in plain words, and say which items to tune or drop.
+Back to normal at any time: from Shell mode `oracle try back`, answer y, restart. If `oracle` is broken: `bash ~/.local/state/oracle/try/oracle try back`. Plain login: Ctrl+Alt+F2.
 
-## Before you start
+## Already checked (from docs/feel-tuning.md)
+- Power button opens the power menu; bar without memory/temperature, power under the Oracle mark; Super+Ctrl+F.
+- Launcher sums, dialogs (centred, dimmed), clipboard after an app quits, launcher learns your picks.
+- Bar blur, text rendering, two-finger right click, media keys, motion, lock screen (blurred desktop).
+- Brave two-finger back/forward, Super+P confirm, key repeat.
 
-1. Fix the disk prompt first (once): `sudo systemd-cryptenroll --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 /dev/nvme0n1p2`, restart, no disk prompt.
-2. `oracle update` (brings the `oracle try` command), then `oracle try feel/try`, answer y, wait, restart.
-3. To go back at any time: from Shell mode run `oracle try back`, answer y, restart at once.
-   If `oracle` itself is broken: `bash ~/.local/state/oracle/try/oracle try back`.
-4. If the login screen misbehaves: Ctrl+Alt+F2 gives a plain login.
+## Still to test (most important first)
+Pick up the fixes first: `oracle update` (brings airctl), then log out and in once so every daemon has the new settings. Run once: `bash ~/.local/share/oracle/migrations/1794500000.sh` (new bar config: no screen icon, song name opens the card).
 
-## What is different from what you are used to
-
-| Change | Switch it back |
-|---|---|
-| Power button opens the power menu instead of shutting down (hold 5 s = off) | drop-in `zz-mine.conf` with `HandlePowerKey=poweroff` in `/etc/systemd/logind.conf.d/` |
-| Battery: notices at 20% and 10%, clean shutdown at 4% | `sudo systemctl mask --now oracle-power.service` |
-| Alerts and the weekly update notice | `systemctl --user mask --now oracle-watch.timer` |
-| Screen dims at 2 min and turns off at 3 min on battery (5 and 7 plugged in) | edit `~/.config/hypr/hypridle.conf` |
-| Key repeat is faster | Settings → Keyboard → key repeat: slow |
-| Two-finger click is right click; touchpad corners do nothing special | `clickfinger_behavior = false` in your `~/.config/hypr/hyprland.lua` |
-| Four fingers up/down = Shell mode (your own three-finger gestures stay yours) | tell me |
-| Bar: no memory, temperature or power button; power menu is under the Oracle mark | tell me |
-| Launcher is Oracle's own, fuzzel is no longer used | tell me |
-| Boot menu is hidden: tap M in the first second to open it | set `timeout: 5` in `/boot/limine.conf` |
-| New keys: Super+Tab, Super+`, Super+Ctrl+F, Super+Ctrl+Q, Super+comma, Super+Alt+Esc, Super+Shift+3/4/5, media keys | tell me which to drop |
-
-## Check
-
-**Boot and login**
-- [ ] Power on, touch nothing: no text, no menu, straight to the ORACLE login. Does the ASUS logo hold, or does the screen go black in between?
-- [ ] Tap M from the power button: the grey menu opens, Snapshots are listed.
-- [ ] Login screen readable on your display. Type a wrong password once: is the plain "Login incorrect" fallback acceptable?
-- [ ] `oracle doctor`: every line ok.
-
-**Look**
-- [ ] Bar: Oracle mark, app name in bold, icons, date and time. Size right at your 1.67 scale? Battery shows as % plus icon.
-- [ ] Frosted blur on bar, Control Center, launcher, notifications, volume pop-up: readable on the dunes and on a bright wallpaper?
-- [ ] Text: as crisp as before, or softer? (New rendering rules; easy to revert.)
-- [ ] Lock (`Super + Ctrl + Q`): blurred desktop behind the clock, or plain black?
-- [ ] Folder icons grey in Files. Floating windows have a soft shadow.
-
-**Motion**
-- [ ] Open and close a terminal a few times: quick and soft, no pop, no bounce.
-- [ ] Three windows, close the middle one: the others glide.
-- [ ] Workspaces by three-finger swipe (slow and flick) and Super+1–5.
-
-**Control Center and notifications**
-- [ ] Bar icon opens it at once, 6 px under the bar; Esc and a click outside close it.
-- [ ] Wi-Fi shows your network name, Bluetooth your device; the round buttons toggle; clicking the text opens the list.
-- [ ] Display and Sound sliders follow the drag with no lag; brightness never goes black. Battery slider changes the charge limit.
-- [ ] Do Not Disturb: the panel and the bar icon agree. (In the VM the bar showed the bell while the panel said Off.)
-- [ ] Click the date: notification cards float on the right. Send yourself a few; 5 seconds feels right? Lock the screen, send one: nothing pops up, it waits in the list.
-- [ ] Memory: `ps -o rss= -C qs` (it sat near 189 MB in the VM).
-
-**Launcher**
-- [ ] Super+Space: appears with no delay, typing lands at once. Vietnamese typing works in it.
-- [ ] `12*7`, Enter, paste: 84. A file from Documents opens. An `oracle` command runs.
-- [ ] Open the same app by two letters a few times: it becomes the first result.
-- [ ] Super+P → Shut Down: asks, Cancel is first. Lock acts at once.
-
-**Behaviour**
-- [ ] Super+Tab walks through every open app and comes round again.
-- [ ] Super+` moves between two windows of one app. Super+Ctrl+F full screen. Super+comma opens Settings.
-- [ ] Four fingers up/down: Shell mode follows your fingers; Super+M still works both ways.
-- [ ] Four-finger pinch opens the launcher. Super+pinch zooms.
-- [ ] Two-finger click = right click. Brave Origin: two-finger swipe goes back and forward.
-- [ ] A file picker and a password prompt float in the centre with the rest dimmed. Picture-in-picture stays in the corner.
-- [ ] Copy text, quit the app, paste: still there. Space in Files previews a file.
-- [ ] Play/pause/next keys. Shift+Alt+volume takes small steps.
-- [ ] Super+Alt+Esc, click a window: it closes. Esc cancels.
-- [ ] Settings → Trackpad and Keyboard rows change things live.
-
-**Screenshots**
-- [ ] Print, drag, paste into a chat: under 3 seconds. Esc leaves nothing.
-- [ ] The thumbnail: Copy, Edit (opens the editor), click = open the picture.
-
-**System**
-- [ ] Tap the power button on the desktop: power menu. In Shell mode: nothing. 
-- [ ] Unplug: screen dims at 2 min, off at 3, keyboard light goes with it. A playing video keeps it on.
-- [ ] `oracle update --check`: a count next to `[u]pdate`; the dashboard still fits your screen.
-
-**Not for this round**
-- Secure Boot (`oracle secureboot`): leave it off until the rest feels right. Its own page: `docs/manual/secure-boot.md`.
-- `oracle welcome`: run it by hand once if you want to see the first-run guide.
+1. Blur: launcher (Signal), Notification Center, banners, volume pop-up, Control Center are all frosted over a busy window.
+2. Control Center: right column is Do Not Disturb + a wide Settings tile. Battery title shows "Limit N%", live while you drag. Click the Wi-Fi name: airctl opens (floating).
+3. Now Playing: play something. The card is in the Control Center with a progress bar you can drag; press a media key: a small card drops under the bar for 3 s; click the song name on the bar: the card stays until you click away.
+4. Shell mode, four fingers: swipe UP, it rises from the bottom; swipe DOWN, it goes back down. If either feels backwards, say which.
+5. Signal: Super+Space shows "Signal" in the field. Super+P, Shut Down: "Shuts down automatically in 60 seconds" counts down; Cancel is first; Enter on Shut Down acts at once.
+6. Notification Center: Clear All is plain text and disappears when empty. (The "No Notifications" line still sits mid-screen: known, open.)
+7. Super+comma Settings pop-up fits the screen; the list scrolls with the arrow keys.
+8. Space in Files: preview opens in a floating window. If you still get Properties, run `nautilus -q`, reopen Files, try again.
+9. Super+Alt+Esc: a banner says "Click a window to force quit it", click a window: it closes; Esc cancels.
+10. Print, drag an area: a thumbnail banner with Copy / Edit appears (could not reproduce the missing banner here; if it still fails, tell me whether Do Not Disturb was on).
+11. Removed, nothing to test: Super+Tab, four-finger pinch, the laptop-screen button.
+12. Trackpad and Keyboard rows in Settings change things live (not tested yet).
+13. Boot and login: no text on boot, grey menu on tap M, readable login, wrong-password fallback, `oracle doctor` all ok.
+14. Unplug: dim at 2 min, off at 3; `oracle update --check` count next to `[u]pdate`.
+15. Notification cards slide in from the right; lock the screen, send one: it waits in the list.

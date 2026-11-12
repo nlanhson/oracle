@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: for f in install.sh server/server.sh system/* migrations/*.sh bin/* test/*.sh; do bash -n "$f" || exit 1; done
+      - run: for f in install.sh server/server.sh system/* migrations/*.sh bin/* test/*.sh; do if head -n 1 "$f" | grep -q python; then python3 -m py_compile "$f" || exit 1; else bash -n "$f" || exit 1; fi; done
       - run: bash test/manual.sh
       - run: bash test/look.sh
       - run: bash test/system.sh
