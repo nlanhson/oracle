@@ -104,13 +104,15 @@ case ${1:-help} in
         git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes there?). Nothing was changed. Fix: git -C $DIR status"
         [[ $(git -C "$DIR" rev-parse HEAD) == $(<"$B/commit") ]] || say "note: main is not the commit you started from; kept as it is"
         say "your settings and Oracle's state"
+        pkill -x fcitx5 || true # the typing helper would rewrite its own files when it quits after the restore
         cfgnames | putback "$HOME/.config" "$B/config" || die "could not put ~/.config back. The copy is safe in $B/config; nothing else was changed. Fix, then run oracle try back again."
         statenames | putback "$S" "$B/state" || die "could not put the Oracle state back. The copy is in $B/state. Fix, then run oracle try back again."
-        for e in "${X[@]}"; do rm -rf "${HOME:?}/$e"; [[ ! -e $B/extra/$e && ! -L $B/extra/$e ]] || { mkdir -p "$(dirname "$HOME/$e")"; cp -a --reflink=auto "$B/extra/$e" "$HOME/$e"; }; done
+        for e in "${X[@]}"; do rm -rf "${HOME:?}/$e"; [[ -e $B/extra/$e || -L $B/extra/$e ]] || rmdir --ignore-fail-on-non-empty "$(dirname "$HOME/$e")" 2>/dev/null || true; [[ ! -e $B/extra/$e && ! -L $B/extra/$e ]] || { mkdir -p "$(dirname "$HOME/$e")"; cp -a --reflink=auto "$B/extra/$e" "$HOME/$e"; }; done
         if command -v dconf >/dev/null; then while IFS=$'\t' read -r k v; do
             if [[ $v == UNSET ]]; then dconf reset "$GI/$k"; else dconf write "$GI/$k" "$v"; fi; done <"$B/gsettings" || bad+=" gsettings"; fi
         say "system: programs and system files"
         sudo snapper -c root undochange "$(tget pre)..$POST" >/dev/null || die "the system part failed. Your settings are back already. Try again: oracle try back (or oracle rollback)."
+        [[ ! -f $B/limine.conf ]] || sudo cp "$B/limine.conf" /boot/limine.conf # the boot menu file lives outside the snapshot (its top lines, timeout, quiet)
         bootfix; sudo systemctl daemon-reload; systemctl --user daemon-reload 2>/dev/null || true
         pacman -Qqe | sort >"$B/packages.now"
         if ! diff -q <(sort "$B/packages") "$B/packages.now" >/dev/null; then bad+=" packages"; echo "programs differ from before:"; diff <(sort "$B/packages") "$B/packages.now" | head -20 || true; fi
@@ -142,7 +144,7 @@ case ${1:-help} in
         for e in "${X[@]}"; do [[ -e $HOME/$e || -L $HOME/$e ]] || continue; mkdir -p "$B/extra/$(dirname "$e")"; cp -a --reflink=auto "$HOME/$e" "$B/extra/$e" || die "could not copy $e. Nothing was changed."; done
         echo "  also: shell start files, the grey folder icons, the Oracle state (settings, migration marks)"
         for k in "${GK[@]}"; do v=$(dconf read "$GI/$k" 2>/dev/null || true); printf '%s\t%s\n' "$k" "${v:-UNSET}"; done >"$B/gsettings"
-        pacman -Qqe >"$B/packages"; git -C "$DIR" rev-parse HEAD >"$B/commit"; cp "$ME/oracle" "$TRY/oracle"
+        sudo cp /boot/limine.conf "$B/limine.conf" 2>/dev/null || true; pacman -Qqe >"$B/packages"; git -C "$DIR" rev-parse HEAD >"$B/commit"; cp "$ME/oracle" "$TRY/oracle"
         printf 'branch=%s\nsince=%s\ndir=%s\npre=%s\n' "$b" "$(date '+%F %H:%M')" "$B" "$PRE" >"$TA"
         trap 'rc=$?; p=$(snap "oracle try $b" -t post --pre-number "$PRE" || true); [[ -z $p ]] || tset post "$p"; ((rc == 0)) || say "stopped. The way back: oracle try back"' EXIT
         git -C "$DIR" switch -q -C "$b" --track "origin/$b" || die "could not switch to $b. Nothing was installed. Undo: oracle try back"
