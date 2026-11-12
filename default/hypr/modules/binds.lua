@@ -28,6 +28,7 @@ hl.define_submap("shell", function() -- Oracle: in Shell mode every key goes to 
 end)
 hl.bind(Mod .. " + slash", hl.dsp.exec_cmd("ghostty --class=oracle.manual --gtk-single-instance=false --window-width=110 --window-height=34 -e oracle manual")) -- Oracle: manual pop-up
 hl.bind(Mod .. " + P", hl.dsp.exec_cmd("oracle launcher power"))
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd("oracle launcher power")) -- Oracle: power button = power menu (logind ignores a press; holding it 5 s still shuts down)
 
 -- Sleep/Idle
 -- WARNING: this SUSPENDS the machine, which stops the home server and

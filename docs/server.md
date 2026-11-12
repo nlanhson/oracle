@@ -21,6 +21,8 @@ phone ──Tailscale──► vpn-exit (inside Gluetun) ──ProtonVPN Singapo
 - `server.sh` sets up `tailscale serve` by itself. It needs **MagicDNS** and **HTTPS Certificates** turned on once at https://login.tailscale.com/admin/dns. Check with `tailscale serve status`.
 - Never use `tailscale funnel` for Dockge: that puts it on the public internet, and Dockge controls everything on the laptop.
 - Every app has its own folder under `~/docker/`, and Dockge shows them all. Dockge itself lives in `~/dockge/` so it can't stop itself by accident.
+- **It never goes off by accident.** The machine never sleeps by itself, a press of the power button does nothing to the server (the desktop shows the power menu instead), and on a dying battery it shuts down cleanly at 4%: docker stops the apps first, so Postgres closes its files properly. It comes back by itself after a power cut. To make a press shut down again, put `[Login]` and `HandlePowerKey=poweroff` on two lines in `/etc/systemd/logind.conf.d/zz-mine.conf` (it loads after Oracle's), then restart. To stop the battery rules: `sudo systemctl mask --now oracle-power.service` (`unmask` brings them back).
+- **If a server app stops**, you get one notification ("Immich is not working ... Check it with: oracle doctor"), at most once a day.
 - The laptop sits on an apartment Wi-Fi with no router access, so no port forwarding: everything goes through Tailscale.
 
 ## Updating the apps

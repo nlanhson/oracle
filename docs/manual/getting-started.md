@@ -76,7 +76,7 @@ Keyboard layout and screen scale apply the next time Shell mode or the desktop s
 
 You can also use the mouse everywhere: see [Keys](keys.md#mouse-in-shell-mode).
 
-After 5 minutes without touching anything, the screen dims; after 7 it turns off. Closing the lid also turns the screen off. The computer keeps running either way, so the home server stays up.
+After 5 minutes without touching anything, the screen dims; after 7 it turns off. On battery that happens sooner, after 2 and 3 minutes, and the keyboard light goes off with the screen. A playing video keeps the screen on. Closing the lid also turns the screen off. The computer keeps running either way, so the home server stays up.
 
 You can use the mouse in Shell mode too: click a workspace number, scroll, and select text to copy it.
 
@@ -92,6 +92,26 @@ Your terminal sessions keep running while you're in the desktop. Apps you opened
 
 Every part of the desktop (bar, launcher, notifications, volume pill, lock screen, window borders, Files and other apps) takes its greys, corners, spacing and fonts from one file (the font is Inter, a clear sans that also covers Vietnamese; terminals and Shell mode keep JetBrains Mono): `~/.local/share/oracle/default/look/tokens`. To change a value yourself, copy the line into `~/.config/oracle/tokens` (same format, it wins), then run `oracle look`. Your accent colour in Settings is used too. To add your own touches to one part, write below the import line in its file in `~/.config` (for example `~/.config/waybar/style.css`).
 
+## Power and battery
+
+- **Power button:** a press never turns Oracle off, because it is also your home server. On the desktop a press opens the power menu (the same as `Super + P`); in Shell mode and at the login screen it does nothing. To force it off, hold the button for 5 seconds: Oracle shuts down cleanly.
+- **Battery:** when running on battery, Oracle tells you at 20% ("Plug in soon") and at 10% ("Plug in now", this one stays until you close it). At 4% it shuts down cleanly after 60 seconds, so the photo database is never cut off mid-write. Plug in during those 60 seconds and nothing happens. It never sleeps. The percentages are of the real battery, so with a charge limit of 50% you still get the warnings at 20 and 10.
+
+## When something needs you
+
+Oracle looks for problems every 5 minutes and tells you once, in a short notification that ends with what to do:
+
+| You see | It means | What to do |
+|---|---|---|
+| Disk almost full: Disk is 92% full | Less than a tenth of the disk is free | Free some space: `oracle files`, empty the trash |
+| Something stopped working: The service X stopped working | A background service failed | `oracle doctor` shows which, and how to fix it |
+| Brave Origin quit unexpectedly | An app crashed | Open it again |
+| This Wi-Fi needs a sign-in | A café or hotel Wi-Fi wants you to accept its page | Click the notification: the sign-in page opens in the browser |
+| Immich is not working | A home server app stopped | `oracle doctor` |
+| Updates are ready | New programs or a newer Oracle are waiting | `oracle update`, when it suits you |
+
+The same alert never comes twice in one day. In Shell mode there are no notifications: the same lines show on the dashboard, just above the bottom links, with a red `!`. To turn the alerts and the update notice off: `systemctl --user mask --now oracle-watch.timer` (`unmask` turns them back on).
+
 ## First things to do
 
 1. **Wi-Fi:** if you didn't connect during install, type `nmtui`.
@@ -101,7 +121,7 @@ Every part of the desktop (bar, launcher, notifications, volume pill, lock scree
 
 ## Getting help
 
-Something feels off? Type `oracle doctor`. It checks the whole computer (services, disk space, disk unlock, boot menu, snapshots, network, firewall, updates, battery limit, home server) and prints one line per check:
+Something feels off? Type `oracle doctor`. It checks the whole computer (services, disk space, disk unlock, boot menu, snapshots, network, firewall, updates, battery limit, power button, battery watch, alerts, update check, clock, home server) and prints one line per check:
 
 - `ok`: working.
 - `!`: works, but worth a look. The line says what to type.

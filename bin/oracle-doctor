@@ -100,6 +100,22 @@ if [[ -z $T ]]; then skip "battery limit" "no battery limit here"
 elif [[ ${L:-100} == "$T" ]]; then ok "battery limit" "stops at $T%"
 else warn "battery limit" "set $L%, battery says $T%: sudo systemctl restart oracle-battery.service"; fi
 unit "lid" oracle-lid.service
+k=$(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager HandlePowerKey 2>/dev/null)
+if [[ $k == *'"ignore"'* ]]; then ok "power button" "a press opens the menu, holding shuts down"
+elif [[ -f /etc/systemd/logind.conf.d/oracle-power.conf ]]; then warn "power button" "a press still shuts down: restart once"
+else warn "power button" "a press shuts the server down: rerun bash $DIR/install.sh"; fi
+if compgen -G '/sys/class/power_supply/BAT*' >/dev/null; then unit "battery watch" oracle-power.service
+else skip "battery watch" "no battery here"; fi
+if systemctl --user is-active -q oracle-watch.timer 2>/dev/null; then ok "alerts" "watching every 5 minutes"
+elif systemctl --user cat oracle-watch.timer &>/dev/null; then warn "alerts" "not running: systemctl --user enable --now oracle-watch.timer"
+else warn "alerts" "not set up: rerun bash $DIR/install.sh"; fi
+c=$(sed -n 's/^checked=//p' "$HOME/.local/state/oracle/updates" 2>/dev/null) u=$(sed -n 's/^packages=//p' "$HOME/.local/state/oracle/updates" 2>/dev/null)
+if [[ -z $c ]]; then ok "update check" "weekly, first one soon"
+elif (($(date +%s) - c > 14 * 86400)); then warn "update check" "last one $(date -d "@$c" +%-d\ %b): oracle update --check"
+else ok "update check" "weekly, last $(date -d "@$c" '+%-d %b')$( ((u)) && echo ", $u waiting: oracle update")"; fi
+if [[ $(timedatectl show -p NTP --value 2>/dev/null) == yes ]]; then
+  if [[ $(timedatectl show -p NTPSynchronized --value 2>/dev/null) == yes ]]; then ok "clock" "set automatically"; else ok "clock" "automatic, not synced yet"; fi
+else warn "clock" "not set automatically: sudo timedatectl set-ntp true"; fi
 
 sec server
 unit "docker" docker.service

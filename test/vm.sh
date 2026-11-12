@@ -231,10 +231,29 @@ ok['hyprland.lua verifies'] = rc == 0 and 'config ok' in out
 rc, out = vm.sh('for i in $(seq 120); do docker ps --format "{{.Names}}" | grep -q dockge && break; sleep 5; done;'
                 ' docker ps --format "{{.Names}} {{.Status}}"; systemctl is-enabled oracle-firstboot; journalctl -b -u oracle-firstboot -o cat | tail -n 8', 700)
 ok['first boot unit started server apps, then disabled itself'] = 'dockge' in out and re.search(r'^disabled$', out, re.M)
+BOOT = ('systemctl is-system-running --wait; systemd-analyze; systemd-analyze blame --no-pager | head -n 15;'
+        ' systemd-analyze critical-chain --no-pager | head -n 25')
+step('boot time before (this branch not applied yet): restart once, first boot already done')
+vm.send('sudo reboot\n'); time.sleep(5); vm.login()
+vm.sh(BOOT, 600, show=60)
 INSTALL = 'curl -fsSL http://10.0.2.2:8000/install.sh | ORACLE_REPO=http://10.0.2.2:8000/oracle.git bash'
 vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')  # served repo is new each run
 rc, out = vm.sh(INSTALL, 1800, sudo, 6)
 ok['install.sh re-run on the installed system (idempotent)'] = rc == 0 and 'already enrolled' in out
+step('system logic: power button, battery, alerts, updates (no desktop yet)')
+rc, out = vm.sh('busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager HandlePowerKey HandlePowerKeyLongPress; cat /etc/systemd/logind.conf.d/oracle-power.conf')
+ok['logind: power key press ignored, long press powers off (live, no reboot)'] = 's "ignore"' in out and 's "poweroff"' in out
+vm.mon('system_powerdown'); time.sleep(8)
+rc, out = vm.sh('echo STILL-UP; journalctl -b -u systemd-logind --since -1min -o cat | tail -n 3')
+ok['power button at the login screen: the machine keeps running'] = 'STILL-UP' in out and vm.p.poll() is None
+rc, out = vm.sh('bash ~/.local/share/oracle/test/system.sh', 180, show=40)
+ok['system.sh: battery rules, update check, alerts, idle steps, migration (fakes)'] = rc == 0 and 'system ok' in out
+rc, out = vm.sh('systemctl show -p ActiveState -p Result oracle-power; journalctl -b -u oracle-power -o cat | tail -n 2; systemctl is-enabled oracle-power;'
+                ' systemctl --user is-active oracle-watch.timer; timedatectl show -p NTP --value; pacman -Q pacman-contrib')
+ok['battery watcher installed (no battery in the VM: exits quietly), alerts timer on, clock automatic'] = \
+    'Result=success' in out and 'no battery' in out and re.search(r'^enabled$', out, re.M) and re.search(r'^active$', out, re.M) and re.search(r'^yes$', out, re.M)
+rc, out = vm.sh('timeout 200 oracle update --check </dev/null; cat ~/.local/state/oracle/updates; git -C ~/.local/share/oracle status --short | head -n 3', 260)
+ok['oracle update --check (real): counts, writes the state file, installs nothing'] = 'packages=' in out and 'checked=' in out
 rc, _ = vm.sh('pacman -Q waybar python-gobject gtk4-layer-shell fd swaync hypridle swaybg fwupd fcitx5-bamboo loupe bluez micro nautilus noto-fonts')
 ok['desktop packages'] = rc == 0
 rc, out = vm.sh('Hyprland --verify-config --config ~/.config/hypr/hyprland.lua 2>&1 | tail -n 3')
@@ -271,6 +290,17 @@ ok['existing install (after the update migration): no welcome, dashboard'] = 'NO
 rc, out = vm.sh('pgrep -a cage; tmux list-windows -t oracle; loginctl list-sessions --no-legend')
 ok['Shell mode + dashboard after tty1 login'] = rc == 0 and 'ghostty' in out and 'home' in out
 ok['workspaces 1-4'] = all(re.search(rf'^{i}: ', out, re.M) for i in (1, 2, 3, 4))
+vm.mon('system_powerdown'); time.sleep(8)
+rc, out = vm.sh('pgrep -a cage | head -n 1; echo STILL-UP; pgrep -af swayidle')
+ok['Shell mode: power button does nothing, cage keeps running'] = 'cage' in out and 'STILL-UP' in out and vm.p.poll() is None
+ok['Shell mode idle: 2/3 min on battery, 5/7 plugged in'] = all(x in out for x in ('timeout 120', 'idle dim battery', 'timeout 180', 'idle off battery', 'timeout 300', 'timeout 420', 'idle wake'))
+vm.sh('printf "packages=23\\noracle=0\\nchecked=$(date +%s)\\n" >~/.local/state/oracle/updates;'
+      ' echo "Disk almost full. Disk is 92% full. Free some space: oracle files" >~/.local/state/oracle/alerts; tmux select-window -t oracle:1; sleep 13', 60, show=0)
+rc, out = vm.sh('tmux capture-pane -p -t oracle:1 | grep -E "pdate|Disk is"; tmux new -d -s tall -x 160 -y 60 oracle home; sleep 5;'  # this VM screen is too short for the whole dashboard
+                ' tmux capture-pane -p -t tall | grep -E "pdate|Disk is"; tmux kill-session -t tall')
+ok['dashboard: update count in the footer, alert line above it (160x60 pane)'] = '[u]pdate 23' in out and 'Disk is 92% full. Free some space: oracle files' in out
+vm.mon('screendump /vm/sys-shell-alert.png -f png')
+vm.sh('rm -f ~/.local/state/oracle/alerts ~/.local/state/oracle/updates', show=0)
 rc, out = vm.sh('pgrep -x wlsunset && pgrep -x swayidle && cat ~/.config/oracle/ghostty; pgrep -x fcitx5 || echo NO-IME')
 ok['Shell mode: night light, idle dimming, ghostty settings file, no Vietnamese IME'] = 'font-size' in out and 'NO-IME' in out
 rc, out = vm.sh('getent passwd son | cut -d: -f7; tmux display -p -t oracle:2 "#{pane_current_command}"; zsh -ic "type _pick_dir z; starship --version | head -n 1" 2>&1')
@@ -459,16 +489,100 @@ vm.sh(VMENV + '; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/d
 vm.mon('screendump /vm/look-app.png -f png')  # bar with an app in use
 vm.sh('pkill -x nautilus; sleep 3', 30, show=0)
 vm.mon('screendump /vm/look-idle.png -f png')  # empty desktop: bar + Oracle's own wallpaper
+step('system logic: desktop')
+vm.sh('set +H', show=0)  # no ! history expansion in the fakes below
+vm.sh(VMENV + '; bash ~/.local/share/oracle/migrations/1794383700.sh; sleep 3', 60)  # = what oracle update does
+rc, out = vm.sh(VMENV + '; cmp ~/.config/hypr/hypridle.conf ~/.local/share/oracle/config/hypr/hypridle.conf && echo IDLE-NEW; grep -c "Shut down now" ~/.config/fuzzel/power-menu.sh;'
+                ' pgrep -x hypridle && echo HYPRIDLE-UP; hyprctl configerrors; grep -c XF86PowerOff ~/.local/share/oracle/default/hypr/modules/binds.lua')
+ok['desktop: migration put the new idle timers + power menu in place, hypridle restarted, no config errors'] = \
+    'IDLE-NEW' in out and 'HYPRIDLE-UP' in out and re.search(r'^1$', out, re.M) and 'error' not in out.lower()
+rc, out = vm.sh(VMENV + '; pkill -x hypridle; sleep 1; timeout 4 hypridle -v >/tmp/hi.log 2>&1; echo rc=$?; grep -ciE "error|invalid|unknown" /tmp/hi.log; grep -c "oracle idle" /tmp/hi.log; setsid -f hypridle &>/dev/null; sleep 1; pgrep -x hypridle >/dev/null && echo HYPRIDLE-UP')
+ok['hypridle runs the new config (still up after 4 s, no config errors)'] = 'rc=124' in out and re.search(r'^0$', out, re.M) and 'HYPRIDLE-UP' in out
+IDLET = (VMENV + "; pkill -x hypridle; T=$(mktemp -d); printf 'listener {\\n timeout = 4\\n on-timeout = touch %s/fired\\n}\\n' $T >$T/c.conf;"
+         " setsid -f hypridle -c $T/c.conf &>$T/log; sleep 1; systemd-inhibit --what=idle --why=video sleep 12 & sleep 9;"
+         " [ -e $T/fired ] && echo FIRED-WHILE-HELD || echo HELD; wait; sleep 7; [ -e $T/fired ] && echo FIRED-AFTER;"
+         " pkill -x hypridle; setsid -f hypridle &>/dev/null; grep -i inhibit $T/log | head -n 6")
+rc, out = vm.sh(IDLET, 120)
+ok['idle: an app holding an idle inhibitor (a video) keeps the screen on; timers run again after'] = 'HELD' in out and 'FIRED-WHILE-HELD' not in out and 'FIRED-AFTER' in out
+vm.mon('system_powerdown'); time.sleep(4)
+vm.mon('screendump /vm/sys-power-menu.png -f png')
+rc, out = vm.sh('pgrep -af fuzzel; echo STILL-UP')
+ok['desktop: power button opens the power menu'] = 'fuzzel' in out
+ok['desktop: power button does not shut down'] = 'STILL-UP' in out and vm.p.poll() is None
+vm.mon('sendkey esc'); time.sleep(2)
+rc, out = vm.sh('pgrep -x fuzzel || echo MENU-GONE; echo STILL-UP')
+ok['Esc closes the power menu, machine keeps running'] = 'MENU-GONE' in out and 'STILL-UP' in out
+N = '/tmp/notes.log'
+MATCH = "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"
+MON = (VMENV + f'; pkill -f "busctl --user monitor"; setsid -f busctl --user monitor --match "{MATCH}" >{N} 2>&1; sleep 1')
+def notes(): return re.findall(r'STRING "([^"]*)"', vm.sh(f'cat {N}', show=0)[1])
+vm.sh(MON + '; printf "packages=0\\noracle=0\\nchecked=$(date +%s)\\n" >~/.local/state/oracle/updates; oracle watch; sleep 1; swaync-client -C', 60)  # whatever is already wrong: said now
+vm.sh(MON + '; swaync-client -C; ORACLE_DISK_ALERT=1 oracle watch; sleep 2', 60)
+vm.mon('screendump /vm/sys-alert-disk.png -f png')
+n = notes(); print(n)
+ok['alert: disk almost full, one plain sentence + the fix'] = any(re.match(r'Disk is \d+% full\. Free some space: oracle files$', x) for x in n)
+vm.sh(MON + '; swaync-client -C; cp /usr/bin/sleep /tmp/crashtest; (ulimit -c unlimited; /tmp/crashtest 60 & p=$!; sleep 1; kill -SEGV $p; wait $p); sleep 5;'
+      ' coredumpctl list --no-pager --no-legend | tail -n 1; oracle watch; sleep 2', 90)
+vm.mon('screendump /vm/sys-alert-crash.png -f png')
+n = notes(); print(n)
+ok['alert: app crash → "Crashtest quit unexpectedly."'] = 'Crashtest quit unexpectedly.' in n
+vm.sh(MON + '; systemd-run --user -q --unit=oracle-test-broken false; sleep 2; oracle watch; docker stop dockge >/dev/null; ORACLE_WATCH_GRACE=0 oracle watch;'
+      ' mkdir -p /tmp/fk; echo "echo portal" >/tmp/fk/nmcli; chmod +x /tmp/fk/nmcli; PATH=/tmp/fk:$PATH oracle watch; sleep 2', 120)
+n = notes(); print(n)
+ok['alert: failed service, with the fix'] = 'The service oracle-test-broken stopped working. Check it with: oracle doctor' in n
+ok['alert: server app down, with the fix'] = 'The home server app Dockge has stopped. Check it with: oracle doctor' in n
+ok['alert: Wi-Fi sign-in page, with an Open action'] = 'This Wi-Fi needs a sign-in.' in n and 'default' in n
+vm.sh(MON + '; ORACLE_DISK_ALERT=1 ORACLE_WATCH_GRACE=0 PATH=/tmp/fk:$PATH oracle watch; sleep 2', 60, show=0)
+ok['alerts: the same ones again → no repeat today'] = notes() == []
+vm.sh('docker start dockge >/dev/null; systemctl --user reset-failed oracle-test-broken; pkill -f "notify-send -a Oracle"; oracle watch; cat ~/.local/state/oracle/alerts', 60)
+vm.sh(MON + '; mkdir -p /tmp/ps/BAT0 /tmp/ps/AC0; echo Battery >/tmp/ps/BAT0/type; echo Mains >/tmp/ps/AC0/type; echo 0 >/tmp/ps/AC0/online;'
+      ' echo 20 >/tmp/ps/BAT0/capacity; echo Discharging >/tmp/ps/BAT0/status;'
+      ' sudo setsid -f env ORACLE_POWER_SUPPLY=/tmp/ps ORACLE_POWER_TICK=1 ORACLE_POWER_GRACE=6 ORACLE_POWEROFF="touch /tmp/ps/POWEROFF" /usr/local/bin/oracle-power >/tmp/power.log 2>&1;'
+      ' sleep 3; echo 10 >/tmp/ps/BAT0/capacity; sleep 3', 60, sudo)
+vm.mon('screendump /vm/sys-alert-battery.png -f png')
+vm.sh('echo 4 >/tmp/ps/BAT0/capacity; sleep 3; echo 1 >/tmp/ps/AC0/online; sleep 4; sudo pkill -f /usr/local/bin/oracle-power; cat /tmp/power.log; ls /tmp/ps', 60, sudo)
+n = notes(); print(n)
+ok['battery (root → your desktop): 20%, 10%, 4% countdown, cancelled when plugged in'] = all(x in n for x in ('Battery at 20%', 'Plug in soon.', 'Battery at 10%', 'Plug in now.',
+    'Shutting down in 6 seconds to keep your data safe. Plug in to cancel.', 'Shutdown cancelled.')) and 'POWEROFF' not in vm.sh('ls /tmp/ps', show=0)[1]
+vm.sh(MON + '; mkdir -p /tmp/fu; printf "#!/bin/sh\\nprintf \\"linux 1 -> 2\\\\nmesa 1 -> 2\\\\n\\"\\n" >/tmp/fu/checkupdates; chmod +x /tmp/fu/checkupdates; cat /tmp/fu/checkupdates;'
+      ' rm -f ~/.local/state/oracle/updates*; PATH=/tmp/fu:$PATH oracle update --check; PATH=/tmp/fu:$PATH oracle update --check; sleep 2; cat ~/.local/state/oracle/updates', 200)
+n = notes(); print(n)
+ok['update notice: one, quiet, plain words; second check says nothing'] = n.count('Updates are ready') == 1 and any(re.match(r'\d+ packages?( and a newer Oracle)?\. Run oracle update when it suits you\.$', x) for x in n)
+rc, out = vm.sh('oracle doctor 2>&1 | grep -E "power button|battery watch|alerts|update check|clock"', 200, sudo)
+ok['doctor: power button, alerts, update check, clock green (battery watch: no battery here)'] = \
+    all(re.search(rf'ok +{x}', clean(out)) for x in ('power button', 'alerts', 'update check', 'clock')) and 'no battery here' in out
+vm.sh('pkill -f "busctl --user monitor"; swaync-client -C', show=0)
 vm.sh('HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1) oracle shell; sleep 20')
 rc, out = vm.sh('export HYPRLAND_INSTANCE_SIGNATURE=$(ls $XDG_RUNTIME_DIR/hypr | head -1); hyprctl clients | grep -c "class: oracle.shell"; hyprctl monitors | grep "special workspace"; hyprctl configerrors; tmux ls')
 ok['oracle shell → Shell over the desktop (Hyprland stays), tmux kept'] = 'special:shell' in out and 'oracle' in out.split('special:shell')[-1] and re.search(r'^1$', out, re.M)
+step('boot time after (this branch applied)')
+vm.send('sudo reboot\n'); time.sleep(5); vm.login()
+rc, out = vm.sh(BOOT, 600, show=60)
+rc, out = vm.sh('busctl get-property org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager HandlePowerKey')
+vm.mon('system_powerdown'); time.sleep(8)
+rc, out2 = vm.sh('echo STILL-UP')
+ok['after a restart: power button still ignored at the login screen'] = 's "ignore"' in out and 'STILL-UP' in out2
+step('battery at 3%, no charger: real clean shutdown (this is also the desktop shutdown-time check)')
+vm.sh('mkdir -p /tmp/ps/BAT0 /tmp/ps/AC0; echo Battery >/tmp/ps/BAT0/type; echo Mains >/tmp/ps/AC0/type; echo 0 >/tmp/ps/AC0/online;'
+      ' echo 3 >/tmp/ps/BAT0/capacity; echo Discharging >/tmp/ps/BAT0/status; sudo -v', 60, sudo, show=0)
+vm.buf = b''; vm.send('sudo ORACLE_POWER_SUPPLY=/tmp/ps ORACLE_POWER_GRACE=6 /usr/local/bin/oracle-power\n'); t_bat = time.time()
+try:
+    _, m = vm.expect([r'reboot: Power down'], 240)
+    tail = clean(m.string.decode(errors='replace'))
+    print('\n'.join(l for l in tail.splitlines() if re.search(r'Battery at|shutting down|docker|Docker|Power down', l))[-1500:])
+    try: vm.p.wait(60)
+    except subprocess.TimeoutExpired: vm.p.kill(); vm.p.wait(30); os.system('pkill -x swtpm')
+    vm.off_s = round(time.time() - t_bat, 1)
+    ok['battery 3%: clean shutdown after the wait (docker stopped first)'] = 'shutting down now' in tail
+except SystemExit as e:
+    print(e); ok['battery 3%: clean shutdown after the wait (docker stopped first)'] = False
+    vm.off()
 
 def frames(vm):
     for f in vm.frames: print(f'  {f[0]:>3} t={f[1]:>5}s {"loader/os" if f[2] else "firmware "} text-band={f[3]:<6} lit={f[5]:<7} {"" if vm.clean(f) else "TEXT"}')
     return [f for f in vm.frames if f[2]]
 step('boot: power on, no key pressed (unattended), screenshot ~1/s → boot-N.png')
-vm.off()
-print(f'poweroff from the desktop took {vm.off_s}s')
+print(f'poweroff from the desktop took {vm.off_s}s (battery path, includes its 6 s wait)')
 ok['shutdown from the desktop takes under 30 s'] = vm.off_s < 30
 vm = VM([]); vm.film('boot')
 i, _ = vm.expect([LUKS, r'oracle login:'], 300)

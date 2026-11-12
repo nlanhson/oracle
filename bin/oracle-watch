@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# oracle watch (oracle-watch.timer, every 5 min, your user): turns problems into one calm notification each, at most once a day:
+# full disk, a failed service, an app crash, Wi-Fi that needs a sign-in page, a server app down. Also the weekly update check.
+# oracle watch --updates (= oracle update --check): count waiting updates, tell once when something is new. Never installs anything.
+# Shell mode has no notifications: the same lines show on the dashboard (~/.local/state/oracle/alerts).
+DIR=$HOME/.local/share/oracle S=$HOME/.local/state/oracle
+UP=$S/updates SENT=$S/alerts.sent NOW=$(date +%s); mkdir -p "$S"
+FULL=${ORACLE_DISK_ALERT:-90}
+note() { # note <urgency> <title> <body> [url to open on click]
+  busctl --user call org.freedesktop.DBus / org.freedesktop.DBus NameHasOwner s org.freedesktop.Notifications 2>/dev/null | grep -q true || return 0
+  if [[ -n ${4:-} ]]; then
+    ( [[ $(timeout 600 notify-send -a Oracle -u "$1" -w -A default=Open "$2" "$3" 2>/dev/null) == default ]] && setsid -f xdg-open "$4" &>/dev/null ) &>/dev/null </dev/null & disown
+  else timeout 5 notify-send -a Oracle -u "$1" "$2" "$3" &>/dev/null || true; fi
+}
+
+updates() {
+  local l y o=0 n
+  if command -v checkupdates >/dev/null; then # copy of the package list in a temp folder: the real one is never touched
+    l=$(timeout 120 checkupdates 2>/dev/null); case $? in 0 | 2) ;; *) return 0 ;; esac # 1 = offline: stay quiet
+  fi
+  command -v yay >/dev/null && y=$(timeout 60 yay -Qua 2>/dev/null)
+  if timeout 60 git -C "$DIR" fetch -q 2>/dev/null; then o=$(git -C "$DIR" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0); fi
+  local new; new=$({ printf '%s\n%s\n' "$l" "$y" | sed 's/ .*//'; ((o)) && git -C "$DIR" rev-parse '@{u}'; } | grep . | sort -u)
+  n=$(printf '%s\n%s\n' "$l" "$y" | grep -c .)
+  printf 'packages=%s\noracle=%s\nchecked=%s\n' "$n" "$o" "$NOW" >"$UP"
+  if [[ -n $(comm -13 <(sort "$UP.told" 2>/dev/null) <(echo "$new") | grep .) ]]; then
+    local w=(); ((n)) && w+=("$n package$( ((n > 1)) && echo s)"); ((o)) && w+=("a newer Oracle")
+    note low "Updates are ready" "${w[0]}${w[1]:+ and ${w[1]}}. Run oracle update when it suits you."
+  fi
+  echo "$new" >"$UP.told"
+}
+if [[ ${1:-} == --updates ]]; then
+  updates; [[ -t 1 ]] || exit 0
+  if [[ $(sed -n 's/^checked=//p' "$UP" 2>/dev/null) == "$NOW" ]]; then . "$UP"; echo "Updates waiting: $packages, Oracle $( ((oracle)) && echo "has a newer version" || echo "is up to date"). Nothing was installed."
+  else echo "Could not check (offline?). Nothing was installed."; fi; exit 0
+fi
+
+A=() # alerts found this run: "key|title|body[|url]"
+p=$(df --output=pcent / | tail -1 | tr -dc 0-9)
+((p > FULL)) && A+=("disk|Disk almost full|Disk is $p% full. Free some space: oracle files")
+for u in $(systemctl --failed --plain --no-legend 2>/dev/null | awk '{print $1}') $(systemctl --user --failed --plain --no-legend 2>/dev/null | awk '{print "user:" $1}'); do
+  n=${u#user:}; n=${n%.service}
+  [[ $u == user:* ]] && pgrep -x "$n" >/dev/null && continue # e.g. swaync: its unit failed at login, the desktop started it anyway
+  [[ $n == oracle-watch ]] || A+=("unit $n|Something stopped working|The service $n stopped working. Check it with: oracle doctor")
+done
+last=$(sed -n 's/^crash-check=//p' "$SENT" 2>/dev/null); last=${last:-$((NOW - 300))}
+while read -r c; do
+  [[ -n $c ]] || continue
+  n=$(grep -lsx "StartupWMClass=$c\|Exec=\(.*/\)\?$c\( .*\)\?" /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop | head -1)
+  n=$( [[ -n $n ]] && sed -n 's/^Name=//p' "$n" | head -1); [[ $c == brave ]] && n="Brave Origin"
+  A+=("crash $c|${n:-${c^}} quit unexpectedly.|Open it again to carry on.")
+done < <(coredumpctl list --since="@$last" --no-legend --no-pager -q 2>/dev/null | awk '{n = split($(NF - 1), e, "/"); print e[n]}' | sort -u)
+[[ $(nmcli -t networking connectivity 2>/dev/null) == portal ]] && A+=("portal|This Wi-Fi needs a sign-in.|Click here to open the sign-in page.|http://ping.archlinux.org/")
+if (($(cut -d. -f1 /proc/uptime) > ${ORACLE_WATCH_GRACE:-600})) && docker info &>/dev/null; then # after boot the apps get 10 minutes to start
+  for c in Immich:immich_server Dockge:dockge "VPN exit":gluetun; do
+    st=$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "${c#*:}" 2>/dev/null) || continue
+    [[ $st == running\ * && $st != *unhealthy ]] || A+=("app ${c#*:}|${c%%:*} is not working|The home server app ${c%%:*} has stopped. Check it with: oracle doctor")
+  done
+fi
+
+: >"$S/alerts.new"
+for a in "${A[@]}"; do
+  IFS='|' read -r k t b url <<<"$a"; echo "$t $b" >>"$S/alerts.new"
+  w=$(sed -n "s/^$k=//p" "$SENT" 2>/dev/null | tail -1)
+  ((NOW - ${w:-0} < 86400)) && continue # this one was already said today
+  note normal "$t" "$b" "$url"; { grep -v "^$k=" "$SENT" 2>/dev/null; echo "$k=$NOW"; } >"$SENT.new"; mv "$SENT.new" "$SENT"
+done
+mv "$S/alerts.new" "$S/alerts"
+{ grep -v '^crash-check=' "$SENT" 2>/dev/null; echo "crash-check=$NOW"; } >"$SENT.new"; mv "$SENT.new" "$SENT"
+c=$(sed -n 's/^checked=//p' "$UP" 2>/dev/null)
+((NOW - ${c:-0} >= 7 * 86400)) && [[ -z $(find "$UP.tried" -mmin -360 2>/dev/null) ]] && { touch "$UP.tried"; updates; } # weekly; offline = again in 6 h
+exit 0

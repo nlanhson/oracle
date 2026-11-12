@@ -15,6 +15,7 @@ shown() { hyprctl monitors | grep -q 'special workspace: .*(special:shell)'; } #
 
 case ${1:-help} in
   update)
+    [[ ${2:-} == --check ]] && exec "$ME/oracle-watch" --updates # count what's waiting, tell once; installs nothing
     snap() { command -v snapper >/dev/null && sudo snapper -c root create -c number -p -d "$@" 2>/dev/null; } # rollback point
     PRE=$(snap "oracle update" -t pre || true)
     trap '[[ -n $PRE ]] && snap "oracle update" -t post --pre-number "$PRE" >/dev/null || true' EXIT
@@ -34,6 +35,7 @@ case ${1:-help} in
       say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
       sudo fwupdmgr update -y --no-reboot-check 2>&1 | grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' || true
     fi
+    rm -f "$HOME/.local/state/oracle/updates" # nothing waiting now (dashboard count)
     [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
     ;;
   rollback) # booted an older snapshot from the boot menu → make it the system. Else: pick an update, put back the files it changed
@@ -137,6 +139,7 @@ case ${1:-help} in
     if [[ -r $P ]] && kill -0 "$(<"$P")" 2>/dev/null; then [[ ${2:-} == daemon ]] || kill -"$sig" "$(<"$P")"
     else a=(); [[ ${2:-} != daemon ]] || a=(--daemon); [[ ${2:-} != power ]] || a=(--power)
       LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so exec python3 "$ME/oracle-launcher" "${a[@]}"; fi ;;
+  watch) exec "$ME/oracle-watch" ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
@@ -189,9 +192,22 @@ case ${1:-help} in
     if [[ -n $ch ]]; then pkill -USR2 -x waybar || true; swaync-client -rs &>/dev/null || true; fi ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
-  idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7. Never sleeps (server)
-    sw() { setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
-      timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null; }
+  idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7; on battery 2 and 3. Never sleeps (server)
+    case ${2:-} in dim | off | wake) # one idle step (hypridle and swayidle call these); "battery" = only when running on battery
+      P=${ORACLE_POWER_SUPPLY:-/sys/class/power_supply}; [[ ${3:-} != battery ]] || { compgen -G "$P/BAT*" >/dev/null && ! grep -qsx 1 "$P"/A*/online; } || exit 0
+      I=${XDG_RUNTIME_DIR:-/tmp}/oracle-idle; exec 9>"$I.lock"; flock 9; s=$(cat "$I" 2>/dev/null) || true
+      kb() { brightnessctl -q -d '*kbd_backlight' info &>/dev/null && brightnessctl -q -d '*kbd_backlight' "$@" || true; } # keyboard light, if there is one
+      lv=10%; [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && lv=10 # desktop: the lowest step that still glows
+      case $2 in
+        dim) [[ $s == *dim* ]] || { brightnessctl -q -s set $lv || true; kb -s set 0; echo "$s dim" >"$I"; } ;;
+        off) [[ $s == *off* ]] && exit 0; [[ $s == *dim* ]] || { brightnessctl -q -s || true; kb -s set 0; s+=" dim"; }
+          if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then hyprctl dispatch 'hl.dsp.dpms("off")' >/dev/null; else brightnessctl -q set 0 || true; fi; echo "$s off" >"$I" ;;
+        wake) [[ -n $s ]] || exit 0; [[ $s == *off* && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl dispatch 'hl.dsp.dpms("on")' >/dev/null
+          brightnessctl -q -r || true; kb -r; rm -f "$I" ;;
+      esac; exit 0 ;;
+    esac
+    sw() { setsid -f swayidle timeout 120 "$ME/oracle idle dim battery" resume "$ME/oracle idle wake" timeout 180 "$ME/oracle idle off battery" resume "$ME/oracle idle wake" \
+      timeout 300 "$ME/oracle idle dim" resume "$ME/oracle idle wake" timeout 420 "$ME/oracle idle off" resume "$ME/oracle idle wake" &>/dev/null; }
     # Panel off = ghostty shrinks to a tiny window; pin tmux windows at their size so the dashboard isn't squashed and reflowed on open
     pin() { tmux list-windows -a -F '#{window_id} #{window_width} #{window_height}' 2>/dev/null | while read -r i w h; do tmux resize-window -t "$i" -x "$w" -y "$h"; done; }
     unpin() { tmux list-windows -a -F '#{window_id}' 2>/dev/null | while read -r i; do tmux set -uw -t "$i" window-size; done; }
@@ -205,13 +221,13 @@ case ${1:-help} in
           else wlr-randr --output "$o" --on --preferred || true
             for _ in {1..25}; do # wait (max 5s) for ghostty to be full size again before tmux follows it
               (($(tmux list-clients -F '#{client_width}' | head -1) >= $(tmux display -p -t oracle '#{window_width}'))) 2>/dev/null && break; sleep 0.2
-            done; unpin; sw; fi
+            done; unpin; "$0" idle wake; sw; fi
           p=$s
         fi
         sleep 2
       done; unpin; exit 0
     fi
-    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true; unpin
+    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true; unpin; "$0" idle wake
     [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0
     sw; command -v wlr-randr >/dev/null && setsid -f "$0" idle lid &>/dev/null ;;
   night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
