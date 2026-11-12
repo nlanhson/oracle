@@ -20,3 +20,7 @@ Owner tests one item at a time; fixes are batched after he stops testing. OK = f
 - Notification Center: "Clear All" should be a plain text button, no pill outline.
 - OK: bar blur, text rendering (very clear), two-finger right click, launcher learning. Media keys work.
 - Now Playing: wants a small window showing what is playing with previous / play-pause / next AND a draggable progress bar (seek). Today the keys only play/pause and it feels plain. Design: a Now Playing card (art, title, artist, controls, seek bar) reachable from the bar while something plays, and shown briefly on a media key press; same card in the Control Center.
+- Blur bug (one cause likely): launcher, Notification Center and the volume pop-up are see-through with NO frosted blur on the laptop; the bar is blurred fine. Check layer namespaces / blur + ignore_alpha rules on real Hyprland (`hyprctl layers`).
+- OK: motion. Lock screen works (ask: blurred desktop or black?).
+- Force quit (Super+Alt+Esc): owner saw nothing happen and expected a list of windows. Today it is click-to-kill with no visible cue. Make it obvious (a hint, or a list like macOS's Force Quit window), and check the bind fires.
+- Files preview: Space opened the Properties dialog, not a preview. sushi not installed / not working on the laptop: check.
