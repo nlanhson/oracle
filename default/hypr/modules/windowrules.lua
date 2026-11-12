@@ -61,3 +61,13 @@ hl.window_rule({
     center     = true,
     force_rgbx = true,
 })
+
+hl.window_rule({
+    -- Oracle: Quick Look (Space in Files = sushi), a floating preview in the middle that dims nothing and closes with Space/Esc
+    name  = "oracle-quicklook",
+    match = { class = "^org\\.gnome\\.NautilusPreviewer$" },
+
+    float  = true,
+    center = true,
+    size   = "(monitor_w*0.6) (monitor_h*0.7)",
+})
