@@ -147,7 +147,7 @@ Open choices are made inside their slice and shown to you before building: the l
 | 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
 | 7 System logic | Built on `feel/system`, waiting for feel check. Power button, battery rules, idle by power source, quiet update check, plain-word alerts, doctor lines. Boot time measured below |
 | 8 Welcome | Built on `feel/welcome`, waiting for feel check |
-| 9 Secure Boot and UKI | Not started (needs the laptop and the recovery key) |
+| 9 Secure Boot + UKI | Built, VM-proven, opt-in: owner switches it on (`oracle secureboot setup`, docs/manual/secure-boot.md). No UKI: Limine checks kernel, initramfs and cmdline by hash instead |
 | 10 Behaviour | Built on `feel/behaviour`, waiting for feel check |
 
 ## Boot time (slice 7)

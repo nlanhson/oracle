@@ -278,12 +278,16 @@ if ((!DRY)) && command -v limine-entry-tool >/dev/null && sudo test -f /etc/defa
   elif ((UP)); then sudo limine-update || say "  limine-update failed: boot text stays until the next kernel update"; fi
   # global options on top of /boot/limine.conf (limine-entry-tool keeps them). editor off: TPM unlocks the disk, so no editing the boot line.
   # quiet + timeout 1: boots at once with nothing on screen; a key pressed in that second opens the menu (Limine CONFIG.md: quiet)
+  CH=0
   for o in 'editor_enabled: no' 'timeout: 1' 'quiet: yes' 'firmware_logo: yes' 'interface_branding: Oracle' 'interface_branding_colour: c8c8c8' 'interface_help_colour: 8a8a8a' \
     'term_palette: 000000;a05a5a;8a8a8a;aaaaaa;8a8a8a;aaaaaa;8a8a8a;aaaaaa' 'term_palette_bright: 555555;c07070;c8c8c8;e0e0e0;c8c8c8;e0e0e0;c8c8c8;ffffff'; do
     k=${o%%:*}
-    if sudo grep -q "^$k:" /boot/limine.conf; then sudo grep -qx "$o" /boot/limine.conf || sudo sed -i "s/^$k:.*/$o/" /boot/limine.conf
-    else sudo sed -i "1i $o" /boot/limine.conf; fi
+    if sudo grep -q "^$k:" /boot/limine.conf; then sudo grep -qx "$o" /boot/limine.conf || { sudo sed -i "s/^$k:.*/$o/" /boot/limine.conf; CH=1; }
+    else sudo sed -i "1i $o" /boot/limine.conf; CH=1; fi
   done
+  SBH=/usr/local/bin/oracle-secureboot # Secure Boot on (oracle secureboot): a changed limine.conf must be locked into Limine again, or it won't boot
+  if sudo test -x "$SBH"; then sudo cmp -s "$SRC/system/oracle-secureboot" "$SBH" || sudo install -m755 "$SRC/system/oracle-secureboot" "$SBH"; fi
+  if ((CH)) && sudo grep -q '^ENABLE_ENROLL_LIMINE_CONFIG=yes' /etc/default/limine; then sudo limine-enroll-config >/dev/null && sudo "$SBH" hook; fi
 else
   say "  skip: not installed with Limine, or dry-run"
 fi
