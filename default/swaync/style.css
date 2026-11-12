@@ -95,6 +95,6 @@
 .notification-group.low, .notification-group.normal, .notification-group.critical { background: transparent; box-shadow: none; outline: none; }
 
 /* Nothing to show: one quiet line near the top, no big picture */
-.control-center-list-placeholder { margin: 4px 0 540px; min-height: 0; } /* the list fills the 640 px panel and centres this line: the big bottom margin lifts it to the top, right under the bar */
+.control-center-list-placeholder { margin: 0 0 700px; min-height: 0; } /* the list fills the 640 px panel and centres this line: the big bottom margin lifts it to the top, right under the bar */
 .control-center-list-placeholder image { -gtk-icon-size: 0px; min-height: 0; margin: 0; opacity: 0; }
 .control-center-list-placeholder label { font-size: 13px; color: @o_muted; }
