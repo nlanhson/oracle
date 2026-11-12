@@ -29,7 +29,7 @@ CMDS=(
 "session|oracle session|auto|The login loop: starts Shell mode, then the desktop when asked.|Runs by itself when you log in on the first screen.|oracle session"
 "pending|oracle pending|auto|Desktop start: wallpaper, night light, dark theme, and the file oracle open asked for.|Runs by itself when the desktop starts.|oracle pending"
 "look|oracle look|auto|Applies text size, accent colour and the shared look (tokens) to the terminal and the desktop.|Runs by itself after a settings change.|oracle look"
-"launcher|oracle launcher [power]|auto|The desktop search box on Super+Space: apps, oracle commands, sums, files and power actions in one ranked list. Super+P opens it as the power menu. Stays running in the background so it opens at once.|Runs by itself when you press the key.|oracle launcher"
+"launcher|oracle launcher [power]|auto|Signal, the desktop search box on Super+Space: apps, oracle commands, sums, files and power actions in one ranked list. Super+P opens it as the power menu. Stays running in the background so it opens at once.|Runs by itself when you press the key.|oracle launcher"
 "night|oracle night|auto|Turns the night light on or off, as set in settings.|Runs by itself.|oracle night"
 "idle|oracle idle|auto|Shell mode: dims the screen after 5 minutes, off after 7 (on battery 2 and 3; the keyboard light goes off with it), and turns it off while the lid is shut. Never sleeps (the server stays up).|Runs by itself.|oracle idle"
 "wall|oracle wall|auto|Sets the desktop wallpaper from settings (black if none).|Runs by itself.|oracle wall"

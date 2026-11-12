@@ -36,7 +36,7 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
-| `Super + Space` | Search box: type and it finds apps, `oracle` commands, sums (`12*7`, Enter copies the answer), files in your home folder and lock / sleep / restart / shut down. Up/Down moves, Enter opens, Esc closes |
+| `Super + Space` | Signal, the search box: type and it finds apps, `oracle` commands, sums (`12*7`, Enter copies the answer), files in your home folder and lock / sleep / restart / shut down. Up/Down moves, Enter opens, Esc closes |
 | `Super + A` | Notification Center (also: click the date and time on the bar) |
 | `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
@@ -51,20 +51,19 @@ Your own desktop setup: waybar at the top, the launcher (Oracle's own search box
 | `Print` | Screenshot of an area: saved in ~/Pictures/Screenshots and copied, so you can paste it right away. A small thumbnail offers Copy and Edit; click it to open the picture. Esc cancels |
 | `Shift + Print` | Screenshot of the whole screen |
 | `Super + Print` | Screenshot of the active window |
-| `Super + Tab` | Next app: each press goes to the next open app, round and round through all of them |
 | ``Super + ` `` | Next window of the same app |
 | `Super + Ctrl + F` | Full screen on / off |
 | `Super + Ctrl + Q` | Lock the screen |
 | `Super + ,` | Settings (pop-up) |
 | `Super + Alt + Esc` | Force quit: click the stuck window (Esc cancels) |
 | `Super + Shift + 3` / `4` / `5` | Screenshot of the screen / an area / a window (same as the Print keys) |
-| Play / pause, next, previous keys | Control any media player |
+| Play / pause, next, previous keys | Control any media player; a small Now Playing card shows for a moment (click the song name on the bar to open it) |
 | `Shift + Alt` + volume or brightness keys | Fine steps (a quarter of the normal step) |
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
 | 3 fingers left / right | Previous / next workspace (follows your fingers) |
-| 4 fingers up or down | Shell mode rises over the desktop (and goes away again), following your fingers |
-| 4 fingers pinch in | App launcher |
+| 4 fingers up | Shell mode rises over the desktop |
+| 4 fingers down | Shell mode goes back down |
 | `Super` + pinch | Zoom in on the pointer, pinch back to zoom out |
 
 ## Terminal (Ghostty)

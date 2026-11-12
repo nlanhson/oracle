@@ -47,13 +47,6 @@
 	"on-click": "oracle panel media"
 },
 
-"custom/display": {
-    "exec": "hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1' && echo '{\"text\":\"󰍹\",\"tooltip\":\"Laptop screen: ON\",\"class\":\"on\"}' || echo '{\"text\":\"󰍺\",\"tooltip\":\"Laptop screen: OFF\",\"class\":\"off\"}'",
-    "return-type": "json",
-    "interval": 2,
-    "on-click": "hyprctl monitors all | grep -A20 '^Monitor eDP-1 ' | grep -q 'dpmsStatus: 1' && hyprctl dispatch 'hl.dsp.dpms({ action = \"disable\", monitor = \"eDP-1\" })' || hyprctl dispatch 'hl.dsp.dpms({ action = \"enable\", monitor = \"eDP-1\" })'"
-},
-
 "pulseaudio": {
     "format": "{icon}",
     "format-muted": "󰝟",
@@ -84,7 +77,7 @@
 
 "custom/search": {
 	"format": "󰍉",
-	"tooltip-format": "Search (Super + Space)",
+	"tooltip-format": "Signal (Super + Space)",
 	"on-click": "oracle launcher"
 },
 

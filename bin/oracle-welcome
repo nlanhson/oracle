@@ -57,7 +57,7 @@ s_wall() {
 s_keys() {
   local k
   for k in "Alt + 1 to 4|switch workspace (1 is the dashboard)" "g|open the desktop (on the dashboard)" "Super + M|back to Shell mode" \
-           "Super + Space|launcher (desktop)" "Super + /|manual: every command" "s|settings (on the dashboard)" "f|files" "u|update"; do
+           "Super + Space|Signal: search (desktop)" "Super + /|manual: every command" "s|settings (on the dashboard)" "f|files" "u|update"; do
     LINES+=("  $(printf "${C}%-16s${W}%s${N}" "${k%%|*}" "${k#*|}")")
   done
   NCTL=0 BTN=(back continue) HINT="the keys worth knowing · enter continue · esc back"
