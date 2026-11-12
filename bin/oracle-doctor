@@ -32,6 +32,7 @@ if ((p >= 95)); then bad "disk space" "$p% full: empty the trash, then: sudo pac
 elif ((p >= 85)); then warn "disk space" "$p% full"; else ok "disk space" "$p% used"; fi
 if [[ -d /usr/lib/modules/$(uname -r) ]]; then ok "kernel" "$(uname -r)"; else warn "kernel" "updated, running the old one: restart"; fi
 if [[ -e /var/lib/pacman/db.lck ]] && ! pgrep -x pacman >/dev/null; then bad "pacman" "stuck lock: sudo rm /var/lib/pacman/db.lck"; else ok "pacman" "free"; fi
+[[ ! -f $HOME/.local/state/oracle/try/active ]] || ok "preview" "trying $(sed -n "s/^branch=//p" "$HOME/.local/state/oracle/try/active") (oracle try back undoes it)"
 
 sec "disk + boot"
 if lsblk -rno TYPE | grep -qx crypt; then
