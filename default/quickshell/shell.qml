@@ -147,7 +147,7 @@ ShellRoot {
                             width: 316; height: visible ? 70 : 0
                             Label { x: 12; y: 10; text: "Battery"; title: true }
                             Label { y: 11; x: parent.width - 12 - width; width: 220; horizontalAlignment: Text.AlignRight // live while dragging the slider
-                                text: sys.bat + "% · " + (sys.batstate === "Charging" ? "Charging" : sys.batstate === "Full" ? "Full" : "On battery") + " · Limit " + Math.round(sys.limit) + "%" }
+                                text: sys.bat + "% · " + (sys.batstate === "Charging" ? "Charging" : sys.batstate === "Full" ? "Full" : sys.batstate === "Not charging" ? "Plugged in" : "On battery") + " · Limit " + Math.round(sys.limit) + "%" }
                             Slider {
                                 x: 12; y: 34; width: parent.width - 24; glyph: "󰂄"
                                 from: 20; to: 100; value: sys.limit

@@ -107,7 +107,7 @@ case ${1:-help} in
       state) # one key=value per line, read by the panel while it is open. Every outside tool gets 1 s (a missing daemon must not freeze the panel)
         t() { timeout 1 "$@"; }
         w=$(t nmcli radio wifi 2>/dev/null) || w=; [[ $w == enabled ]] && w=on || w=off
-        echo "wifi=$w"; echo "ssid=$([[ $w == on ]] && t nmcli -t -f active,ssid dev wifi 2>/dev/null | sed -n 's/^yes://p;T;q' || true)"
+        echo "wifi=$w"; echo "ssid=$([[ $w == on ]] && t nmcli -t -f TYPE,NAME con show --active 2>/dev/null | sed -n 's/^802-11-wireless://p;T;q' || true)" # the active connection, not the scan list (a scan can take longer than the 1 s)
         t bluetoothctl show 2>/dev/null | grep -q 'Powered: yes' && echo bt=on || echo bt=off
         echo "btdev=$(t bluetoothctl devices Connected 2>/dev/null | sed -n 's/^Device [^ ]* //p;T;q' || true)"
         echo "dnd=$(t swaync-client -D 2>/dev/null || echo false)"; echo "night=$("$0" get nightlight off)"

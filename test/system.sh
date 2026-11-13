@@ -4,6 +4,7 @@
 # Notifications are caught by a fake notify-send. bash test/system.sh
 R=$(cd "$(dirname "$0")/.." && pwd); T=$(mktemp -d); trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$T"' EXIT
 export HOME=$T/home XDG_RUNTIME_DIR=$T/xdg; mkdir -p "$HOME/.local/share" "$T/bin" "$XDG_RUNTIME_DIR"
+unset HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY # run the same inside a live desktop session as in CI (the desktop case sets its own)
 N=$T/notes; : >"$N"; fail=0
 fake() { printf '#!/bin/bash\n%s\n' "$2" >"$T/bin/$1"; chmod +x "$T/bin/$1"; }
 fake notify-send 'printf "%s|" "$@" >>'"$N"'; echo >>'"$N"

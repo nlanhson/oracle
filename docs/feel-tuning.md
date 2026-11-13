@@ -17,3 +17,6 @@ Status after the tuning round: FIXED = done and seen on the real desktop (screen
 13. Wi-Fi row opens `airctl` (AUR `airctl-bin`, GTK 4 + NetworkManager, GPL-3.0) when installed, floating; otherwise the terminal list.
 14. Nothing of Oracle's uses three fingers vertically (the owner removed his own 3-finger-up fullscreen; 3-finger-down = close stays his).
 15. Judgement calls: the volume pop-up speaker glyph is large; waybar's mpris item stays visible while paused.
+- Fixed 11-13 (found in the real screenshots): Control Center said "Wi-Fi: Not connected" while online (the name came from the scan list, which can take longer than the 1 s limit; now read from the active connection) and "On battery" while plugged in and held at the charge limit (now "Plugged in").
+- Fixed 11-13: `test/system.sh` failed inside a live desktop session (it inherited HYPRLAND_INSTANCE_SIGNATURE); it now unsets it.
+- Note: the owner dragged the battery slider to its minimum while testing (limit 20% at 22:24 on 11-12); set back to the default 50% on 11-13, tell him.
