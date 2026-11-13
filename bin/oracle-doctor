@@ -38,7 +38,9 @@ if lsblk -rno TYPE | grep -qx crypt; then
   ok "encryption" "disk is encrypted"
   dev=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}')
   if ((!ROOT)); then skip "unlock at boot" "needs your password"
-  elif S cryptsetup luksDump "$dev" | grep -q systemd-tpm2 && S grep -q tpm2-device /etc/crypttab; then ok "unlock at boot" "TPM, no password"
+  elif S cryptsetup luksDump "$dev" | grep -q systemd-tpm2 && S grep -q tpm2-device /etc/crypttab; then
+    if S bash "$DIR/system/oracle-secureboot" opens; then ok "unlock at boot" "TPM, no password"
+    else bad "unlock at boot" "asks for the password at every start (the firmware changed): oracle secureboot rebind"; fi
   else warn "unlock at boot" "TPM not set up (asks for the password): rerun bash $DIR/install.sh"; fi
   if ((ROOT)) && ! S cryptsetup luksDump "$dev" | grep -q systemd-recovery; then warn "recovery key" "none on the disk: sudo systemd-cryptenroll --recovery-key $dev"; fi
 else warn "encryption" "disk is not encrypted"; fi

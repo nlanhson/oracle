@@ -58,7 +58,8 @@ H=$HOME/.local/state/oracle/updates; printf 'packages=23\noracle=1\nchecked=1\n'
 out=$(H=$R/default/home; source "$H/theme.sh"; source "$H/footer.sh"; w_footer; echo "${FOOT[3]}")
 ck "dashboard footer shows the count" '[[ $out == *"[u]pdate 24" ]]'
 
-# alerts: full disk (threshold 0), a failed service, a crash, a sign-in Wi-Fi → one notice each; second run → none, lines kept
+# alerts: full disk (threshold 0), a failed service, a crash, a sign-in Wi-Fi, a disk that asked for its password → one notice each; second run → none, lines kept
+export ORACLE_UNLOCK_NOTE=$T/unlock; echo "The disk asked for its password at start. To make it unlock by itself again: oracle secureboot rebind" >"$ORACLE_UNLOCK_NOTE"
 fake systemctl '[[ $* == *--user* ]] && exit 0; [[ $* == *--failed* ]] && echo "backup-thing.service loaded failed failed Test"'
 fake coredumpctl 'echo "Wed 2026-11-11 15:00:00 +07 4242 1000 1000 SIGSEGV present /usr/bin/crashme 1.0M"'
 fake nmcli 'echo portal'; fake docker 'exit 1'; fake xdg-open 'exit 0'
@@ -67,13 +68,14 @@ ck "alert: disk almost full, with the fix" '[[ $(seen "Disk almost full|Disk is 
 ck "alert: failed service, with the fix" '[[ $(seen "The service backup-thing stopped working. Check it with: oracle doctor") == 1 ]]'
 ck "alert: app crash" '[[ $(seen "Crashme quit unexpectedly.|Open it again to carry on.") == 1 ]]'
 ck "alert: Wi-Fi sign-in, click opens the browser" '[[ $(seen "-A|default=Open|This Wi-Fi needs a sign-in.") == 1 ]]'
+ck "alert: the disk asked for its password, with the fix" '[[ $(seen "The disk asked for its password|It no longer unlocks by itself at start (the firmware changed). Fix it once: oracle secureboot rebind") == 1 ]]'
 n=$(grep -c . "$N"); ORACLE_DISK_ALERT=0 bash "$W"; sleep 1
-ck "second run: no repeats (once a day), dashboard lines kept" '[[ $(grep -c . "$N") == "$n" && $(grep -c . "$S/alerts") == 4 ]]'
+ck "second run: no repeats (once a day), dashboard lines kept" '[[ $(grep -c . "$N") == "$n" && $(grep -c . "$S/alerts") == 5 ]]'
 ck "wording: sentence case, no exclamation marks" '! grep -q "!" "$N" "$S/alerts"'
 out=$(H=$R/default/home; RW=80; source "$H/theme.sh"; source "$H/alerts.sh"; w_alerts)
 ck "dashboard: alert lines above the footer" '[[ $out == *"Disk is "*"% full. Free some space: oracle files"* ]]'
 fake systemctl '[[ $* == *--user*--failed* ]] && echo "swaync.service loaded failed failed Notifications"; exit 0'; fake pgrep '[[ $* == *swaync* ]]'
-fake nmcli 'echo full'; fake coredumpctl 'exit 0'; bash "$W"; fake pgrep 'exit 1'
+fake nmcli 'echo full'; fake coredumpctl 'exit 0'; rm "$ORACLE_UNLOCK_NOTE"; bash "$W"; fake pgrep 'exit 1'
 ck "all fine again (a failed unit whose program runs anyway is not an alert): dashboard lines gone" '[[ ! -s $S/alerts ]]'
 out=$(H=$R/default/home; RW=80; source "$H/theme.sh"; source "$H/alerts.sh"; w_alerts); ck "dashboard: no alert rows when all is well" '[[ -z $out ]]'
 

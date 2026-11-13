@@ -43,7 +43,7 @@ The names in the firmware differ a bit between models and firmware versions. Loo
 
 ## Check it
 
-- `oracle secureboot`: on or off, in plain words, and what is next.
+- `oracle secureboot`: on or off, in plain words, what is next, and whether the disk unlocks by itself.
 - `oracle secureboot verify`: checks every part (firmware, keys, signed boot menu, locked settings, every
   boot file, the disk key) and says what to do if one is wrong.
 - `oracle doctor` has a **Secure Boot** line too.
@@ -60,17 +60,26 @@ Your keys can stay in the firmware. **Restore factory keys** there is fine too.
 ## If the laptop asks for the disk password
 
 It means the security chip saw something different from last time: Secure Boot switched off, keys changed,
-or a firmware (BIOS) update. Nothing is lost.
+or a firmware (BIOS) update made outside `oracle update`. Nothing is lost. This applies whether you set up
+Secure Boot or not.
 
 1. Type your password, or the recovery key.
-2. Log in and type `oracle secureboot setup`. It ties the disk key to how the laptop starts now (it may ask
-   for the disk password once more).
+2. Log in and type `oracle secureboot rebind`. It ties the disk key to how the laptop starts now (it asks
+   for the disk password once more). From the next start the disk unlocks by itself again.
 3. If Secure Boot was switched off on purpose, type `oracle secureboot undo` instead.
 
-**Before a BIOS update** from ASUS (MyASUS, EZ Flash or `oracle update`): some updates reset the Secure Boot
-keys. `oracle update` gets the disk key ready for the next start by itself when it installs firmware. If the
-laptop does not start after a BIOS update ("Secure Boot violation"), open the firmware (`F2`), set Secure Boot
-to **Disabled**, start Oracle, then run `oracle secureboot setup` again.
+You do not have to notice it yourself: Oracle shows a notification and a line on the dashboard ("The disk
+asked for its password"), and `oracle doctor` marks **unlock at boot** with the same fix.
+
+**Firmware updates.** A few times a year the laptop maker or Microsoft updates the key lists inside the
+firmware. The disk key is tied to those lists, so such an update used to leave the laptop asking for the
+disk password at every start. `oracle update` now gets the disk key ready whenever it installs firmware,
+and the next start ties it to the new state by itself. Nothing to do.
+
+**A BIOS update from ASUS** (MyASUS, EZ Flash): some updates reset the Secure Boot keys. If the laptop asks
+for the disk password afterwards, the three steps above fix it. If it does not start at all ("Secure Boot
+violation"), open the firmware (`F2`), set Secure Boot to **Disabled**, start Oracle, then run
+`oracle secureboot setup` again.
 
 **If Oracle does not start at all:** open the firmware (`F2`) and set Secure Boot to **Disabled**. Oracle
 starts with the disk password or the recovery key. Then `oracle secureboot verify` tells you what broke.

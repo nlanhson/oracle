@@ -5,6 +5,8 @@
 # test/vm.sh iso      our ISO (iso/build.sh → $VM_DIR, reused; rm it to rebuild), its own installer copy, 64G NVMe
 # test/vm.sh oracle   reuse the installed disk from the last run, checks only
 # test/vm.sh secureboot  reuse the installed disk: oracle secureboot setup → Secure Boot on (OVMF secboot + SMM) → checks → undo
+# test/vm.sh unlock   reuse the installed disk: the firmware's key lists change (as fwupd's KEK/db/dbx updates do) → the disk
+#                     must keep unlocking by itself, and say so in plain words when it cannot
 set -euo pipefail
 if [[ ! -f /.dockerenv ]]; then
   ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -19,7 +21,7 @@ echo "== container: qemu, swtpm"
 pacman -Syu --noconfirm --needed --cachedir /vm/pkg qemu-base qemu-hw-display-virtio-{vga,gpu} edk2-ovmf swtpm python git >/dev/null
 
 MODE=${1:-arch} ISO=''
-if [[ $MODE != oracle && $MODE != secureboot ]]; then
+if [[ $MODE != oracle && $MODE != secureboot && $MODE != unlock ]]; then
   if [[ $MODE == iso ]]; then
     ISO=$(ls -t /vm/oracle-*.iso | head -1) SIZE=64G
   else
@@ -168,7 +170,7 @@ def clean(t): return re.sub(r'\x1b\[[0-9;:?]*[A-Za-z]|\x1b\][^\x07\x1b]*(\x07|\x
 def step(t): print(f'\n== {t}', flush=True)
 ok = {}
 
-if MODE not in ('oracle', 'secureboot'):
+if MODE not in ('oracle', 'secureboot', 'unlock'):
     step(f'stage 1: boot {os.environ["ISO"]}, root shell on serial')
     opts = re.search(r'^options (.*)$', open(glob.glob('/vm/boot/loader/entries/01-*.conf')[0]).read(), re.M)[1]
     vm = VM(['-cdrom', os.environ['ISO'], '-kernel', '/vm/boot/arch/boot/x86_64/vmlinuz-linux',
@@ -203,11 +205,10 @@ if MODE not in ('oracle', 'secureboot'):
     os.system('cd /vm && mv disk.qcow2 arch.qcow2 && qemu-img create -qf qcow2 -b arch.qcow2 -F qcow2 disk.qcow2'
               ' && cp vars.fd arch.vars.fd && cp -a tpm arch.tpm')
 
-if MODE == 'secureboot':  # reuses the installed disk. G14 steps + design: docs/manual/secure-boot.md, system/oracle-secureboot
+if MODE in ('secureboot', 'unlock'):
     sudo = [(r'\[sudo\] password for son:', PW), (r'Disk password: ', PW), (LUKS, PW)]
     KEYS = ('systemctl is-system-running --wait >/dev/null; D=$(lsblk -rpno NAME,FSTYPE | awk \'$2=="crypto_LUKS"{print $1; exit}\'); sudo cryptsetup luksDump --dump-json-metadata $D'
             ' | python3 -c \'import json,sys; print("TPM-KEYS", [t.get("tpm2-pcrs") for t in json.load(sys.stdin)["tokens"].values() if t["type"]=="systemd-tpm2"])\'')
-    UNS = 'efibootmgr | sed -n "s/^Boot\\([0-9A-F]*\\)\\* oracle-unsigned.*/\\1/p"'
     def start(sb, label, menu=False):
         step(label)
         vm = VM([], sb=sb)
@@ -216,6 +217,71 @@ if MODE == 'secureboot':  # reuses the installed disk. G14 steps + design: docs/
         vm.login(seen=True); vm.sh('sudo -v', 60, sudo, show=0)
         print(f'disk password asked at this start: {i == 0}', flush=True)
         return vm, i == 0
+
+if MODE == 'unlock':  # design: system/oracle-secureboot. OVMF secboot build, no keys (Setup Mode), Secure Boot off = key lists that
+    # can be written from the running system, which is what a signed KEK/db/dbx update from fwupd does on the G14
+    O = '~/.local/share/oracle'; H = f'sudo bash {O}/system/oracle-secureboot'
+    def esl(n): return ('python3 -c \'import struct, sys, uuid; sys.stdout.buffer.write(uuid.UUID("c1c41626-504c-4092-aca9-41f936934328").bytes_le'
+                        f' + struct.pack("<III", 76, 0, 48) + bytes(16) + bytes([{n}]) * 32)\' >/tmp/dbx{n}.esl')
+    def dbx(n): return f'{esl(n)} && sudo chattr -i /sys/firmware/efi/efivars/dbx-* 2>/dev/null; sudo efi-updatevar -a -e -f /tmp/dbx{n}.esl dbx'  # efivarfs files are immutable once they exist
+    SUM = 'cat /sys/firmware/efi/efivars/dbx-* | b2sum | cut -c1-16'
+    vm, asked = start(True, 'unlock 1: firmware with key lists; the new Oracle lands on an older install (what oracle update does on the G14)')
+    vm.sh(f'git -C {O} fetch -q http://10.0.2.2:8000/oracle.git && git -C {O} reset -q --hard FETCH_HEAD')
+    rc, out = vm.sh(f'sudo pacman -S --noconfirm --needed efitools >/dev/null; {H} install; systemctl is-enabled oracle-secureboot.service; ' + KEYS, 600, sudo)
+    ok['install: helper + service on a machine without Secure Boot'] = re.search(r'^enabled$', out, re.M) is not None
+    if asked:  # swapping the VM's firmware changed PCR 7 = a firmware change that oracle update did not see
+        rc, out = vm.sh(f'sudo systemctl start oracle-secureboot.service; cat /run/oracle/unlock; {O}/bin/oracle-watch; echo ALERTS; cat ~/.local/state/oracle/alerts', 300, sudo)
+        ok['stale disk key: the start leaves a plain line, oracle watch turns it into an alert'] = 'oracle secureboot rebind' in out.split('ALERTS')[0] and 'The disk asked for its password' in out.split('ALERTS')[-1]
+        rc, out = vm.sh('oracle doctor | grep -i "unlock at boot"; oracle secureboot | grep -i "disk unlock"', 300, sudo)
+        ok['stale disk key: oracle doctor and oracle secureboot say it, with the fix'] = re.search(r'x +unlock at boot.*oracle secureboot rebind', out) is not None and re.search(r'Disk unlock +asks for the password', out) is not None
+        rc, out = vm.sh('oracle secureboot rebind && ' + KEYS + '; ls /run/oracle/unlock 2>/dev/null || echo NO-NOTE; oracle doctor | grep -i "unlock at boot"', 300, sudo)
+        ok['oracle secureboot rebind: disk password once → one TPM key on PCR 7, alert gone, doctor ok'] = 'TPM-KEYS [[7]]' in out and 'NO-NOTE' in out and re.search(r'ok +unlock at boot', out) is not None
+    vm.off()
+    vm, asked = start(True, 'unlock 2: after rebind → no password. Then a key list changes and nothing gets the disk key ready (the G14 on 2026-11-04)')
+    ok['after rebind: no password'] = not asked
+    rc, out = vm.sh(f'{SUM}; {dbx(1)}; echo UPDATEVAR=$?; {SUM}', 120, sudo)
+    h = re.findall(r'^[0-9a-f]{16}$', out, re.M)
+    ok['the test changes the forbidden list (dbx) from the running system, like a firmware update'] = 'UPDATEVAR=0' in out and len(h) == 2 and h[0] != h[1]
+    vm.off()
+    vm, asked = start(True, 'unlock 3: that start → the TPM refuses, password prompt (the old failure, reproduced); the start says so by itself')
+    ok['key list changed, disk key not made ready: password asked (the failure this fixes)'] = asked
+    rc, out = vm.sh('systemctl is-system-running --wait >/dev/null; cat /run/oracle/unlock; journalctl -b -u oracle-secureboot -o cat', 300, sudo)
+    ok['that start leaves the alert line by itself'] = out.count('oracle secureboot rebind') >= 2
+    rc, out = vm.sh('oracle secureboot rebind && ' + KEYS, 300, sudo)
+    ok['rebind after it: one TPM key on PCR 7'] = 'TPM-KEYS [[7]]' in out
+    vm.off()
+    vm, asked = start(True, 'unlock 4: no password. A key list changes again; this time the disk key is made ready (arm), with no password typed')
+    ok['after the second rebind: no password'] = not asked
+    rc, out = vm.sh(f'{SUM}; {dbx(2)} && {H} arm </dev/null; echo ARM=$?; {SUM}; ' + KEYS, 300, sudo[:1])
+    h = re.findall(r'^[0-9a-f]{16}$', out, re.M)
+    ok['key list changed again; arm: the TPM itself adds a temporary key next to the bound one (nothing typed)'] = len(h) == 2 and h[0] != h[1] and 'ARM=0' in out and 'TPM-KEYS [[7], []]' in out
+    vm.off()
+    vm, asked = start(True, 'unlock 5: that start → no password, and it binds the key to the new state by itself')
+    ok['key list changed + armed: no password at the next start'] = not asked
+    rc, out = vm.sh(KEYS + '; journalctl -b -u oracle-secureboot -o cat; ls /run/oracle/unlock 2>/dev/null || echo NO-NOTE; oracle doctor | grep -i "unlock at boot"', 300, sudo)
+    ok['that start re-bound it: one TPM key on PCR 7, temporary key gone, no alert'] = 'TPM-KEYS [[7]]' in out and 'disk key bound' in out and 'NO-NOTE' in out and re.search(r'ok +unlock at boot', out) is not None
+    vm.off()
+    vm, asked = start(True, 'unlock 6: plain restart → no password. Then the real path: oracle update whose firmware step changes a key list')
+    ok['restart after the re-bind: no password'] = not asked
+    vm.sh(esl(3) + " && printf '%s\\n' '#!/bin/bash' '[[ $1 == update ]] || exit 0' 'chattr -i /sys/firmware/efi/efivars/dbx-*; efi-updatevar -a -e -f /tmp/dbx3.esl dbx && echo Successfully installed firmware'"
+          ' | sudo install -m755 /dev/stdin /usr/local/bin/fwupdmgr; sudo rm -f /usr/local/bin/oracle-secureboot /etc/systemd/system/multi-user.target.wants/oracle-secureboot.service; command -v fwupdmgr', 60, sudo)
+    rc, out = vm.sh(f'{SUM}; oracle update 2>&1 | tail -n 30; echo UPDATE=${{PIPESTATUS[0]}}; {SUM}; systemctl is-enabled oracle-secureboot.service; ' + KEYS, 5400, sudo, 60)
+    h = re.findall(r'^[0-9a-f]{16}$', out, re.M)
+    ok['oracle update: runs through, its install.sh puts the helper + service back'] = 'UPDATE=0' in out and re.search(r'^enabled$', out, re.M) is not None
+    ok['oracle update: firmware step changed a key list → disk key made ready by the TPM, said in one line'] = (
+        len(h) == 2 and h[0] != h[1] and 'the disk still unlocks by itself' in out and 'does not open the disk right now' not in out and 'TPM-KEYS [[7], []]' in out)
+    vm.off()
+    vm, asked = start(True, 'unlock 7: restart after that update → no password; key bound again')
+    ok['after oracle update with a firmware change: no password'] = not asked
+    rc, out = vm.sh(KEYS + '; journalctl -b -u oracle-secureboot -o cat; systemctl --failed --no-legend | wc -l', 300, sudo)
+    ok['and that start re-bound the key (one TPM key on PCR 7)'] = 'TPM-KEYS [[7]]' in out and 'disk key bound' in out
+    vm.off()
+    step('result')
+    for k, v in ok.items(): print(('PASS ' if v else 'FAIL ') + k)
+    sys.exit(0 if all(ok.values()) else 1)
+
+if MODE == 'secureboot':  # reuses the installed disk. G14 steps + design: docs/manual/secure-boot.md, system/oracle-secureboot
+    UNS = 'efibootmgr | sed -n "s/^Boot\\([0-9A-F]*\\)\\* oracle-unsigned.*/\\1/p"'
     vm, asked = start(True, 'secure boot 1: firmware that can enforce Secure Boot, no keys yet (Setup Mode)')
     if asked: print('NOTE: swapping the firmware changed PCR 7 (like clearing keys on the G14, where setup arms a temporary key first)')
     vm.sh('git -C ~/.local/share/oracle fetch -q http://10.0.2.2:8000/oracle.git && git -C ~/.local/share/oracle reset -q --hard FETCH_HEAD')

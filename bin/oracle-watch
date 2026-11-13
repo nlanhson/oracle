@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # oracle watch (oracle-watch.timer, every 5 min, your user): turns problems into one calm notification each, at most once a day:
-# full disk, a failed service, an app crash, Wi-Fi that needs a sign-in page, a server app down. Also the weekly update check.
+# full disk, a failed service, an app crash, Wi-Fi that needs a sign-in page, a server app down, a disk that asked for its
+# password at start (/run/oracle/unlock, written by oracle-secureboot.service). Also the weekly update check.
 # oracle watch --updates (= oracle update --check): count waiting updates, tell once when something is new. Never installs anything.
 # Shell mode has no notifications: the same lines show on the dashboard (~/.local/state/oracle/alerts).
 DIR=$HOME/.local/share/oracle S=$HOME/.local/state/oracle
@@ -50,6 +51,7 @@ while read -r c; do
   n=$( [[ -n $n ]] && sed -n 's/^Name=//p' "$n" | head -1); [[ $c == brave ]] && n="Brave Origin"
   A+=("crash $c|${n:-${c^}} quit unexpectedly.|Open it again to carry on.")
 done < <(coredumpctl list --since="@$last" --no-legend --no-pager -q 2>/dev/null | awk '{n = split($(NF - 1), e, "/"); print e[n]}' | sort -u)
+[[ -s ${ORACLE_UNLOCK_NOTE:-/run/oracle/unlock} ]] && A+=("unlock|The disk asked for its password|It no longer unlocks by itself at start (the firmware changed). Fix it once: oracle secureboot rebind")
 [[ $(nmcli -t networking connectivity 2>/dev/null) == portal ]] && A+=("portal|This Wi-Fi needs a sign-in.|Click here to open the sign-in page.|http://ping.archlinux.org/")
 if (($(cut -d. -f1 /proc/uptime) > ${ORACLE_WATCH_GRACE:-600})) && docker info &>/dev/null; then # after boot the apps get 10 minutes to start
   for c in Immich:immich_server Dockge:dockge "VPN exit":gluetun; do

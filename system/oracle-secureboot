@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Secure Boot with your own keys (docs/manual/secure-boot.md). Root. `oracle secureboot <cmd>` = sudo bash <clone>/system/oracle-secureboot <cmd>
-#   status | setup | verify | undo   owner's commands
-#   boot     oracle-secureboot.service, every start: finishes a switch (binds the disk key to what this start measured)
+#   status | setup | verify | undo | rebind   owner's commands (rebind: the disk asked for its password at start → tie the key to this start again)
+#   install  install.sh, every machine with an encrypted disk + TPM (Secure Boot set up or not): this file + oracle-secureboot.service
+#   boot     that service, every start: finishes a switch or a firmware change (binds the disk key to what this start measured);
+#            leaves a line in /run/oracle/unlock (oracle watch, dashboard) when no TPM key opens the disk any more
 #   arm      temporary disk key, so the next start unlocks by itself whatever the firmware measures (oracle update: firmware changed)
+#   opens    exit 0 if a TPM key opens the disk at this start (oracle doctor)
 #   hook     Limine post hook (95-oracle-secureboot → this file): fallback loader = copy of the signed one
 #   doctor   one line for oracle doctor
 # Design: only Limine is signed (sbctl: own keys + Microsoft's, for option ROMs). limine.conf is locked into it (enroll-config), so
@@ -10,12 +13,14 @@
 # Kernels are NOT signed on purpose: a signed kernel can be started straight from the firmware with someone else's initramfs
 # and still give the same PCR 7. Disk key: PCR 7 only (Secure Boot on + these keys + who signed the loader): kernel updates,
 # snapshots and rollback don't change it. A switch never predicts PCRs: a temporary key (no PCRs) gets the next start through,
-# that start binds the real key and wipes the temporary one.
+# that start binds the real key and wipes the temporary one. Same for firmware updates, Secure Boot on or off: PCR 7 also
+# covers the firmware's key lists (PK, KEK, db, dbx), which fwupd updates a few times a year (G14: KEK 2026-10-26, dbx 2026-11-04,
+# each one left the disk asking for its password until the key was enrolled again by hand).
 set -uo pipefail
 C=${1:-status}; [[ ${0##*/} == 95-oracle-secureboot ]] && C=hook
 ME=$(readlink -f "$0") H=/usr/local/bin/oracle-secureboot ST=/var/lib/oracle/secureboot
 DL=/etc/default/limine EFI=/boot/EFI/limine/limine_x64.efi FB=/boot/EFI/BOOT/BOOTX64.EFI CONF=/boot/limine.conf
-U=/etc/systemd/system/oracle-secureboot.service HK=/etc/boot/hooks/post.d/95-oracle-secureboot KS=/etc/initcpio/post/sbctl LOG=/var/log/oracle-secureboot.log
+U=/etc/systemd/system/oracle-secureboot.service NOTE=/run/oracle/unlock HK=/etc/boot/hooks/post.d/95-oracle-secureboot KS=/etc/initcpio/post/sbctl LOG=/var/log/oracle-secureboot.log
 say() { printf '\e[36m::\e[0m %s\n' "$*"; }
 die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 ((EUID == 0)) || die "run it as: oracle secureboot $C"
@@ -31,6 +36,11 @@ print(",".join(k for t in json.load(sys.stdin)["tokens"].values() if t["type"] =
 temp() { pcrs | grep -qx none; }
 bound() { [[ $(pcrs) == 7 ]]; } # exactly one TPM key, on PCR 7
 recov() { [[ -n $D ]] && systemd-cryptenroll "$D" 2>/dev/null | grep -qw recovery; }
+opens() { timeout 90 cryptsetup open --test-passphrase --token-only "$D" </dev/null >/dev/null 2>&1; } # a TPM key opens the disk at this start (nothing is mapped)
+unit() {
+  printf '[Unit]\nDescription=Oracle: disk key follows firmware changes (binds it to this start)\nAfter=local-fs.target tpm2.target\n\n[Service]\nType=oneshot\nExecStart=%s boot\n\n[Install]\nWantedBy=multi-user.target\n' "$H" >"$U"
+  systemctl daemon-reload 2>/dev/null; systemctl enable -q oracle-secureboot.service
+}
 b2() { b2sum "$1" | cut -d' ' -f1; }
 locked() { [[ -f $EFI && -f $CONF ]] && grep -qa "$(b2 "$CONF")" "$EFI"; } # enroll-config writes the config's hash into the binary
 signed() { sbctl verify "$1" 2>/dev/null | grep -q 'is signed'; }
@@ -86,7 +96,7 @@ verify() {
   HO=$(hashes 2>&1)
   chk "boot files" '[[ -z $HO ]]' "kernels, initramfs, snapshots: hashes match" "${HO%%$'\n'*}"
   chk "kernels" "[[ \$(readlink '$KS') == /dev/null ]]" "not signed (only Limine starts them)" "sbctl would sign kernels: sudo ln -sfn /dev/null $KS"
-  chk "disk key" bound "TPM, bound to Secure Boot (PCR 7)" "$(if temp; then echo "temporary (no PCRs): finishes at the next start with Secure Boot on"; else echo "TPM keys: $(pcrs | paste -sd' ') (want one on 7)"; fi)"
+  chk "disk key" "bound && opens" "TPM, bound to Secure Boot (PCR 7)" "$(if temp; then echo "temporary (no PCRs): finishes at the next start with Secure Boot on"; elif bound; then echo "does not open the disk at this start (the firmware changed): oracle secureboot rebind"; else echo "TPM keys: $(pcrs | paste -sd' ') (want one on 7)"; fi)"
   chk "recovery key" recov "on the disk" "none: sudo systemd-cryptenroll --recovery-key $D"
   return $fail
 }
@@ -95,7 +105,10 @@ status() {
   if sb; then s=on; elif [[ $(var SetupMode) == 1 ]]; then s="off (firmware in Setup Mode)"; else s=off; fi
   ourpk && k="yours (+ Microsoft's)" || k="not yours"
   locked && l="signed + menu locked" || l="not locked"
-  if temp; then t="temporary key: finishes by itself at the next start"; elif bound && sb; then t="TPM, bound to Secure Boot"
+  if temp && [[ $(want) == keys ]]; then t="temporary key: clear the firmware keys, then oracle secureboot setup again"
+  elif temp; then t="temporary key: finishes by itself at the next start"
+  elif [[ -n $D && -n $(pcrs) ]] && ! opens; then t="asks for the password at every start (the firmware changed): oracle secureboot rebind"
+  elif bound && sb; then t="TPM, bound to Secure Boot"
   elif [[ -n $D ]]; then t="TPM, Secure Boot off: a USB stick could start another system and unlock it"; else t="not encrypted"; fi
   printf '  %-13s %s\n' "Secure Boot" "$s" "Keys" "$k" "Boot loader" "$l" "Disk unlock" "$t"
   case $(want):$(sb && echo 1) in
@@ -129,15 +142,33 @@ case $C in
     elif sb; then echo "warn|on, but not set up by Oracle: oracle secureboot verify"
     else echo "warn|off: a USB stick could start another system and unlock the disk. oracle secureboot setup closes it"; fi ;;
   hook) hook ;;
-  arm) [[ -f $ST ]] || exit 0; arm || die "could not add the temporary disk key" ;;
-  boot) # finish a switch once the firmware is in the wanted state; otherwise keep the temporary key (boots stay unattended)
-    [[ -f $ST ]] && temp || exit 0
+  arm) [[ -n $D && -n $(pcrs) ]] || exit 3; arm || die "could not add the temporary disk key" ;; # 3 = no TPM disk key here: nothing to do
+  opens) [[ -n $D ]] && opens ;;
+  install) # install.sh: no Secure Boot needed. Chroot (USB installer): the key is enrolled after, the unit just gets enabled
+    [[ -n $D && -e /dev/tpmrm0 ]] || exit 0
+    cmp -s "$ME" "$H" || install -Dm755 "$ME" "$H"
+    unit ;;
+  boot) # a temporary key = something changed on purpose: bind once the firmware is in the wanted state, else keep it (boots stay unattended)
+    [[ -n $D && -n $(pcrs) ]] || exit 0
+    mkdir -p "${NOTE%/*}"; rm -f "$NOTE"
+    if ! temp; then
+      opens || { echo "no TPM key opens the disk at this start (firmware changed outside oracle update?): oracle secureboot rebind"
+        echo "The disk asked for its password at start. To make it unlock by itself again: oracle secureboot rebind" >"$NOTE"; }
+      exit 0
+    fi
     w=$(want)
     if [[ $w == on ]]; then sb && locked || { echo "Secure Boot not on yet: disk key stays temporary"; exit 0; }
-    elif sb; then echo "Secure Boot still on: switch it off in the firmware to finish undo"; exit 0; fi
-    bind || die "could not bind the disk key (the temporary one stays): oracle secureboot setup"
-    echo "disk key bound to PCR 7 (Secure Boot $w)"
+    elif [[ $w == off ]] && sb; then echo "Secure Boot still on: switch it off in the firmware to finish undo"; exit 0
+    elif [[ $w == keys ]]; then echo "Secure Boot setup waits for the firmware keys to be cleared: disk key stays temporary"; exit 0; fi
+    bind || die "could not bind the disk key (the temporary one stays): oracle secureboot rebind"
+    echo "disk key bound to PCR 7 (Secure Boot ${w:-as it is})"
     [[ $w == on ]] || { hook; rm -f "$ST"; } ;;
+  rebind) # the disk asked for its password at start (firmware changed outside oracle update): tie the key to this start again
+    [[ -n $D && -e /dev/tpmrm0 ]] || die "No encrypted disk with a TPM here: nothing to do."
+    if temp && [[ -f $ST ]]; then status; exit 0; fi # a Secure Boot switch is waiting: it finishes by itself
+    if [[ $(want) == on ]]; then sb && locked || die "Secure Boot was set up here but is off or unlocked now: oracle secureboot setup (or undo)."; fi
+    bind || die "could not tie the disk key to this start: nothing changed"
+    rm -f "$NOTE"; say "done: the disk unlocks by itself again from the next start"; status ;;
   setup)
     [[ -d /sys/firmware/efi ]] || die "This computer did not start in UEFI mode. Secure Boot needs it."
     [[ -f $DL && -f $EFI && -f $CONF ]] && command -v limine-enroll-config >/dev/null || die "Oracle's Limine boot menu (limine-entry-tool) is not set up here."
@@ -150,6 +181,7 @@ case $C in
     fi
     if ! ourpk && [[ $(var SetupMode) != 1 ]]; then
       arm || die "could not add the temporary disk key: nothing changed"
+      mkdir -p /var/lib/oracle; [[ -f $ST ]] || echo keys >"$ST" # the start in between must keep the temporary key (boot), however many restarts it takes
       cat <<EOF
 The firmware is not in Setup Mode yet, so it won't take your keys. Do this, then run oracle secureboot setup again:
   1. Restart: systemctl reboot. Press F2 while the logo shows (ASUS: opens the firmware setup).
@@ -170,8 +202,7 @@ EOF
     setkey ENABLE_ENROLL_LIMINE_CONFIG yes; setkey ENABLE_VERIFICATION yes; setkey ENABLE_LIMINE_FALLBACK no; setkey FIND_BOOTLOADERS no
     [[ $ME == "$H" ]] || install -Dm755 "$ME" "$H"
     mkdir -p "${HK%/*}" /var/lib/oracle && ln -sfn "$H" "$HK" && echo on >"$ST"
-    printf '[Unit]\nDescription=Oracle: finish a Secure Boot switch (bind the disk key to this start)\nAfter=local-fs.target tpm2.target\nConditionPathExists=%s\n\n[Service]\nType=oneshot\nExecStart=%s boot\n\n[Install]\nWantedBy=multi-user.target\n' "$ST" "$H" >"$U"
-    systemctl daemon-reload; systemctl enable -q oracle-secureboot.service
+    unit
     grep -q '/EFI/BOOT/BOOTX64.EFI' "$CONF" && limine-entry-tool --remove-efi-path "$FB" --keep-files --quiet >/dev/null 2>&1 # entry = Limine again; its hash can never match a locked copy
     limine-update >>"$LOG" 2>&1 || true
     o=$(hashes 2>&1)
@@ -199,5 +230,5 @@ EOF
     say "4/4 Limine stays signed, so it also starts while Secure Boot is still on"
     if ! sb; then bind && { hook; rm -f "$ST"; say "done: disk key bound to Secure Boot off, as before"; }; exit; fi
     ask_firmware Disabled ;;
-  *) die "usage: oracle secureboot [status|setup|verify|undo]" ;;
+  *) die "usage: oracle secureboot [status|setup|verify|undo|rebind]" ;;
 esac
