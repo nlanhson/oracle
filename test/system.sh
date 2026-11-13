@@ -35,6 +35,13 @@ ck "AC back in time: shutdown cancelled, no poweroff" '[[ $(seen "Power is back|
 sleep 2; ck "on power: dashboard line cleared" '[[ ! -s $T/run/battery ]]'
 set_b 3 Discharging 0; sleep 8
 ck "battery 3%, no AC: clean poweroff after the wait, watcher stops" '[[ -e $T/poweroff ]] && wait $PW && grep -q "shutting down now" "$T/power.log"'
+rm -f "$T/poweroff"; : >"$N"; : >"$PS/BAT0/capacity"; echo Discharging >"$PS/BAT0/status"; echo 0 >"$PS/AC0/online"
+ORACLE_POWER_SUPPLY=$PS ORACLE_POWER_RUN=$T/run ORACLE_POWER_TICK=1 ORACLE_POWER_GRACE=2 ORACLE_POWEROFF="touch $T/poweroff" \
+  bash "$R/system/oracle-power" >"$T/power2.log" 2>&1 & PW=$!
+sleep 5; ck "battery level unreadable: nothing said, no shutdown" '[[ ! -s $N && ! -e $T/poweroff ]]'
+set_b 3 Discharging 0; sleep 1; set_b 55 Discharging 0; sleep 4
+ck "a low reading that is gone before the wait ends: shutdown cancelled" '[[ ! -e $T/poweroff && $(seen "Battery at 55%|Shutdown cancelled.") == 1 ]]'
+kill $PW 2>/dev/null; wait $PW 2>/dev/null
 mkdir -p "$T/none"; out=$(ORACLE_POWER_SUPPLY=$T/none bash "$R/system/oracle-power"; echo "rc=$?")
 ck "no battery: exits quietly" '[[ $out == *"rc=0" ]]'
 cat "$T/power.log"
