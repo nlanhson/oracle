@@ -11,7 +11,8 @@ It:
 1. Saves a snapshot, so you can roll back.
 2. Downloads the newest Oracle and applies its new features and fixes.
 3. Updates every program on the system (`pacman -Syu`), plus Brave Origin and the other AUR programs.
-4. Updates firmware (BIOS, SSD, touchpad) when the maker publishes one.
+4. Updates firmware (BIOS, SSD, touchpad) when the maker publishes one, and keeps the disk unlocking by
+   itself afterwards (a firmware update changes what the automatic unlock is tied to).
 5. Tells you if a restart is needed (for example after a new Linux kernel).
 
 ## The update notice

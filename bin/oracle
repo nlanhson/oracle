@@ -37,10 +37,16 @@ upgrade() { # what an update does after Oracle's own files are in place: migrati
   if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
   if command -v fwupdmgr >/dev/null; then # BIOS, SSD, touchpad… when the maker publishes updates (LVFS)
     say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
-    X=/sys/firmware/efi/efivars/dbx-d719b2cb-3d3a-4596-a3bc-dad00e67656f; x=$(b2sum "$X" 2>/dev/null || true)
+    keys() { { cat /sys/firmware/efi/efivars/{PK,KEK,db,dbx}-* 2>/dev/null || true; } | b2sum; } # the firmware's key lists: the TPM disk key is tied to them (PCR 7). A missing list is fine
+    x=$(keys)
     o=$(sudo fwupdmgr update -y --no-reboot-check 2>&1 || true); grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' <<<"$o" || true
-    if [[ -f /var/lib/oracle/secureboot ]] && { [[ $(b2sum "$X" 2>/dev/null || true) != "$x" ]] || grep -qiE 'success|reboot' <<<"$o"; }; then
-      sudo /usr/local/bin/oracle-secureboot arm && say "firmware changed: the disk key re-binds itself at the next start (Secure Boot)"
+    if [[ $(keys) != "$x" ]] || grep -vi report <<<"$o" | grep -qiE 'success|reboot'; then # the next start measures differently: without this the disk asks for its password from then on
+      r=0; sudo bash "$DIR/system/oracle-secureboot" arm || r=$?
+      case $r in
+        0) say "firmware changed: the disk still unlocks by itself, its key re-binds at the next start" ;;
+        3) ;;
+        *) say "firmware changed and the disk key could not be made ready: the next start asks for the disk password once. Then run: oracle secureboot rebind" ;;
+      esac
     fi
   fi
   rm -f "$HOME/.local/state/oracle/updates" # nothing waiting now (dashboard count)

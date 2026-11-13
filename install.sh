@@ -405,6 +405,8 @@ else
     printf %s "$PW" | sudo systemd-cryptenroll --unlock-key-file=/dev/stdin --tpm2-device=auto --tpm2-pcrs=7 "$DEV"
   fi
 fi
+# every start: the disk key follows firmware changes (oracle update arms it), and a key that no longer opens the disk is said out loud
+if [[ -n $DEV && -e /dev/tpmrm0 ]]; then sudo bash "$SRC/system/oracle-secureboot" install || say "  could not set up the disk key service (oracle doctor says more)"; fi
 
 say "done. Reboot, type your password on the Oracle screen → Shell mode (g = desktop). Later: oracle update"
 ((WIFI)) && say "Wi-Fi: after reboot run nmtui once to reconnect."

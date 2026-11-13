@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Battery rules (root, oracle-power.service): on battery → notice at 20 %, critical notice at 10 %, at 4 % a clean shutdown after
 # 60 s unless power comes back (docker stops its containers first, so Postgres is safe). Each level once per discharge. Never sleeps.
+# A level that cannot be read (the battery driver reloading) is never a reason to act, and the level is read again before the shutdown.
 # No battery (desktop, VM) → exits quietly. Overrides for tests: ORACLE_POWER_SUPPLY ORACLE_POWER_RUN ORACLE_POWEROFF ORACLE_POWER_GRACE ORACLE_POWER_TICK
 P=${ORACLE_POWER_SUPPLY:-/sys/class/power_supply} RUN=${ORACLE_POWER_RUN:-/run/oracle} G=${ORACLE_POWER_GRACE:-60} T=${ORACLE_POWER_TICK:-60}
 bat() { for b in "$P"/*; do [[ $(<"$b/type") == Battery && $(cat "$b/scope" 2>/dev/null) != Device ]] && { echo "$b"; return; }; done 2>/dev/null; }
@@ -20,13 +21,16 @@ note() { # note <urgency> <title> <body>: journal, the dashboard (Shell mode), a
 has() { busctl --user call org.freedesktop.DBus / org.freedesktop.DBus NameHasOwner s org.freedesktop.Notifications 2>/dev/null | grep -q true; }
 fired=0 # lowest level already told this discharge (0 = none)
 while :; do
-  c=$(<"$B/capacity") s=$(<"$B/status")
+  c=$(cat "$B/capacity" 2>/dev/null) s=$(cat "$B/status" 2>/dev/null)
+  [[ $c =~ ^[0-9]+$ ]] || { sleep $((T > 10 ? 10 : T)); continue; }
   if ac || [[ $s != Discharging ]]; then ((fired)) && { echo "on power again ($c%)"; : >"$RUN/battery"; }; fired=0
   elif ((c <= 4)); then
     note critical "Battery at $c%" "Shutting down in $G seconds to keep your data safe. Plug in to cancel."
     for ((i = 0; i < G; i += 2)); do ac && break; sleep 2; done
     if ac; then note normal "Power is back" "Shutdown cancelled."; fired=10; continue; fi
-    echo "shutting down now (battery $(<"$B/capacity")%)"; ${ORACLE_POWEROFF:-systemctl poweroff}; exit 0
+    c=$(cat "$B/capacity" 2>/dev/null)
+    if [[ ! $c =~ ^[0-9]+$ ]] || ((c > 4)); then note normal "Battery at ${c:-?}%" "Shutdown cancelled."; fired=10; continue; fi
+    echo "shutting down now (battery $c%)"; ${ORACLE_POWEROFF:-systemctl poweroff}; exit 0
   elif ((c <= 10 && (fired == 0 || fired > 10))); then note critical "Battery at $c%" "Plug in now."; fired=10
   elif ((c <= 20 && fired == 0)); then note normal "Battery at $c%" "Plug in soon."; fired=20; fi
   sleep $((c <= 6 && T > 10 ? 10 : T))

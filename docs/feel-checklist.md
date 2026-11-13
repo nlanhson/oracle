@@ -25,5 +25,6 @@ Pick up the fixes first: `oracle update` (brings airctl and the new bar config w
 12. Trackpad and Keyboard rows in Settings change things live (not tested yet).
 13. Open the lid after a while closed: the screen comes back at normal brightness.
 14. Boot and login: no text on boot, grey menu on tap M, readable login, wrong-password fallback, `oracle doctor` all ok.
+    New in this update: the disk keeps unlocking by itself after firmware updates (that was why it asked for the password since October). Nothing to do: `oracle doctor` should say `unlock at boot  TPM, no password`, and a restart should not ask for it.
 15. Unplug: dim at 2 min, off at 3; `oracle update --check` count next to `[u]pdate`.
 16. Notification cards slide in from the right; lock the screen, send one: it waits in the list.
