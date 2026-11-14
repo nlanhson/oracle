@@ -14,7 +14,7 @@ Status after the tuning round: FIXED = done and seen on the real desktop (screen
 10. FIXED. Now Playing: `default/quickshell/NowPlaying.qml` in the Control Center, an `oracle-media` pop-up (3 s after a media key, or kept by clicking the song name on the bar), `oracle panel media [key]`. Progress bar only if the player can seek. Tested with a fake MPRIS player (reads, pause, track change); dragging the bar was not exercised (no way to inject a drag).
 11. FIXED. Settings pop-up is sized to the screen (60% x 88%) and the list scrolls inside it.
 12. FIXED. Launcher name = "Signal" (placeholder; `NAME` in bin/oracle-launcher is the one place; command stays `oracle launcher`).
-13. Wi-Fi row opens `airctl` (AUR `airctl-bin`, GTK 4 + NetworkManager, GPL-3.0) when installed, floating; otherwise the terminal list.
+13. Wi-Fi row opens `airctl` (AUR `airctl-bin`, GTK 4 + NetworkManager, GPL-3.0) when installed, floating; otherwise the terminal list. Fixed 2026-11-14: its window is named `io.github.airctl`, the floating rule only knew `airctl` and `com.github.pshycodr.airctl`, so it opened tiled (found by a new VM check; the rule now takes any `….airctl`).
 14. Nothing of Oracle's uses three fingers vertically (the owner removed his own 3-finger-up fullscreen; 3-finger-down = close stays his).
 15. Judgement calls: the volume pop-up speaker glyph is large; waybar's mpris item stays visible while paused.
 - Fixed 11-13 (found in the real screenshots): Control Center said "Wi-Fi: Not connected" while online (the name came from the scan list, which can take longer than the 1 s limit; now read from the active connection) and "On battery" while plugged in and held at the charge limit (now "Plugged in").
