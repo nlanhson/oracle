@@ -25,7 +25,7 @@ local DIALOG = "^(xdg-desktop-portal-gtk|xdg-desktop-portal-kde|hyprpolkitagent|
 local TITLE  = "^(Open Files?|Open Folder|Save Files?|Save As|Select .*|Choose .*|Open With|Rename.*)$"
 hl.window_rule({ name = "oracle-dialog",       match = { class = DIALOG },           float = true, center = true, dim_around = true })
 hl.window_rule({ name = "oracle-dialog-title", match = { title = TITLE },            float = true, center = true, dim_around = true })
-hl.window_rule({ name = "oracle-airctl",       match = { class = "(?i)^(com\\.github\\.pshycodr\\.)?airctl$" }, float = true, center = true, size = "520 680" }) -- Wi-Fi window (airctl)
+hl.window_rule({ name = "oracle-airctl",       match = { class = "(?i)^(.+\\.)?airctl$" }, float = true, center = true, size = "520 680" }) -- Wi-Fi window (airctl)
 hl.window_rule({ name = "oracle-modal",        match = { modal = true },             float = true, center = true })
 hl.window_rule({ name = "oracle-small-tools",  match = { class = "^(org\\.pulseaudio\\.pavucontrol|com\\.gabm\\.satty|nm-connection-editor|blueman-manager)$" },
                 float = true, center = true, size = "900 620" })

@@ -742,7 +742,7 @@ ok['panel: banners return after unlock'] = ''.join(out.split()).startswith('1')
 vm.sh(VMENV + '; oracle panel dnd false; swaync-client -C; swaync-client -cp -sw; sleep 1', 30, show=0)
 rc, out = vm.sh(VMENV + '; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings\\")" >/dev/null; sleep 6; hyprctl clients | grep -E "class: oracle.settings|floating: 1" | head -n 4; hyprctl configerrors')
 ok['panel: Settings button opens a floating oracle.settings pop-up'] = 'oracle.settings' in out and 'floating: 1' in out
-rc, out = vm.sh(VMENV + '; pkill -f "class=oracle.settings"; command -v airctl; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings network\\")" >/dev/null; sleep 8; hyprctl clients | grep -i -A12 "class: .*airctl" | grep -E "class:|floating:" | head -n 4; pgrep -a airctl | head -n 2; pkill -x airctl')
+rc, out = vm.sh(VMENV + '; pkill -f "class=oracle.settings"; command -v airctl; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings network\\")" >/dev/null; sleep 8; hyprctl clients | grep -i -B4 "class: .*airctl" | grep -E "class:|floating:" | head -n 4; pgrep -a airctl | head -n 2; pkill -x airctl')
 ok['panel: Wi-Fi row opens airctl in a floating window'] = re.search(r'class: .*airctl', out, re.I) is not None and 'floating: 1' in out
 vm.mon('screendump /vm/panel-settings.png -f png')
 vm.sh('pkill -f oracle.settings; sleep 1', 30, show=0)
