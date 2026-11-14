@@ -46,7 +46,6 @@ echo '{ "custom/display": 1 }' >"$C/waybar/config.jsonc"; out=$(bash "$R/migrati
 ck "migration: edited bar config kept, one plain line says so" 'grep -q custom/display "$C/waybar/config.jsonc" && [[ $out == *"keeps your own version"* && $(wc -l <<<"$out") == 1 ]]'
 fake ghostty 'echo ghostty "$@" >"'$T'/st/ran"'; fake airctl 'echo airctl >"'$T'/st/ran"'; fake nmcli_ 'true'
 ck "panel: Wi-Fi row opens airctl when installed" 'rm -f $T/st/ran; bash $O panel settings network; sleep 0.5; [[ $(cat $T/st/ran) == airctl ]]'
-mv "$T/bin/airctl" "$T/bin/airctl.off"
-ck "panel: Wi-Fi row falls back to the terminal list without airctl" 'rm -f $T/st/ran; bash $O panel settings network; sleep 0.5; [[ $(cat $T/st/ran) == *"oracle settings network"* ]]'
+ck "panel: Wi-Fi row falls back to the terminal list without airctl" 'rm -f $T/st/ran; ORACLE_AIRCTL=airctl-not-installed bash $O panel settings network; sleep 0.5; [[ $(cat $T/st/ran) == *"oracle settings network"* ]]'
 ((fail)) && echo "panel: FAILED" || echo "panel ok"
 exit $fail

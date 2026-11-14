@@ -518,7 +518,7 @@ rc, out = vm.sh(LENV + '; pkill -f oracle-launcher; sleep 1; rm -f $XDG_RUNTIME_
 ok['launcher: daemon starts at login (one process)'] = rc == 0 and out.split()[-1] == '1'
 lshot('gho', 'launcher-white')  # white wallpaper: contrast
 rc, out = vm.sh(LENV + '; oracle launcher; sleep 1.5; hyprctl layers | grep -c "namespace: launcher"; oracle launcher; sleep 1; hyprctl layers | grep -c "namespace: launcher"')
-ok['launcher: layer namespace is "launcher" (blur + no_anim rules match), closes on the key'] = out.split()[-2:] == ['1', '0'] and "^launcher$" in open('/repo/default/hypr/modules/decorations.lua').read()
+ok['launcher: layer namespace is "launcher" (blur + no_anim rules match), closes on the key'] = out.split()[-2:] == ['1', '0'] and re.search(r'\{\s*"launcher",\s*"none"\s*\}', open('/repo/default/hypr/modules/decorations.lua').read()) is not None
 vm.sh(LENV + '; oracle set wallpaper ~/.local/share/oracle/default/wallpapers/dunes.jpg; oracle wall; sleep 4', 30, show=0)
 lshot('', 'launcher-empty')
 lshot('gho', 'launcher-apps'); lshot('upd', 'launcher-oracle'); lshot('12*7', 'launcher-sum'); lshot('quarterly', 'launcher-files')
@@ -623,8 +623,10 @@ vm.sh(VMENV + '; pkill -USR1 hyprlock; sleep 8; swaync-client -C; sleep 1; notif
 rc, out = vm.sh(VMENV + '; hyprctl layers | grep -c swaync-notification-window; pkill -f "oracle panel quiet"')
 ok['panel: banners return after unlock'] = ''.join(out.split()).startswith('1')
 vm.sh(VMENV + '; oracle panel dnd false; swaync-client -C; swaync-client -cp -sw; sleep 1', 30, show=0)
-rc, out = vm.sh(VMENV + '; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings network\\")" >/dev/null; sleep 6; hyprctl clients | grep -E "class: oracle.settings|floating: 1" | head -n 4; hyprctl configerrors')
-ok['panel: Settings button opens a floating oracle.settings pop-up'] = 'oracle.settings' in out
+rc, out = vm.sh(VMENV + '; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings\\")" >/dev/null; sleep 6; hyprctl clients | grep -E "class: oracle.settings|floating: 1" | head -n 4; hyprctl configerrors')
+ok['panel: Settings button opens a floating oracle.settings pop-up'] = 'oracle.settings' in out and 'floating: 1' in out
+rc, out = vm.sh(VMENV + '; pkill -f "class=oracle.settings"; command -v airctl; hyprctl dispatch "hl.dsp.exec_cmd(\\"oracle panel settings network\\")" >/dev/null; sleep 8; hyprctl clients | grep -i -A12 "class: .*airctl" | grep -E "class:|floating:" | head -n 4; pgrep -a airctl | head -n 2; pkill -x airctl')
+ok['panel: Wi-Fi row opens airctl in a floating window'] = re.search(r'class: .*airctl', out, re.I) is not None and 'floating: 1' in out
 vm.mon('screendump /vm/panel-settings.png -f png')
 vm.sh('pkill -f oracle.settings; sleep 1', 30, show=0)
 step('Control Center (Quickshell)')
