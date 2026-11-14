@@ -16,7 +16,7 @@ Pick up the fixes first: `oracle update` (brings airctl and the new bar config w
 3. Now Playing: play something. The card is in the Control Center with a progress bar you can drag; press a media key: a small card drops under the bar for 3 s; click the song name on the bar: the card stays until you click away.
 4. Shell mode, four fingers: swipe UP, it rises from the bottom; swipe DOWN, it goes back down. If either feels backwards, say which.
 5. Signal: Super+Space shows "Signal" in the field. Super+P, Shut Down: "Shuts down automatically in 60 seconds" counts down; Cancel is first; Enter on Shut Down acts at once.
-6. Notification Center: Clear All is plain text and disappears when empty. (The "No Notifications" line still sits mid-screen: known, open.)
+6. Notification Center: Clear All is plain text and disappears when empty. When empty, "No Notifications" sits at the top right, where the first card would be (not mid-screen). With many cards the list runs down to the bottom of the screen and scrolls.
 7. Super+comma Settings pop-up fits the screen; the list scrolls with the arrow keys.
 8. Space in Files: preview opens in a floating window. If you still get Properties, run `nautilus -q`, reopen Files, try again.
 9. Super+Alt+Esc: a banner says "Click a window to force quit it", click a window: it closes; Esc cancels.

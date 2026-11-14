@@ -35,6 +35,11 @@ ck "migration: untouched old configs become the control panel ones" 'cmp -s "$C/
 echo '{ "mine": true }' >"$C/swaync/config.json"; cp "$C/swaync/config.json" "$T/mine"
 out=$(bash "$R/migrations/1794453300.sh" 2>&1)
 ck "migration: edited config kept, one plain line says so" 'cmp -s "$C/swaync/config.json" "$T/mine" && [[ $out == *"swaync/config.json keeps your own version"* && $(wc -l <<<"$out") == 1 ]]'
+cp "$F/swaync-v2.json" "$C/swaync/config.json"; out=$(bash "$R/migrations/1794655400.sh" 2>&1)
+ck "migration: untouched previous notification config becomes the new one (empty line at the top, list as tall as its cards)" 'cmp -s "$C/swaync/config.json" "$R/config/swaync/config.json" && [[ -z $out ]] && grep -q "\"control-center-height\": -1" "$C/swaync/config.json" && grep -q "\"vexpand\": false" "$C/swaync/config.json"'
+echo '{ "control-center-height": 640, "mine": true }' >"$C/swaync/config.json"; cp "$C/swaync/config.json" "$T/mine"; out=$(bash "$R/migrations/1794655400.sh" 2>&1)
+ck "migration: edited notification config kept, one plain line says so" 'cmp -s "$C/swaync/config.json" "$T/mine" && [[ $out == *"keeps your own version"* && $(wc -l <<<"$out") == 1 ]]'
+ck "Notification Center style: the empty line takes back the hidden picture space" 'grep -q "placeholder image.*margin: 0 0 -108px" "$R/default/swaync/style.css"'
 cp "$F/waybar-v1.jsonc" "$C/waybar/config.jsonc"; bash "$R/migrations/1794500000.sh"
 ck "migration: untouched previous bar config becomes the new one (no laptop-screen button, mpris click)" '! grep -q custom/display "$C/waybar/config.jsonc" && grep -q "oracle panel media" "$C/waybar/config.jsonc"'
 echo '{ "custom/display": 1 }' >"$C/waybar/config.jsonc"; out=$(bash "$R/migrations/1794500000.sh" 2>&1)
