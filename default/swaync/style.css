@@ -94,7 +94,9 @@
 .notification-row:focus, .notification-group:focus,
 .notification-group.low, .notification-group.normal, .notification-group.critical { background: transparent; box-shadow: none; outline: none; }
 
-/* Nothing to show: one quiet line near the top, no big picture */
+/* Nothing to show: one quiet line where the first card would be, no big picture.
+   swaync keeps a 96 px picture + 12 px gap above the line (fixed in its layout): the negative margin takes that space back.
+   Needs "control-center-height": -1 and notifications "vexpand": false in config.json, or the line is centred in a tall list. */
 .control-center-list-placeholder { margin-top: 12px; min-height: 0; }
-.control-center-list-placeholder image { -gtk-icon-size: 0px; min-height: 0; margin: 0; opacity: 0; }
+.control-center-list-placeholder image { -gtk-icon-size: 0px; min-height: 0; margin: 0 0 -108px; opacity: 0; }
 .control-center-list-placeholder label { font-size: 13px; color: @o_muted; }

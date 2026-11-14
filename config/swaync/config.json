@@ -9,7 +9,7 @@
   "layer-shell-cover-screen": true,
   "cssPriority": "user",
   "control-center-width": 348,
-  "control-center-height": 640,
+  "control-center-height": -1,
   "control-center-margin-top": 0,
   "control-center-margin-right": 0,
   "control-center-margin-bottom": 0,
@@ -43,7 +43,7 @@
       "button-text": "Clear All"
     },
     "notifications": {
-      "vexpand": true
+      "vexpand": false
     }
   }
 }
