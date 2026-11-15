@@ -473,7 +473,28 @@ if MODE == 'try':  # reuses the installed disk. Design + what is saved/restored:
     same('mid', 'after2', 'round 2: after the second back + restart, identical again')
     rc, out = server()
     ok['round 2: server containers up (dockge)'] = 'dockge' in out
-    vm.off()
+    # hand-over: the preview is merged into main as ONE squashed commit (its files, not its history). The next oracle update must
+    # move the laptop back to main and end the preview. The disk is put back after, so this mode can run again on it.
+    vm.off(); os.system('while pgrep -x swtpm >/dev/null; do sleep 0.5; done; cd /vm && rm -rf keep.tpm && cp --reflink=auto disk.qcow2 keep.qcow2 && cp vars.fd keep.vars.fd && cp -a tpm keep.tpm')
+    vm = start('hand-over 1: the laptop on main again, then the preview once more')
+    vm = preview(3)
+    G = ['git', '-C', '/srv/oracle.git']
+    c = subprocess.check_output(G + ['-c', 'user.name=test', '-c', 'user.email=test@test', 'commit-tree', 'feel/try^{tree}', '-p', 'main', '-m', 'Oracle Feel (squashed)'], text=True).strip()
+    subprocess.check_call(G + ['update-ref', 'refs/heads/main', c]); subprocess.check_call(G + ['update-server-info'])
+    step('hand-over 2: main now holds the preview as one squashed commit → oracle update')
+    rc, out = vm.sh('oracle update 2>&1 | tail -n 25; echo UPDATE=${PIPESTATUS[0]}; git -C ~/.local/share/oracle status -sb | head -n 1; oracle try status; ls ~/.local/state/oracle/try/', 5400, ask, 40)
+    ok['hand-over: oracle update finds the preview inside main (squashed merge), goes back to main, ends the preview, keeps the saved copy'] = (
+        'UPDATE=0' in out and 'part of main now' in out and '## main...origin/main' in out and 'no preview is on' in out and 'last saved copy' in out)
+    vm = reboot('hand-over 3: restarted on main')
+    rc, out = vm.sh('cat /proc/cmdline; ls /etc/systemd/system/getty@tty1.service.d/; ls ~/.local/state/oracle/migrations | wc -l; ls ~/.local/share/oracle/migrations | wc -l; echo PREVIEW-LINES=$(oracle doctor 2>&1 | grep -ci preview)', 300)
+    n = [int(x) for x in re.findall(r'^(\d+)$', out, re.M)[:2]]
+    ok['hand-over: after a restart the laptop runs main with everything of the preview (quiet boot, Oracle login, migrations marked, doctor has no preview line)'] = bool(
+        re.search(r'\bquiet\b', out) and 'oracle-login.conf' in out and len(n) == 2 and n[0] == n[1] and 'PREVIEW-LINES=0' in out)
+    rc, out = desktop()
+    ok['hand-over: Shell mode + desktop start on main'] = bool('HYPR=1' in out and 'BAR=1' in out and re.search(r'QS=[1-9]', out) and 'LAUNCH=1' in out)
+    rc, out = vm.sh('oracle update 2>&1 | tail -n 6; echo UPDATE=${PIPESTATUS[0]}', 3600, ask, 10)
+    ok['hand-over: the next oracle update is a normal one from main'] = 'UPDATE=0' in out and 'preview' not in out
+    vm.off(); os.system('while pgrep -x swtpm >/dev/null; do sleep 0.5; done; cd /vm && mv keep.qcow2 disk.qcow2 && mv keep.vars.fd vars.fd && rm -rf tpm && mv keep.tpm tpm')
     step('result')
     for k, v in ok.items(): print(('PASS ' if v else 'FAIL ') + k)
     sys.exit(0 if all(ok.values()) else 1)

@@ -51,7 +51,7 @@ oracle try feel/try
 2. Switches Oracle to that branch and runs the normal update from it.
 3. Tells you to restart. Log in again and look around. Your home server and photos keep running the whole time.
 
-`oracle try status` says if a preview is on. While it is, `oracle update` updates that branch (not main), and `oracle doctor` shows one calm line about it.
+`oracle try status` says if a preview is on. While it is, `oracle update` updates that branch (not main), and `oracle doctor` shows one calm line about it. Once the preview has become part of main, the next `oracle update` notices, puts Oracle back on main by itself and ends the preview (the saved copy stays). If the preview branch was removed without that, `oracle update` says so and `oracle try back` is the way out.
 
 **To go back:** `oracle try back`, then restart. It puts back, in this order: Oracle's own files (main), your settings and the update marks (so the real update later runs everything again), the appearance settings, then the programs and system files from the snapshot. It checks the list of programs is the same as before. Photos, the server and containers are not part of this and are never touched. The saved copy is never deleted by Oracle. If `oracle try back` won't run: `bash ~/.local/state/oracle/try/oracle try back`.
 

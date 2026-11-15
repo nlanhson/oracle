@@ -60,11 +60,21 @@ case ${1:-help} in
     trap '[[ -n $PRE ]] && snap "oracle update" -t post --pre-number "$PRE" >/dev/null || true' EXIT
     say "oracle: pull"
     if [[ -f $TA ]]; then # a preview is on: its own branch is the one that updates (main only once it holds the preview)
-      br=$(tget branch); git -C "$DIR" fetch -q origin main 2>/dev/null || true
-      if git -C "$DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then # the preview became the real thing: forget the try, keep its backup
-        mv "$TA" "$(tget dir)/ended"; git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes?). Fix, then rerun."
+      br=$(tget branch) bd=$(tget dir); git -C "$DIR" fetch -q origin main 2>/dev/null || true
+      inmain() { # main holds the preview: this very commit (a merge) or exactly these files (a squashed merge keeps the files, not the commits)
+        git -C "$DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null && return
+        local t; t=$(git -C "$DIR" rev-parse 'HEAD^{tree}') && [[ $'\n'$(git -C "$DIR" log --format=%T origin/main 2>/dev/null)$'\n' == *$'\n'"$t"$'\n'* ]]; }
+      if ! inmain; then # still a preview: its branch updates. If that tip is what main holds, the hand-over below happens in this same run
+        r=0; git -C "$DIR" ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1 || r=$?
+        ((r != 2)) || die "the preview branch $br is gone from the server and main does not hold what runs here. Leave the preview first: oracle try back"
+        say "a preview is on ($br): updating that branch, not main"; git -C "$DIR" pull -q --ff-only origin "$br" || die "can't pull $br in $DIR (offline, or local changes?). Fix, then rerun."
+      fi
+      if inmain; then # the preview became the real thing: back on main, the try is over, its saved copy stays
+        say "the preview ($br) is part of main now: back on main"
+        git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes?). Fix, then rerun."
         git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
-      else say "a preview is on ($br): updating that branch, not main"; git -C "$DIR" pull -q --ff-only origin "$br" || die "can't pull $br in $DIR (local changes?). Fix, then rerun."; fi
+        mv "$TA" "$bd/ended"
+      fi
     else git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."; fi
     upgrade
     exit 0 ;; # the files above may have just been replaced under this running script: stop here
