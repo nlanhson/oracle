@@ -482,9 +482,9 @@ if MODE == 'try':  # reuses the installed disk. Design + what is saved/restored:
     c = subprocess.check_output(G + ['-c', 'user.name=test', '-c', 'user.email=test@test', 'commit-tree', 'feel/try^{tree}', '-p', 'main', '-m', 'Oracle Feel (squashed)'], text=True).strip()
     subprocess.check_call(G + ['update-ref', 'refs/heads/main', c]); subprocess.check_call(G + ['update-server-info'])
     step('hand-over 2: main now holds the preview as one squashed commit → oracle update')
-    rc, out = vm.sh('oracle update 2>&1 | tail -n 25; echo UPDATE=${PIPESTATUS[0]}; git -C ~/.local/share/oracle status -sb | head -n 1; oracle try status; ls ~/.local/state/oracle/try/', 5400, ask, 40)
+    rc, out = vm.sh('oracle update 2>&1 | tee /tmp/handover.log | tail -n 8; echo UPDATE=${PIPESTATUS[0]}; grep -c "part of main now" /tmp/handover.log | sed s/^/SAID=/; git -C ~/.local/share/oracle status -sb | head -n 1; oracle try status; ls ~/.local/state/oracle/try/', 5400, ask, 40)
     ok['hand-over: oracle update finds the preview inside main (squashed merge), goes back to main, ends the preview, keeps the saved copy'] = (
-        'UPDATE=0' in out and 'part of main now' in out and '## main...origin/main' in out and 'no preview is on' in out and 'last saved copy' in out)
+        'UPDATE=0' in out and 'SAID=1' in out and '## main...origin/main' in out and 'no preview is on' in out and 'last saved copy' in out)
     vm = reboot('hand-over 3: restarted on main')
     rc, out = vm.sh('cat /proc/cmdline; ls /etc/systemd/system/getty@tty1.service.d/; ls ~/.local/state/oracle/migrations | wc -l; ls ~/.local/share/oracle/migrations | wc -l; echo PREVIEW-LINES=$(oracle doctor 2>&1 | grep -ci preview)', 300)
     n = [int(x) for x in re.findall(r'^(\d+)$', out, re.M)[:2]]
