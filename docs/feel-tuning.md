@@ -20,3 +20,12 @@ Status after the tuning round: FIXED = done and seen on the real desktop (screen
 - Fixed 11-13 (found in the real screenshots): Control Center said "Wi-Fi: Not connected" while online (the name came from the scan list, which can take longer than the 1 s limit; now read from the active connection) and "On battery" while plugged in and held at the charge limit (now "Plugged in").
 - Fixed 11-13: `test/system.sh` failed inside a live desktop session (it inherited HYPRLAND_INSTANCE_SIGNATURE); it now unsets it.
 - Note: the owner dragged the battery slider to its minimum while testing (limit 20% at 22:24 on 11-12); set back to the default 50% on 11-13, tell him.
+
+## Design notes from a last look (2026-11-16)
+
+Not bugs. Four taste calls from the latest VM screenshots, for the owner to judge on the real screen. Each is small; none is built.
+
+1. **Lock screen order.** Today: big time, then "PM" alone on its own line, then the date. The lone "PM" floats. Sequoia puts the date small on top and the big time under it, with no separate AM/PM line. Suggest: date above, time below, "PM" dropped or set small on the time's baseline.
+2. **Floating windows: quieter border.** A floating window (manual, settings pop-up, dialogs) gets the same bright border as the focused tiled window, plus a shadow. On a tiled window the bright border says "this one has focus"; on a floating one the shadow already says it, and the bright line looks heavy. Suggest: floating = dim hairline + shadow, tiled = as now.
+3. **Control Center: the Settings tile.** Do Not Disturb has its icon on the left with two lines of text; Settings, right under it and the same width, has the icon on top and the label centred. Two layouts in one column. Suggest: Settings like Do Not Disturb (icon left, "Settings" + a second quiet line such as "Open"), or make it a small square with something beside it.
+4. **Notification cards without a picture.** Cards from tools that send no icon (Oracle's own alerts, scripts) are text only, so you cannot tell at a glance who is talking. Suggest: Oracle's own notices carry the Oracle mark (`notify-send -i`), so every card has something on the left the way app cards do.
