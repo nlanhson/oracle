@@ -27,7 +27,8 @@ die() { printf '\e[31m!! %s\e[0m\n' "$*" >&2; exit 1; }
 var() { local f=/sys/firmware/efi/efivars/$1-8be4df61-93ca-11d2-aa0d-00e098032b8c; if [[ -r $f ]]; then od -An -tu1 -j4 -N1 "$f" | tr -d ' '; else echo 0; fi; }
 sb() { [[ $(var SecureBoot) == 1 && $(var SetupMode) != 1 ]]; }
 want() { cat "$ST" 2>/dev/null; }
-D=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}')
+D=$(cryptsetup status "$(findmnt -nvo SOURCE / 2>/dev/null)" 2>/dev/null | awk '$1 == "device:" {print $2}') # the encrypted disk Oracle runs on (same as install.sh)
+[[ -n $D ]] || D=$(lsblk -rpno NAME,FSTYPE | awk '$2 == "crypto_LUKS" {print $1; exit}') # / is not a plain mapping (a snapshot started from the boot menu): the first encrypted disk
 pcrs() { [[ -n $D ]] && cryptsetup luksDump --dump-json-metadata "$D" | python3 -c 'import json, sys
 for t in json.load(sys.stdin)["tokens"].values():
     if t["type"] == "systemd-tpm2": print("+".join(map(str, t.get("tpm2-pcrs", []))) or "none")'; }

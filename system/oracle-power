@@ -6,6 +6,7 @@
 P=${ORACLE_POWER_SUPPLY:-/sys/class/power_supply} RUN=${ORACLE_POWER_RUN:-/run/oracle} G=${ORACLE_POWER_GRACE:-60} T=${ORACLE_POWER_TICK:-60}
 bat() { for b in "$P"/*; do [[ $(<"$b/type") == Battery && $(cat "$b/scope" 2>/dev/null) != Device ]] && { echo "$b"; return; }; done 2>/dev/null; }
 ac() { for a in "$P"/*; do [[ $(<"$a/type") == Mains && $(<"$a/online") == 1 ]] && return; done 2>/dev/null; return 1; }
+powered() { ac || [[ $(cat "$B/status" 2>/dev/null) != Discharging ]]; } # mains, or anything else that charges it (a USB-C charger is not a Mains supply). A status that cannot be read counts as powered: never a reason to act
 B=$(bat); [[ -n $B ]] || { echo "no battery: nothing to watch"; exit 0; }
 mkdir -p "$RUN"
 note() { # note <urgency> <title> <body>: journal, the dashboard (Shell mode), a notification in every desktop session
@@ -26,8 +27,8 @@ while :; do
   if ac || [[ $s != Discharging ]]; then ((fired)) && { echo "on power again ($c%)"; : >"$RUN/battery"; }; fired=0
   elif ((c <= 4)); then
     note critical "Battery at $c%" "Shutting down in $G seconds to keep your data safe. Plug in to cancel."
-    for ((i = 0; i < G; i += 2)); do ac && break; sleep 2; done
-    if ac; then note normal "Power is back" "Shutdown cancelled."; fired=10; continue; fi
+    for ((i = 0; i < G; i += 2)); do powered && break; sleep 2; done
+    if powered; then note normal "Power is back" "Shutdown cancelled."; fired=10; continue; fi
     c=$(cat "$B/capacity" 2>/dev/null)
     if [[ ! $c =~ ^[0-9]+$ ]] || ((c > 4)); then note normal "Battery at ${c:-?}%" "Shutdown cancelled."; fired=10; continue; fi
     echo "shutting down now (battery $c%)"; ${ORACLE_POWEROFF:-systemctl poweroff}; exit 0
