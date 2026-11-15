@@ -4,14 +4,20 @@
 
 -- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Environment-variables/
 
-hl.env("XCURSOR_SIZE", "24")
-hl.env("HYPRCURSOR_SIZE", "24")
+-- cursor theme + size come from the look tokens (default/look/tokens)
+local T = (loadfile(os.getenv("HOME") .. "/.config/oracle/look/tokens.lua") or function() return {} end)()
+hl.env("XCURSOR_THEME", T.cursor_theme or "Adwaita")
+hl.env("XCURSOR_SIZE", tostring(T.cursor_size or 24))
+hl.env("HYPRCURSOR_THEME", T.cursor_theme or "Adwaita")
+hl.env("HYPRCURSOR_SIZE", tostring(T.cursor_size or 24))
 hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/Screenshots")
 
 -- Toolkit Backend Variables
 hl.env("GDK_BACKEND", "wayland,x11,*")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("GDK_SCALE", "1")
+-- GTK 4 switches blur off by itself (ext-background-effect protocol). Without this the launcher, notifications and volume pop-up are not frosted
+hl.env("GDK_WAYLAND_DISABLE", "ext_background_effect_manager_v1")
 
 -- XDG Specifications
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
@@ -22,3 +28,6 @@ hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 hl.env("QT_QPA_PLATFORM", "wayland;xcb")
 hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
+
+-- Text: slightly heavier stems like macOS (FreeType stem darkening for CFF + the auto-hinter); fonts.conf turns hinting off
+hl.env("FREETYPE_PROPERTIES", "cff:no-stem-darkening=0 autofitter:no-stem-darkening=0")

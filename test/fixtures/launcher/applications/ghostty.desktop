@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Ghostty
+GenericName=Terminal
+Keywords=terminal;shell;console
+Exec=true
+Icon=com.mitchellh.ghostty

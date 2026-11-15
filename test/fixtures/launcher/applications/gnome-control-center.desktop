@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+GenericName=Settings
+Keywords=preferences
+Exec=true
+Icon=preferences

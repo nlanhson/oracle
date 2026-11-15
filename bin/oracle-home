@@ -2,7 +2,7 @@
 # Oracle home dashboard (tmux workspace 1). Left column ~28% (min 38): LEFT widgets; right: RIGHT widgets.
 # Widgets: default/home/<name>.sh, each defines w_<name> (prints lines). Keys (or click the footer): g gui, f files, s settings, u update, m manual.
 H=$(dirname "$(readlink -f "$0")")/../default/home
-LEFT=(clock calendar) RIGHT=(system controls claude server footer)
+LEFT=(clock calendar) RIGHT=(system controls claude server alerts footer)
 # shellcheck disable=SC1090
 for f in "$H"/theme.sh "${LEFT[@]/#/$H/}" "${RIGHT[@]/#/$H/}"; do [[ $f == *.sh ]] || f+=.sh; source "$f"; done
 T=$(mktemp); printf '\e[?25l'; trap 'printf "\\e[?25h%s" "$NOMOUSE"; rm -f "$T"' EXIT
@@ -21,7 +21,7 @@ while :; do
   printf '%s\e[%d;1H\e[?2026l' "$OUT" "$ROWS"
   key 2 || continue; k=$KEY
   if [[ $KEY == click && $MY == "${FROW:-0}" ]]; then # footer links: [g]ui  [f]iles  [s]ettings  [u]pdate  [m]anual
-    p=$FX; k=''; for w in '[g]ui' '[f]iles' '[s]ettings' '[u]pdate' '[m]anual'; do ((MX >= p && MX < p + ${#w})) && k=${w:1:1}; p=$((p + ${#w} + 2)); done
+    p=$FX; k=''; for w in "${FOOT[@]}"; do ((MX >= p && MX < p + ${#w})) && k=${w:1:1}; p=$((p + ${#w} + 2)); done
   fi
   case $k in
     g) oracle gui ;;

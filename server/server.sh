@@ -55,6 +55,9 @@ setup() {
   getent group docker | cut -d: -f4 | tr , '\n' | grep -qx "$U" || run sudo usermod -aG docker "$U"
   say "server: lid closed = keep running"
   put /etc/systemd/logind.conf.d/oracle-server.conf $'[Login]\nHandleLidSwitch=ignore\nHandleLidSwitchExternalPower=ignore\nHandleLidSwitchDocked=ignore\nIdleAction=ignore'
+  say "server: a press of the power button never shuts it down (desktop: power menu). Holding it 5 s still does"
+  local k=/etc/systemd/logind.conf.d/oracle-power.conf v=$'[Login]\nHandlePowerKey=ignore\nHandlePowerKeyLongPress=poweroff'
+  if [[ $(cat "$k" 2>/dev/null) != "$v" ]]; then put "$k" "$v"; ! sysd || [[ -n ${ORACLE_CHROOT:-} ]] || run sudo systemctl reload systemd-logind; fi
   say "server: stacks"
   place dockge/compose.yaml "$HOME/dockge/compose.yaml"
   place immich/docker-compose.yml "$I/docker-compose.yml"
@@ -134,12 +137,14 @@ serve() { # phone → apps over Tailscale only (HTTPS, tailnet devices only). Ne
   local s p port name; s=$(tailscale serve status 2>/dev/null || sudo -n tailscale serve status 2>/dev/null || true)
   for p in 443:2283:Immich 8443:5001:Dockge; do
     IFS=: read -r p port name <<<"$p"
-    [[ $s == *"127.0.0.1:$port"* ]] && continue
+    [[ $s == *"proxy http://127.0.0.1:$port"* ]] && continue
     say "  tailscale serve: $name on :$p"
     ((DRY)) && continue
     timeout 30 tailscale serve --bg --yes --https="$p" "$port" &>/dev/null || timeout 30 sudo -n tailscale serve --bg --yes --https="$p" "$port" &>/dev/null \
       || todo "$name from the phone: turn on MagicDNS + HTTPS Certificates at https://login.tailscale.com/admin/dns, then: sudo tailscale serve --bg --https=$p $port"
   done
+  # Immich also by number, http://<tailscale ip>:2283 (tailnet only, Tailscale encrypts it): works when a phone cannot look up ts.net names (a DNS profile on it)
+  [[ $s == *"tcp://127.0.0.1:2283"* ]] || ((DRY)) || timeout 30 tailscale serve --bg --yes --tcp 2283 tcp://127.0.0.1:2283 &>/dev/null || timeout 30 sudo -n tailscale serve --bg --yes --tcp 2283 tcp://127.0.0.1:2283 &>/dev/null || true
   name=$(tailscale status --json 2>/dev/null | tr -d ' \t\n' | sed -n 's/.*"CertDomains":\["\([^"]*\)".*/\1/p')
   [[ -z $name ]] || say "  phone: Immich https://$name · Dockge https://$name:8443"
 }

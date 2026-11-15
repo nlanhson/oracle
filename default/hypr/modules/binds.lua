@@ -6,7 +6,7 @@
 local Mod          = "SUPER"
 local terminal     = "ghostty"
 local fileManager  = "nautilus"
-local launcher     = "fuzzel --show drun"
+local launcher     = "oracle launcher" -- Oracle: one box (apps, commands, sums, files, power); bin/oracle-launcher
 local browser      = "brave-origin"
 
 
@@ -27,7 +27,8 @@ hl.define_submap("shell", function() -- Oracle: in Shell mode every key goes to 
   hl.bind(Mod .. " + M", hl.dsp.exec_cmd("oracle gui"))
 end)
 hl.bind(Mod .. " + slash", hl.dsp.exec_cmd("ghostty --class=oracle.manual --gtk-single-instance=false --window-width=110 --window-height=34 -e oracle manual")) -- Oracle: manual pop-up
-hl.bind(Mod .. " + P", hl.dsp.exec_cmd("bash " .. os.getenv("HOME") .. "/.config/fuzzel/power-menu.sh"))
+hl.bind(Mod .. " + P", hl.dsp.exec_cmd("oracle launcher power"))
+hl.bind("XF86PowerOff", hl.dsp.exec_cmd("oracle launcher power")) -- Oracle: power button = power menu (logind ignores a press; holding it 5 s still shuts down)
 
 -- Sleep/Idle
 -- WARNING: this SUSPENDS the machine, which stops the home server and
@@ -54,7 +55,9 @@ hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("swayosd-client --brightness -5
 hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("swayosd-client --brightness +5"))
 
 -- Screenshot
-hl.bind("PRINT", hl.dsp.exec_cmd("hyprshot -m region -o ~/Pictures/Screenshots"))
+hl.bind("PRINT", hl.dsp.exec_cmd("oracle shot region"))
+hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("oracle shot screen"))
+hl.bind(Mod .. " + PRINT", hl.dsp.exec_cmd("oracle shot window"))
 
 -- Move focus windows
 hl.bind(Mod .. " + left",   hl.dsp.focus({ direction = "left" }))
@@ -91,3 +94,20 @@ hl.bind(Mod .. " + 5", hl.dsp.focus({ workspace = 5}))
 --    hl.bind(Mod .. " + " .. key,             hl.dsp.focus({ workspace = i}))
 --    hl.bind(Mod .. " + SHIFT + " .. key,     hl.dsp.window.move({ workspace = i }))
 -- end
+
+-- macOS-style keys live in behaviour.lua (Super+Tab, Super+`, Super+Ctrl+F/Q, Super+comma, Super+Alt+Esc, gestures).
+-- Here: the ones that are plain exec binds.
+hl.bind(Mod .. " + SHIFT + 3", hl.dsp.exec_cmd("oracle shot screen"))  -- Shift-Command-3
+hl.bind(Mod .. " + SHIFT + 4", hl.dsp.exec_cmd("oracle shot region"))  -- Shift-Command-4
+hl.bind(Mod .. " + SHIFT + 5", hl.dsp.exec_cmd("oracle shot window"))  -- Shift-Command-5 (window)
+hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"))
+hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl pause"))
+hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"))
+hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"))
+-- Shift + Alt + volume / brightness = fine steps (a quarter of the normal step)
+hl.bind("SHIFT + ALT + XF86AudioLowerVolume",   hl.dsp.exec_cmd("swayosd-client --output-volume -2"))
+hl.bind("SHIFT + ALT + XF86AudioRaiseVolume",   hl.dsp.exec_cmd("swayosd-client --output-volume 2"))
+hl.bind("SHIFT + ALT + XF86MonBrightnessDown",  hl.dsp.exec_cmd("swayosd-client --brightness -1"))
+hl.bind("SHIFT + ALT + XF86MonBrightnessUp",    hl.dsp.exec_cmd("swayosd-client --brightness +1"))
+
+return { launcher = launcher }

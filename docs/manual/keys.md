@@ -27,7 +27,7 @@ Click a workspace number in the top bar to switch. On the dashboard, click `[g]u
 
 ## Desktop (Hyprland)
 
-Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for notifications, hypridle dims the screen after 5 minutes and turns it off after 7 (the computer never sleeps by itself, so the home server stays up).
+Your own desktop setup: waybar at the top, the launcher (Oracle's own search box), swaync for notifications, hypridle dims the screen after 5 minutes and turns it off after 7 (the computer never sleeps by itself, so the home server stays up).
 
 | Key | Does |
 |---|---|
@@ -36,8 +36,8 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + Enter` | Terminal |
 | `Super + B` | Brave Origin |
 | `Super + R` | Files (Nautilus) |
-| `Super + Space` | App launcher |
-| `Super + A` | Notifications |
+| `Super + Space` | Signal, the search box: type and it finds apps, `oracle` commands, sums (`12*7`, Enter copies the answer), files in your home folder and lock / sleep / restart / shut down. Up/Down moves, Enter opens, Esc closes |
+| `Super + A` | Notification Center (also: click the date and time on the bar) |
 | `Super + P`, or ⏻ on the top bar | Power menu: lock, sleep, restart, shut down. Sleep pauses the home server |
 | `Super + O` | Screen off now (press again or move the mouse to wake it) |
 | `Super + W` | Restart the top bar |
@@ -48,9 +48,23 @@ Your own desktop setup: waybar at the top, fuzzel to launch apps, swaync for not
 | `Super + 1`–`5` | Go to workspace |
 | `Super + scroll` | Previous / next workspace |
 | `Super + drag` | Move window (left button) / resize (right button) |
-| `Print` | Screenshot of an area (saved in ~/Pictures/Screenshots) |
+| `Print` | Screenshot of an area: saved in ~/Pictures/Screenshots and copied, so you can paste it right away. A small thumbnail offers Copy and Edit; click it to open the picture. Esc cancels |
+| `Shift + Print` | Screenshot of the whole screen |
+| `Super + Print` | Screenshot of the active window |
+| ``Super + ` `` | Next window of the same app |
+| `Super + Ctrl + F` | Full screen on / off |
+| `Super + Ctrl + Q` | Lock the screen |
+| `Super + ,` | Settings (pop-up) |
+| `Super + Alt + Esc` | Force quit: click the stuck window (Esc cancels) |
+| `Super + Shift + 3` / `4` / `5` | Screenshot of the screen / an area / a window (same as the Print keys) |
+| Play / pause, next, previous keys | Control any media player; a small Now Playing card shows for a moment (click the song name on the bar to open it) |
+| `Shift + Alt` + volume or brightness keys | Fine steps (a quarter of the normal step) |
 | `Ctrl + Shift` | Switch typing between English and Vietnamese (Telex) |
 | Volume and brightness keys | Change them, with an on-screen bar |
+| 3 fingers left / right | Previous / next workspace (follows your fingers) |
+| 4 fingers up | Shell mode rises over the desktop |
+| 4 fingers down | Shell mode goes back down |
+| `Super` + pinch | Zoom in on the pointer, pinch back to zoom out |
 
 ## Terminal (Ghostty)
 
@@ -83,3 +97,11 @@ hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"))
 ```
 
 Log out of the desktop and back in to apply.
+
+### Also built in
+
+- Dialogs (file pickers, password prompts, Properties, volume control) open floating in the middle, with the rest dimmed.
+- Picture-in-picture video floats small in the bottom-right corner, on top, on every workspace.
+- Two-finger click is the right click; two-finger swipe goes back and forward in Brave Origin; tap to click is on; the pointer hides while you type.
+- What you copy stays on the clipboard after the app quits. Space in Files previews a file.
+- Settings has Trackpad and Keyboard groups (tracking speed, tap to click, natural scrolling, key repeat).

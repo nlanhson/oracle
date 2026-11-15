@@ -11,7 +11,8 @@ It:
 1. Saves a snapshot, so you can roll back.
 2. Downloads the newest Oracle and applies its new features and fixes.
 3. Updates every program on the system (`pacman -Syu`), plus Brave Origin and the other AUR programs.
-4. Updates firmware (BIOS, SSD, touchpad) when the maker publishes one.
+4. Updates firmware (BIOS, SSD, touchpad) when the maker publishes one, and keeps the disk unlocking by
+   itself afterwards (a firmware update changes what the automatic unlock is tied to).
 5. Tells you if a restart is needed (for example after a new Linux kernel).
 
 ## The update notice
@@ -50,7 +51,7 @@ oracle try feel/try
 2. Switches Oracle to that branch and runs the normal update from it.
 3. Tells you to restart. Log in again and look around. Your home server and photos keep running the whole time.
 
-`oracle try status` says if a preview is on. While it is, `oracle update` updates that branch (not main), and `oracle doctor` shows one calm line about it.
+`oracle try status` says if a preview is on. While it is, `oracle update` updates that branch (not main), and `oracle doctor` shows one calm line about it. Once the preview has become part of main, the next `oracle update` notices, puts Oracle back on main by itself and ends the preview (the saved copy stays). If the preview branch was removed without that, `oracle update` says so and `oracle try back` is the way out.
 
 **To go back:** `oracle try back`, then restart. It puts back, in this order: Oracle's own files (main), your settings and the update marks (so the real update later runs everything again), the appearance settings, then the programs and system files from the snapshot. It checks the list of programs is the same as before. Photos, the server and containers are not part of this and are never touched. The saved copy is never deleted by Oracle. If `oracle try back` won't run: `bash ~/.local/state/oracle/try/oracle try back`.
 

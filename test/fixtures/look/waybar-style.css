@@ -1,0 +1,75 @@
+@import "colors/theme.css";
+
+* {
+	all: unset;
+	font-family: /*"Inter",*/"JetBrainsMono Nerd Font Propo", sans-serif, monospace;
+}
+
+window#waybar {
+	background-color: rgba(0, 0, 0, 0.6);
+	color: @fg;
+}
+
+#workspaces {
+	min-width: 100px;
+	font-size: 0.4rem;   /* Pill size */
+	padding: 1px 4px;
+	margin: 10px 0;
+	border-radius: 99px;
+}
+
+#workspaces button {
+	background-color: #555555; /*Inactive color*/
+	color: transparent;
+	padding: 0px 5px;
+	border-radius: 99px;
+	margin: 0px 2px;
+	min-width: 6px;
+}
+
+#workspaces button.active {
+	background-color: #d3d3d3;
+	min-width: 1.2rem;
+	font-weight:800;
+	transition: all 200ms ease-in-out;
+}
+
+.modules-left {
+	margin-left: 4px;
+}
+
+.modules-right {
+	margin-right: 4px;
+}
+
+#custom-date,
+#mpris,
+#network,
+#pulseaudio,
+#battery,
+#memory,
+#temperature,
+#custom-logout {
+	font-size: 13px;
+	padding: 0 8px;
+}
+
+/* Modules color */
+#custom-date { color: @green }
+#mpris { color: @green }
+
+#network { color: @yellow }
+#memory { color: @purple }
+#temperature { color: @orange }
+#pulseaudio { color: @blue }
+#battery { color: @green }
+
+
+#custom-logout {
+	color: @red0;
+	transition: background 0.2s;
+}
+
+#custom-logout:hover {
+	color: @red1;
+}

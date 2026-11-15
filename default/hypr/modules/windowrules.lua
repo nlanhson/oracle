@@ -35,7 +35,9 @@ hl.window_rule({
     name  = "oracle-shell",
     match = { class = "^oracle\\.shell$" },
 
-    workspace  = "special:shell",
+    workspace  = "special:shell silent", -- opens out of sight; `oracle shell` / the swipe bring it up
+    no_initial_focus = true,
+    suppress_event = "activate activatefocus",
     fullscreen = true,
     force_rgbx = true, -- ignore ghostty's see-through background (config/ghostty/mine)
 })
@@ -48,4 +50,14 @@ hl.window_rule({
     float      = true,
     center     = true,
     force_rgbx = true,
+})
+
+hl.window_rule({
+    -- Oracle: Quick Look (Space in Files = sushi), a floating preview in the middle that dims nothing and closes with Space/Esc
+    name  = "oracle-quicklook",
+    match = { class = "^org\\.gnome\\.NautilusPreviewer$" },
+
+    float  = true,
+    center = true,
+    size   = "(monitor_w*0.6) (monitor_h*0.7)",
 })

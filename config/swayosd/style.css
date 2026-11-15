@@ -1,0 +1,4 @@
+/* Oracle volume pill: the shared look. Colours = ~/.config/oracle/look/colors.css (tokens), the rest = default/swayosd/style.css. Updates change those, not this file. */
+@import url("file://@HOME@/.config/oracle/look/colors.css");
+@import url("file://@HOME@/.local/share/oracle/default/swayosd/style.css");
+/* your own lines go below */

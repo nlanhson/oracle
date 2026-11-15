@@ -58,6 +58,7 @@ After you log in, you're in **Shell mode**: the home dashboard plus terminal ses
 - [Getting started](docs/manual/getting-started.md)
 - [Keys](docs/manual/keys.md)
 - [Updating](docs/manual/updating.md)
+- [Secure Boot](docs/manual/secure-boot.md) (optional: closes the USB-stick gap in the disk unlock)
 - [Backup and home server](docs/manual/backup.md) ([the details](docs/server.md))
 
 ## Your settings
@@ -68,7 +69,7 @@ Oracle's defaults live in `~/.local/share/oracle/default/`. Your own changes go 
 - `~/.config/ghostty/mine` (terminal)
 - `~/.config/tmux/tmux.conf` (terminal sessions)
 - `~/.zshrc` (shell) and `~/.config/starship.toml` (prompt)
-- `~/.config/waybar`, `fuzzel`, `swaync`, `hypr/hypridle.conf`, `hypr/hyprlock.conf` (desktop bar, launcher, notifications, idle, lock: copied once at install, then fully yours)
+- `~/.config/waybar`, `swaync`, `swayosd`, `hypr/hypridle.conf`, `hypr/hyprlock.conf` (desktop bar, launcher, notifications, volume pill, idle, lock: copied once at install, then yours. The look files only import Oracle's shared look; add your own lines below the import)
 
 Your changes always win over Oracle's defaults. Most everyday choices (text size, night light, keyboard, wallpaper…) are in Settings (`s` on the dashboard). `oracle update` refreshes the defaults and never touches your files.
 

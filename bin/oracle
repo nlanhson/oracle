@@ -37,22 +37,44 @@ upgrade() { # what an update does after Oracle's own files are in place: migrati
   if command -v yay >/dev/null; then say "AUR updates"; yay -Sua --noconfirm; fi
   if command -v fwupdmgr >/dev/null; then # BIOS, SSD, touchpad… when the maker publishes updates (LVFS)
     say "firmware"; sudo fwupdmgr refresh --force &>/dev/null || true
-    sudo fwupdmgr update -y --no-reboot-check 2>&1 | grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' || true
+    keys() { { cat /sys/firmware/efi/efivars/{PK,KEK,db,dbx}-* 2>/dev/null || true; } | b2sum; } # the firmware's key lists: the TPM disk key is tied to them (PCR 7). A missing list is fine
+    x=$(keys)
+    o=$(sudo fwupdmgr update -y --no-reboot-check 2>&1 || true); grep -vE '^(Devices with no available firmware|  •|WARNING: Firmware metadata)' <<<"$o" || true
+    if [[ $(keys) != "$x" ]] || grep -vi report <<<"$o" | grep -qiE 'success|reboot'; then # the next start measures differently: without this the disk asks for its password from then on
+      r=0; sudo bash "$DIR/system/oracle-secureboot" arm || r=$?
+      case $r in
+        0) say "firmware changed: the disk still unlocks by itself, its key re-binds at the next start" ;;
+        3) ;;
+        *) say "firmware changed and the disk key could not be made ready: the next start asks for the disk password once. Then run: oracle secureboot rebind" ;;
+      esac
+    fi
   fi
+  rm -f "$HOME/.local/state/oracle/updates" # nothing waiting now (dashboard count)
   [[ -d /usr/lib/modules/$(uname -r) ]] || say "kernel updated: reboot soon"
 }
 
 case ${1:-help} in
   update)
+    [[ ${2:-} == --check ]] && exec "$ME/oracle-watch" --updates # count what's waiting, tell once; installs nothing
     PRE=$(snap "oracle update" -t pre || true)
     trap '[[ -n $PRE ]] && snap "oracle update" -t post --pre-number "$PRE" >/dev/null || true' EXIT
     say "oracle: pull"
     if [[ -f $TA ]]; then # a preview is on: its own branch is the one that updates (main only once it holds the preview)
-      br=$(tget branch); git -C "$DIR" fetch -q origin main 2>/dev/null || true
-      if git -C "$DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null; then # the preview became the real thing: forget the try, keep its backup
-        mv "$TA" "$(tget dir)/ended"; git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes?). Fix, then rerun."
+      br=$(tget branch) bd=$(tget dir); git -C "$DIR" fetch -q origin main 2>/dev/null || true
+      inmain() { # main holds the preview: this very commit (a merge) or exactly these files (a squashed merge keeps the files, not the commits)
+        git -C "$DIR" merge-base --is-ancestor HEAD origin/main 2>/dev/null && return
+        local t; t=$(git -C "$DIR" rev-parse 'HEAD^{tree}') && [[ $'\n'$(git -C "$DIR" log --format=%T origin/main 2>/dev/null)$'\n' == *$'\n'"$t"$'\n'* ]]; }
+      if ! inmain; then # still a preview: its branch updates. If that tip is what main holds, the hand-over below happens in this same run
+        r=0; git -C "$DIR" ls-remote --exit-code --heads origin "$br" >/dev/null 2>&1 || r=$?
+        ((r != 2)) || die "the preview branch $br is gone from the server and main does not hold what runs here. Leave the preview first: oracle try back"
+        say "a preview is on ($br): updating that branch, not main"; git -C "$DIR" pull -q --ff-only origin "$br" || die "can't pull $br in $DIR (offline, or local changes?). Fix, then rerun."
+      fi
+      if inmain; then # the preview became the real thing: back on main, the try is over, its saved copy stays
+        say "the preview ($br) is part of main now: back on main"
+        git -C "$DIR" switch -q main || die "can't switch $DIR to main (local changes?). Fix, then rerun."
         git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."
-      else say "a preview is on ($br): updating that branch, not main"; git -C "$DIR" pull -q --ff-only origin "$br" || die "can't pull $br in $DIR (local changes?). Fix, then rerun."; fi
+        mv "$TA" "$bd/ended"
+      fi
     else git -C "$DIR" pull -q --ff-only || die "can't pull $DIR (local changes?). Fix, then rerun."; fi
     upgrade
     exit 0 ;; # the files above may have just been replaced under this running script: stop here
@@ -170,11 +192,72 @@ case ${1:-help} in
       tmux list-windows -t oracle -F '#I' 2>/dev/null | grep -qx "$i" && continue
       if ((i == 1)); then tmux new-window -d -t oracle:1 -n home oracle home; else tmux new-window -d -t "oracle:$i"; fi
     done 2>/dev/null || true ;;
-  home) exec "$DIR/bin/oracle-home" ;;
+  shot) # shot [region|screen|window]: save to ~/Pictures/Screenshots + clipboard, then a thumbnail with Copy / Edit
+    hypr; D=$HOME/Pictures/Screenshots; mkdir -p "$D"; F="$D/Screenshot $(date +'%F at %-I.%M.%S %p').png"
+    case ${2:-region} in region) M=(-m region) ;; screen) M=(-m active -m output) ;; window) M=(-m active -m window) ;; *) die "usage: oracle shot [region|screen|window]" ;; esac
+    hyprshot "${M[@]}" -s -o "$D" -f "${F##*/}" >/dev/null 2>&1 || true
+    [[ -s $F ]] || exit 0 # Esc = nothing saved, nothing shown
+    A=(-A default=Open -A copy=Copy); command -v satty >/dev/null && A+=(-A edit=Edit)
+    ( r=$(notify-send -a Screenshot -u low -t 6000 -w "${A[@]}" -h "string:image-path:$F" "Screenshot saved" "${F##*/}" 2>/dev/null) || true
+      case $r in
+        copy) wl-copy --type image/png <"$F" ;;
+        edit) satty --filename "$F" --output-filename "${F%.png}-edited.png" --copy-command wl-copy --early-exit ;;
+        default) setsid -f xdg-open "$F" >/dev/null 2>&1 ;;
+      esac ) >/dev/null 2>&1 </dev/null & disown ;;
+  home) W=${MODE%/*}/done/welcome # the first start after a fresh install shows the welcome guide once; if it fails the dashboard still comes up
+    [[ -f $W ]] || { mkdir -p "${W%/*}"; touch "$W"; "$ME/oracle-welcome" || true; }
+    exec "$DIR/bin/oracle-home" ;;
+  welcome) exec "$ME/oracle-welcome" ;;
   files) shift; exec "$DIR/bin/oracle-files" "$@" ;;
-  settings) exec "$DIR/bin/oracle-settings" ;;
+  settings) exec "$DIR/bin/oracle-settings" "${@:2}" ;;
+  panel) # Control Center (Quickshell panel in default/quickshell): no argument = open/close. Helpers it uses: <wifi|bt|dnd|night|mute> [true|false] (no value = print state), state, vol/bright <5-100>, display, output, charge [20-100], settings [item], power, quiet (loop)
+    v=${3:-} o=off; [[ $v == true ]] && o=on
+    st() { if eval "$1"; then echo true; else echo false; fi; }
+    qs_() { qs -p "$DIR/default/quickshell" "$@"; }
+    case ${2:-} in
+      "" | toggle | open | close) c=${2:-toggle}
+        qs_ ipc call panel "$c" &>/dev/null || { pgrep -x 'qs|quickshell' >/dev/null || setsid -f qs -p "$DIR/default/quickshell" &>/dev/null; for _ in {1..30}; do sleep 0.2; qs_ ipc call panel "$c" &>/dev/null && exit 0; done; die "Control Center is not running (qs -p $DIR/default/quickshell)"; } ;;
+      media) qs_ ipc call media "${3:-toggle}" &>/dev/null || true ;; # Now Playing card: no argument = open/close, key = the pop-up after a media key
+      state) # one key=value per line, read by the panel while it is open. Every outside tool gets 1 s (a missing daemon must not freeze the panel)
+        t() { timeout 1 "$@"; }
+        w=$(t nmcli radio wifi 2>/dev/null) || w=; [[ $w == enabled ]] && w=on || w=off
+        echo "wifi=$w"; echo "ssid=$([[ $w == on ]] && t nmcli -t -f TYPE,NAME con show --active 2>/dev/null | sed -n 's/^802-11-wireless://p;T;q' || true)" # the active connection, not the scan list (a scan can take longer than the 1 s)
+        t bluetoothctl show 2>/dev/null | grep -q 'Powered: yes' && echo bt=on || echo bt=off
+        echo "btdev=$(t bluetoothctl devices Connected 2>/dev/null | sed -n 's/^Device [^ ]* //p;T;q' || true)"
+        echo "dnd=$(t swaync-client -D 2>/dev/null || echo false)"; echo "night=$("$0" get nightlight off)"
+        echo "bright=$(t brightnessctl -m 2>/dev/null | cut -d, -f4 | tr -d % || true)"
+        vol=$(t wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || true); echo "vol=$(awk '{print int($2*100+0.5)}' <<<"$vol")"; grep -q MUTED <<<"$vol" && echo mute=true || echo mute=false
+        b=$(ls -d ${ORACLE_PS:-/sys/class/power_supply}/BAT* 2>/dev/null | head -1 || true); if [[ -n $b ]]; then echo "bat=$(<"$b/capacity")"; echo "batstate=$(<"$b/status")"; echo "limit=$("$0" panel charge)"; fi ;;
+      vol) wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ "${3:?usage: oracle panel vol <0-100>}%" ;;
+      bright) brightnessctl -q set "${3:?usage: oracle panel bright <5-100>}%" ;;
+      output) setsid -f pavucontrol --tab=3 &>/dev/null ;;
+      wifi) if [[ -n $v ]]; then nmcli radio wifi $o; else st '[[ $(nmcli radio wifi) == enabled ]]'; fi ;;
+      bt) if [[ -n $v ]]; then bluetoothctl power $o >/dev/null; else st 'bluetoothctl show | grep -q "Powered: yes"'; fi ;;
+      dnd) if [[ -n $v ]]; then swaync-client -d$([[ $v == true ]] && echo n || echo f) >/dev/null; else swaync-client -D; fi ;;
+      night) if [[ $v == cycle ]]; then case $("$0" get nightlight off) in off) n=evening ;; evening) n=always ;; *) n= ;; esac; "$0" set nightlight $n; "$0" night
+        elif [[ -n $v ]]; then "$0" set nightlight $([[ $v == true ]] && echo always); "$0" night; else st '[[ $("$0" get nightlight off) != off ]]'; fi ;;
+      mute) if [[ -n $v ]]; then wpctl set-mute @DEFAULT_AUDIO_SINK@ $([[ $v == true ]] && echo 1 || echo 0); else st 'wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q MUTED'; fi ;;
+      charge) if [[ -n $v ]]; then "$0" battery "$v" >/dev/null 2>&1 || notify-send -u low "Charge limit" "Could not change it. Try: oracle battery $v"; else cat /etc/oracle/battery-limit 2>/dev/null || echo 100; fi ;;
+      settings) if [[ ${3:-} == network ]] && command -v "${ORACLE_AIRCTL:-airctl}" >/dev/null; then setsid -f "${ORACLE_AIRCTL:-airctl}" &>/dev/null; else setsid -f ghostty --class=oracle.settings --gtk-single-instance=false --window-width=72 --window-height=30 -e oracle settings ${3:-} &>/dev/null ; fi ;;
+      quiet) # no banners while the screen is locked or shared (they still collect in the panel): inhibitors, checked every 3 s. Started by the desktop
+        q() { if (($2)); then swaync-client -Ia "$1" -sw; else swaync-client -Ir "$1" -sw; fi >/dev/null 2>&1; }
+        l=0 c=0
+        while sleep 3; do
+          pidof hyprlock >/dev/null && n=1 || n=0; ((n == l)) || { q oracle-lock $n; l=$n; }
+          pw-cli ls Node 2>/dev/null | grep -q xdph-streaming && n=1 || n=0; ((n == c)) || { q oracle-share $n; c=$n; }
+        done ;;
+      power) setsid -f oracle launcher power &>/dev/null ;;
+      *) die "usage: oracle panel [toggle|open|close] | <wifi|bt|dnd|night|mute> [true|false] | state | vol <n> | bright <n> | media [key] | output | charge [20-100] | settings [item] | power | quiet" ;;
+    esac ;;
   doctor) exec "$DIR/bin/oracle-doctor" ;;
-  manual) exec "$ME/oracle-manual" ;;
+  secureboot) exec sudo bash "$DIR/system/oracle-secureboot" "${2:-status}" ;; # status | setup | verify | undo (docs/manual/secure-boot.md)
+  manual) exec "$ME/oracle-manual" "${@:2}" ;;
+  launcher) # Super+Space: show/hide the launcher (a small daemon, so it opens at once). power = power menu, daemon = start hidden at login
+    P=${XDG_RUNTIME_DIR:-/tmp}/oracle-launcher.pid; sig=USR1; [[ ${2:-} != power ]] || sig=USR2
+    if [[ -r $P ]] && kill -0 "$(<"$P")" 2>/dev/null; then [[ ${2:-} == daemon ]] || kill -"$sig" "$(<"$P")"
+    else a=(); [[ ${2:-} != daemon ]] || a=(--daemon); [[ ${2:-} != power ]] || a=(--power)
+      LD_PRELOAD=/usr/lib/libgtk4-layer-shell.so exec python3 "$ME/oracle-launcher" "${a[@]}"; fi ;;
+  watch) exec "$ME/oracle-watch" ;;
   open) f=$(realpath "${2:?usage: oracle open <file>}") # in the desktop (default app); from Shell mode: switch, then open
     if hypr; then setsid -f xdg-open "$f" >/dev/null 2>&1; exec "$0" gui; fi
     echo "$f" >"${MODE%/*}/open"; exec "$0" gui ;;
@@ -182,21 +265,67 @@ case ${1:-help} in
     "$0" wall; "$0" night
     gsettings set org.gnome.desktop.interface color-scheme prefer-dark 2>/dev/null || true # GTK apps: dark, grey accent (monochrome)
     gsettings set org.gnome.desktop.interface accent-color slate 2>/dev/null || true
+    [[ ! -f $HOME/.local/share/icons/Oracle/index.theme ]] || gsettings set org.gnome.desktop.interface icon-theme Oracle 2>/dev/null || true # grey folders
+    gsettings set org.gnome.desktop.interface font-name 'Inter 11' 2>/dev/null || true # UI font (token font_ui); monospace stays JetBrains Mono
     [[ -f $P/open ]] && { f=$(<"$P/open"); rm -f "$P/open"; setsid -f xdg-open "$f" >/dev/null 2>&1; } || true ;;
   set) mkdir -p "${SET%/*}"; touch "$SET" # set <key> [value]: ~/.config/oracle/settings (settings screen)
     { grep -v "^${2:?}=" "$SET" || true; [[ -z ${3:-} ]] || printf '%s=%s\n' "$2" "$3"; } >"$SET.new"; mv "$SET.new" "$SET" ;;
   get) v=$(sed -n "s/^${2:?}=//p" "$SET" 2>/dev/null | tail -1) || true; echo "${v:-${3:-}}" ;; # get <key> [default]
-  look) # text size + accent → ghostty include, tmux colors
+  look) # text size + accent → ghostty include, tmux colors; tokens + accent → ~/.config/oracle/look/* (bar, launcher, panels, lock, borders, GTK)
     # shellcheck disable=SC1091
     source "$DIR/default/home/theme.sh"; a=$A; mkdir -p "${SET%/*}"
     printf 'font-size = %s\ncursor-color = %s\n' "$("$0" get textsize 12)" "$a" >"${SET%/*}/ghostty.new"
     cmp -s "${SET%/*}/ghostty.new" "${SET%/*}/ghostty" && rm "${SET%/*}/ghostty.new" || { mv "${SET%/*}/ghostty.new" "${SET%/*}/ghostty"; pkill -USR2 -x ghostty || true; }
-    tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true ;;
+    tmux set -g @accent "#$a" \; set -g pane-active-border-style "fg=#$a" \; set -g message-style "bg=#0a0a0a,fg=#$a" 2>/dev/null || true
+    # shellcheck disable=SC1091
+    source "$DIR/default/look/tokens"; [[ ! -f ${SET%/*}/tokens ]] || source "${SET%/*}/tokens"
+    L=${SET%/*}/look; mkdir -p "$L"; accent=$a; ch=
+    put() { cat >"$L/$1.new"; if cmp -s "$L/$1.new" "$L/$1"; then rm "$L/$1.new"; else mv "$L/$1.new" "$L/$1"; ch=1; fi; } # write only if changed
+    rgb() { printf '%d,%d,%d' $((16#${1:0:2})) $((16#${1:2:2})) $((16#${1:4:2})); }
+    fa=$(printf %02x "$(awk -v a="$frost_alpha" 'BEGIN{printf "%d", a * 255 + 0.5}')") # frost alpha as a hex byte
+    { for k in bg surface raised hover line dim muted text bright error accent; do echo "@define-color o_$k #${!k};"; done
+      echo "@define-color o_frost rgba($(rgb "$bg"),$frost_alpha);"; echo "@define-color o_frost_up rgba($(rgb "$raised"),$frost_alpha);"; echo "@define-color o_bar rgba($(rgb "$bg"),$bar_alpha);"; } | put colors.css
+    t=$(<"$DIR/default/launcher/style.css"); size_field=$((size_title * 16 / 10)) # field text = title x1.6 = 24 (Spotlight's field is big, light)
+    for k in font_ui border r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_field weight_normal weight_bold; do t=${t//"%$k%"/${!k//\"/}}; done
+    printf '%s\n' "$t" | put launcher.css
+    { for k in bg surface raised hover line dim muted text bright error accent; do echo "\$$k = rgb(${!k})"; done
+      echo "\$frost = rgba($bg$fa)"; echo "\$font_ui = ${font_ui//\"/}"
+      for k in r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title size_display border; do echo "\$$k = ${!k}"; done; } | put hyprlock.conf
+    { echo "return {"
+      for k in bg surface raised hover line dim muted text bright error accent frost_alpha r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 font_ui font_mono \
+        size_small size_body size_title size_display weight_normal weight_bold border cursor_theme cursor_size icon_theme; do
+        v=${!k}; v=${v//\"/}; if [[ $v =~ ^[0-9.]+$ && ${#v} -lt 6 ]]; then echo "  $k = $v,"; else echo "  $k = \"$v\","; fi; done
+      echo "}"; } | put tokens.lua
+    { echo "{"; for k in bg surface raised hover line dim muted text bright error accent; do echo "  \"$k\": \"#${!k}\","; done
+      for k in frost_alpha bar_alpha r_s r_m r_l sp_1 sp_2 sp_3 sp_4 sp_5 size_small size_body size_title weight_normal weight_bold border; do echo "  \"$k\": ${!k},"; done
+      echo "  \"font_ui\": \"${font_ui//\"/}\","; echo "  \"font_mono\": \"${font_mono//\"/}\""; echo "}"; } | put tokens.json
+    I=$HOME/.local/share/icons/Oracle P=/usr/share/icons/Papirus # grey folders: Papirus's own grey set under a small theme of ours (no package)
+    if [[ -d $P && ! -f $I/index.theme ]]; then
+      for z in 22 24 32 48 64; do mkdir -p "$I/${z}x$z/places"
+        for f in "$P/${z}x$z"/places/{folder,user}-grey*.svg; do n=${f##*/}; ln -sf "$f" "$I/${z}x$z/places/${n/-grey/}"; done; done
+      { printf '[Icon Theme]\nName=Oracle\nInherits=Papirus-Dark,hicolor\nDirectories=22x22/places,24x24/places,32x32/places,48x48/places,64x64/places\n'
+        for z in 22 24 32 48; do printf '\n[%sx%s/places]\nSize=%s\nContext=Places\nType=Fixed\n' $z $z $z; done
+        printf '\n[64x64/places]\nSize=64\nMinSize=49\nMaxSize=512\nContext=Places\nType=Scalable\n'; } >"$I/index.theme"
+    fi
+    if [[ -n $ch ]]; then pkill -USR2 -x waybar || true; swaync-client -rs &>/dev/null || true; fi ;;
   wall) pkill -x swaybg || true; [[ -n ${WAYLAND_DISPLAY:-} ]] || exit 0 # desktop wallpaper (settings), else black
     w=$("$0" get wallpaper); if [[ -f $w ]]; then setsid -f swaybg -i "$w" -m fill &>/dev/null; else setsid -f swaybg -c 000000 &>/dev/null; fi ;;
-  idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7. Never sleeps (server)
-    sw() { setsid -f swayidle timeout 300 'brightnessctl -q -s set 10%' resume 'brightnessctl -q -r' \
-      timeout 420 'brightnessctl -q set 0' resume 'brightnessctl -q -r' &>/dev/null; }
+  idle) # Shell mode (cage; Hyprland has hypridle + lid binds): dim at 5 min, screen off at 7; on battery 2 and 3. Never sleeps (server)
+    case ${2:-} in dim | off | wake) # one idle step (hypridle and swayidle call these); "battery" = only when running on battery
+      P=${ORACLE_POWER_SUPPLY:-/sys/class/power_supply}; [[ ${3:-} != battery ]] || { compgen -G "$P/BAT*" >/dev/null && ! grep -qsx 1 "$P"/A*/online; } || exit 0
+      I=${XDG_RUNTIME_DIR:-/tmp}/oracle-idle; exec 9>"$I.lock"; flock 9; s=$(cat "$I" 2>/dev/null) || true
+      kb() { brightnessctl -q -d '*kbd_backlight' info &>/dev/null && brightnessctl -q -d '*kbd_backlight' "$@" || true; } # keyboard light, if there is one
+      lv=10%; [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && lv=10 # desktop: the lowest step that still glows
+      case $2 in
+        dim) [[ $s == *dim* ]] || { brightnessctl -q -s set $lv || true; kb -s set 0; echo "$s dim" >"$I"; } ;;
+        off) [[ $s == *off* ]] && exit 0; [[ $s == *dim* ]] || { brightnessctl -q -s || true; kb -s set 0; s+=" dim"; }
+          if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then hyprctl dispatch 'hl.dsp.dpms("off")' >/dev/null; else brightnessctl -q set 0 || true; fi; echo "$s off" >"$I" ;;
+        wake) [[ -n $s ]] || exit 0; [[ $s == *off* && -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl dispatch 'hl.dsp.dpms("on")' >/dev/null
+          brightnessctl -q -r || true; kb -r; rm -f "$I" ;;
+      esac; exit 0 ;;
+    esac
+    sw() { setsid -f swayidle timeout 120 "$ME/oracle idle dim battery" resume "$ME/oracle idle wake" timeout 180 "$ME/oracle idle off battery" resume "$ME/oracle idle wake" \
+      timeout 300 "$ME/oracle idle dim" resume "$ME/oracle idle wake" timeout 420 "$ME/oracle idle off" resume "$ME/oracle idle wake" &>/dev/null; }
     # Panel off = ghostty shrinks to a tiny window; pin tmux windows at their size so the dashboard isn't squashed and reflowed on open
     pin() { tmux list-windows -a -F '#{window_id} #{window_width} #{window_height}' 2>/dev/null | while read -r i w h; do tmux resize-window -t "$i" -x "$w" -y "$h"; done; }
     unpin() { tmux list-windows -a -F '#{window_id}' 2>/dev/null | while read -r i; do tmux set -uw -t "$i" window-size; done; }
@@ -210,13 +339,13 @@ case ${1:-help} in
           else wlr-randr --output "$o" --on --preferred || true
             for _ in {1..25}; do # wait (max 5s) for ghostty to be full size again before tmux follows it
               (($(tmux list-clients -F '#{client_width}' | head -1) >= $(tmux display -p -t oracle '#{window_width}'))) 2>/dev/null && break; sleep 0.2
-            done; unpin; sw; fi
+            done; unpin; "$0" idle wake; sw; fi
           p=$s
         fi
         sleep 2
       done; unpin; exit 0
     fi
-    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true; unpin
+    pkill -x swayidle || true; pkill -f 'oracle idle lid$' || true; unpin; "$0" idle wake
     [[ -n ${WAYLAND_DISPLAY:-} && -z ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0
     sw; command -v wlr-randr >/dev/null && setsid -f "$0" idle lid &>/dev/null ;;
   night) pkill -x wlsunset || true # night light (settings): warm screen in the evening or always
@@ -234,12 +363,14 @@ case ${1:-help} in
   gui) if ! hypr; then echo gui >"$MODE"; pkill -x cage; exit; fi # first time: Hyprland replaces cage
     hyprctl dispatch 'hl.dsp.submap("reset")' >/dev/null
     if shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi ;;
-  shell) hypr || exit 0 # desktop stays running behind Shell mode, apps keep their state
+  shell) [[ ${2:-} == --hidden ]] && for _ in {1..40}; do hypr && break; sleep 0.25; done # desktop start: its socket may not be listed yet
+    hypr || exit 0 # desktop stays running behind Shell mode, apps keep their state
     if ! hyprctl clients | grep -q $'\tclass: oracle.shell$'; then
       setsid -f ghostty --class=oracle.shell --gtk-single-instance=false -e bash -c 'oracle attach; oracle gui' &>/dev/null
       for _ in {1..50}; do hyprctl clients | grep -q $'\tclass: oracle.shell$' && break; sleep 0.1; done
     fi
+    [[ ${2:-} == --hidden ]] && exit 0 # desktop start: the window waits out of sight, so the first open (and the swipe) is instant
     if ! shown; then hyprctl dispatch 'hl.dsp.workspace.toggle_special("shell")' >/dev/null; fi
-    hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;;
+    hyprctl dispatch 'hl.dsp.submap("shell")' >/dev/null ;; # the submap also follows the workspace (behaviour.lua)
   help | *) "$ME/oracle-manual" --list; echo; echo "more (what, when, examples): press Super+/ or type oracle manual" ;;
 esac

@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 # Fast Shell-mode screenshot, no VM: tmux + dashboard in an archlinux container, drawn by pyte → PNG (JetBrains Mono, ghostty's default font).
+# CMD="oracle welcome" runs that instead of the dashboard session; OFFLINE=1 fakes a Wi-Fi card with no connection.
 # test/shot.sh [out.png] [seconds] [keys...]   e.g. test/shot.sh /tmp/ws2.png 20 '\x1b2'   (Alt+2). Uses your ~/.claude/projects for the heatmap.
 set -euo pipefail
 if [[ ! -f /.dockerenv ]]; then
   ROOT=$(cd "$(dirname "$0")/.." && pwd) OUT=$(realpath "${1:-shot.png}")
   C=(); [[ -d ~/.claude/projects ]] && C=(-v "$HOME/.claude/projects:/claude:ro")
-  exec docker run --rm -e WAIT="${2:-30}" -e KEYS="${*:3}" -e NAME="${OUT##*/}" "${C[@]}" -v "$ROOT:/repo:ro" -v "${OUT%/*}:/out" archlinux:latest bash /repo/test/shot.sh
+  exec docker run --rm -e WAIT="${2:-30}" -e KEYS="${*:3}" -e CMD="${CMD:-oracle attach}" -e OFFLINE="${OFFLINE:-}" -e NAME="${OUT##*/}" "${C[@]}" -v "$ROOT:/repo:ro" -v "${OUT%/*}:/out" archlinux:latest bash /repo/test/shot.sh
 fi
-pacman -Sy --noconfirm --needed tmux python-pillow python-pyte ttf-jetbrains-mono >/dev/null 2>&1
+pacman -Syu --noconfirm --needed tmux python-pillow python-pyte ttf-jetbrains-mono >/dev/null 2>&1
 useradd -m son; H=/home/son; mkdir -p $H/.local/share $H/.local/bin $H/.config/tmux $H/.claude /etc/oracle
 cp -r /repo $H/.local/share/oracle; ln -s $H/.local/share/oracle/bin/oracle $H/.local/bin/oracle
 echo "source-file $H/.local/share/oracle/default/tmux.conf" >$H/.config/tmux/tmux.conf
 [[ ! -d /claude ]] || cp -r /claude $H/.claude/projects
 echo 50 >/etc/oracle/battery-limit; chown -R son $H
-su son -w KEYS,WAIT,NAME -c "PATH=$H/.local/bin:\$PATH TZ=Asia/Ho_Chi_Minh python3 - /out/\$NAME" <<'PY'
+[[ -z $OFFLINE ]] || printf '#!/bin/sh\ncase "$*" in *TYPE*) echo wifi;; *STATE*) echo disconnected;; *ssid*) echo "Cafe:78:WPA2"; echo "Home:64:WPA2"; echo "Guest:40:";; esac\n' >/usr/local/bin/nmcli
+[[ -z $OFFLINE ]] || chmod +x /usr/local/bin/nmcli
+su son -w KEYS,WAIT,NAME,CMD -c "PATH=$H/.local/bin:\$PATH TZ=Asia/Ho_Chi_Minh python3 - /out/\$NAME" <<'PY'
 import os, pty, sys, time, select, pyte
 from PIL import Image, ImageDraw, ImageFont
 cols, rows, wait, out = 128, 38, float(os.environ['WAIT']), sys.argv[1]
@@ -23,7 +26,7 @@ scr = pyte.Screen(cols, rows); st = pyte.ByteStream(scr)
 pid, fd = pty.fork()
 if pid == 0:
     os.environ.update(TERM='xterm-256color', COLORTERM='truecolor', LINES=str(rows), COLUMNS=str(cols))
-    os.execvp('bash', ['bash', '-lc', 'stty rows %d cols %d; exec oracle attach' % (rows, cols)])
+    os.execvp('bash', ['bash', '-lc', 'stty rows %d cols %d; exec %s' % (rows, cols, os.environ.get('CMD', 'oracle attach'))])
 end = time.time() + wait; ki = 0
 while time.time() < end:
     r, _, _ = select.select([fd], [], [], 0.2)

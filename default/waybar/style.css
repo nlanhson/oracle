@@ -1,0 +1,99 @@
+/* Oracle bar. Colours are the tokens in ~/.config/oracle/look/colors.css (made by `oracle look` from default/look/tokens).
+   Sizes follow the scale there: corners 6/8/14, spacing 4/8/12/16/24, type 11/13/15. Owned by Oracle; your lines go in ~/.config/waybar/style.css. */
+
+* {
+	all: unset;
+	font-family: "Inter", "JetBrainsMono Nerd Font Propo", sans-serif;
+	font-size: 13px;
+	font-weight: 500;
+	font-feature-settings: "tnum"; /* digits keep their width: clock, battery, memory do not jiggle */
+}
+
+window#waybar {
+	background-color: @o_bar; /* lighter than panels, like a menu bar: the wallpaper shows through */
+	color: @o_bright;
+}
+
+label { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); } /* keeps white text crisp on a bright wallpaper */
+
+tooltip {
+	background-color: @o_raised;
+	border: 1px solid @o_line;
+	border-radius: 6px;
+	padding: 4px 8px;
+}
+
+tooltip label { color: @o_text; text-shadow: none; }
+
+/* Workspaces: the owner's thin pills, centre */
+#workspaces {
+	min-width: 100px;
+	font-size: 0.4rem;
+	padding: 1px 4px;
+	margin: 10px 0;
+	border-radius: 99px;
+}
+
+#workspaces button,
+#workspaces button label { font-size: 0.4rem; min-height: 0; } /* the * rule's 13px would make the pills tall */
+
+#workspaces button {
+	background-color: alpha(@o_bright, 0.35); /* Inactive */
+	color: transparent;
+	padding: 0px 5px;
+	border-radius: 99px;
+	margin: 0px 2px;
+	min-width: 6px;
+}
+
+#workspaces button.active {
+	background-color: @o_accent;
+	min-width: 1.2rem;
+	transition: all 200ms ease-in-out;
+}
+
+.modules-left { margin-left: 8px; }
+.modules-right { margin-right: 8px; }
+
+/* Every item: same height, same gap, soft highlight on hover (as menu bar items do) */
+#custom-oracle,
+#window,
+#mpris,
+#pulseaudio,
+#battery,
+#network,
+#custom-search,
+#custom-panel,
+#custom-date {
+	padding: 0 8px;
+	margin: 3px 0;
+	border-radius: 5px;
+	color: @o_bright;
+	transition: background-color 150ms ease-in-out;
+}
+
+#custom-oracle:hover,
+#mpris:hover,
+#pulseaudio:hover,
+#battery:hover,
+#network:hover,
+#custom-search:hover,
+#custom-panel:hover,
+#custom-date:hover { background-color: alpha(@o_bright, 0.14); }
+
+#custom-oracle { font-size: 17px; padding: 0 10px; }
+#window, #window label { font-weight: 700; } /* app in use: bold, as in a menu bar (keys sort: the first rewrite rule strips the class prefix) */
+#window { padding-left: 4px; }
+window#waybar.empty #window { padding: 0; }
+
+/* Status icons a touch larger than text, like menu bar glyphs */
+#pulseaudio, #network, #custom-search, #custom-panel { font-size: 16px; padding: 0 7px; }
+#battery { font-size: 13px; }
+#custom-date { padding-right: 6px; }
+
+#mpris.paused,
+#network.disconnected,
+#pulseaudio.muted { color: alpha(@o_bright, 0.5); }
+
+#battery.warning,
+#battery.critical { color: @o_error; }

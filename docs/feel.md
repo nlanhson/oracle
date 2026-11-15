@@ -9,6 +9,9 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 
 ## Ground rules
 
+- **One reference: macOS Sequoia (15).** When a choice is open (how tall the bar is, how a panel is laid out, where a
+  notification sits, how long something takes to move), we do what Sequoia does, in Oracle's greys. It is the last
+  macOS with the frosted look, before Liquid Glass. A guide for layout, proportion and behaviour, never a source of assets.
 - Shell mode stays pure Oracle. The desktop (Hyprland) may borrow macOS *patterns* where they fit.
 - Existing keys never change without asking. New features get keys that fit the current scheme.
 - Monochrome: greys and white, muted red only for errors.
@@ -31,7 +34,7 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 | 5 | **Direct and instant.** Things respond within a tenth of a second and follow the finger. | Touchpad gestures track 1:1. Volume and brightness show at once. The launcher is ready the moment it appears. |
 | 6 | **Forgiving.** Undo beats "are you sure?". Only destructive things ask. | Rollback and trash already work this way. Keep it: screenshots are kept, closing is safe, only shutdown and wipe confirm. |
 | 7 | **Plain words.** An error says what happened and what to do next. | The `oracle doctor` style everywhere: one line of what is wrong, one line of how to fix it, one button if there is a fix. |
-| 8 | **Same place, same key, every time.** | Status and controls live top right. Super+Space finds anything. Esc always closes. Keys never move. |
+| 8 | **Same place, same key, every time.** | Status and controls live top right. Super+Space (Signal) finds anything. Esc always closes. Keys never move. |
 
 ## Touchpoints
 
@@ -39,16 +42,51 @@ Sources: Apple's Human Interface Guidelines, WWDC design talks ("Designing Fluid
 |---|---|---|---|
 | Windows | Open, close and fade are switched off. Workspaces slide. Only one gesture (3 fingers sideways). | Open, close, move and fade with tuned springs. Gestures for workspaces and Shell mode. | VM: config loads with no errors. G14: feel checklist. |
 | Colours and shapes | Greys repeated per app. Corners 8 on windows, 18 on the launcher. Default cursor. | One token file feeds everything. One corner scale, one spacing grid, one cursor. | VM screenshots of every surface side by side. |
-| Type | JetBrains Mono everywhere, sizes picked per app. | Mono stays (it is Oracle's voice). One size and weight scale. | Screenshots. |
-| Top bar | Text modules, read only. Tray off. Power button. | Same bar, calmer. Right side opens the control panel. | Screenshots, click test. |
-| Control panel | None. Wi-Fi and Bluetooth need the Settings screen. | One panel: Wi-Fi, Bluetooth, sound, brightness, night light, battery, do not disturb. Deeper settings open `oracle settings`. | VM: each control changes the real setting. |
-| Notifications | Stock look in grey. Not grouped. | Frosted cards, grouped per app, quiet by default, one clear action. | VM: send test notifications, screenshot. |
+| Type | JetBrains Mono everywhere, sizes picked per app. | Inter on the desktop (modern, easy to read, Vietnamese). JetBrains Mono stays in the terminal and Shell mode. One size and weight scale. | Screenshots. |
+| Top bar | Text modules, read only. Tray off. Power button. | Same bar, calmer. The control-centre icon opens the Control Center, the clock the Notification Center. | Screenshots, click test. |
+| Control Center | None. Wi-Fi and Bluetooth need the Settings screen. | Quickshell panel laid out like Sequoia: round toggles with a subtitle, labelled sliders, battery limit, now playing. Deeper settings open `oracle settings`. | Pixel compare with the Sequoia reference, VM: each control changes the real setting. |
+| Notification Center | Stock look in grey. Not grouped. | swaync only: frosted cards float on the desktop (no panel), grouped per app, quiet by default, one clear action. | VM: send test notifications, screenshot. |
 | Launcher | Apps only. | One box: apps, files, sums, `oracle` commands, ranked. Still Super+Space. | VM: scripted searches, screenshot. |
 | Lock screen | Black, clock, password box. Only on demand. | Frosted view of the desktop, same tokens. Still only on demand. | VM screenshot. |
 | Boot | Boot menu every time, scrolling text, text login. | Silent boot with the Oracle mark. Menu only when a key is held. A styled login. Still no autologin. | VM: screenshots every second from power on to desktop, boot time measured. |
 | Screenshots | Print = pick an area, saved to a folder. | Pick, then a small thumbnail: click to copy or edit, ignore to keep. | VM: take one, check file and clipboard. |
 | System | Updates, lid and battery work. Errors show as raw text. | Boot time measured and cut. Problems arrive as plain-word notifications with a fix. `oracle doctor` covers every new part. | `systemd-analyze` before and after, doctor run in VM. |
 | First run | Installer ends at a login prompt. | `oracle welcome`: a short first-run guide (Wi-Fi, wallpaper, accent, keys to know). | VM: fresh install to welcome screen. |
+
+## Behaviour: the layers under the look
+
+Looking like macOS is the thin part. It feels considered because of rules you never see: what gets focus, what a key
+always means, what happens when the battery runs low or an app hangs. This is how Sequoia behaves, and what Oracle does
+about it. Each line is a real default from Apple's documentation or System Settings, not a guess.
+
+| Layer | What Sequoia does | What Oracle does |
+|---|---|---|
+| Focus | You click a window to use it. Scrolling goes to whatever is under the pointer, without stealing focus. | Focus follows the pointer (the owner's choice, kept). Scrolling goes to whatever is under the pointer. |
+| Apps come forward | Open a link or a file and that app comes to the front, on its own Space if needed. | An app that asks for attention is brought forward, and you are taken to its workspace. |
+| Dialogs | Open, Save and password dialogs are small sheets on top of their window, centred, with the rest dimmed. | Dialogs, file pickers, password prompts and small tools float in the centre, never tiled, with the rest dimmed. |
+| Picture in picture | A small video stays on top in a corner, on every Space. | Same for the browser's picture-in-picture window. |
+| A hung app | "Application Not Responding", with Force Quit. Option-Command-Esc force quits. | The not-responding dialog is on. `Super + Alt + Esc`, then click a window, force quits it. |
+| Pointer | Hides while you type, comes back when you move. | Same. |
+| Trackpad | Two-finger click is the right click. Two-finger swipe goes back and forward in the browser. Palm is ignored while typing. | Same three. Tap to click stays on. |
+| Gestures | Three fingers sideways: Spaces. Up: Mission Control. Pinch with four: apps. | Sideways: workspaces. Four fingers up: Shell mode rises, down: it goes back (Oracle's own mission control). No gesture for the launcher. |
+| Keys | Command-`: next window of this app. Control-Command-F: full screen. Control-Command-Q: lock. Command-comma: settings. Shift-Command-3/4/5: screenshots. | The same on `Super`, only on keys that were free. No existing key changes. `Super + Tab` is simpler than the Mac's: each press goes to the next open app, through all of them. |
+| Media keys | Play, next, previous work everywhere. | Same (they did nothing before). |
+| Key repeat | Starts after a short pause, then steady. | Tuned to match (shorter pause, even rate). Changeable in Settings. |
+| Clipboard | What you copied stays after the app quits. | Same (on Linux it normally vanishes). |
+| Quick Look | Space in Finder previews a file. | Space in Files previews a file. |
+| Text | Smooth, slightly bold letters, no pixel snapping. | Same rendering rules for the desktop. |
+| Screenshots | Named "Screenshot 2026-11-11 at 2.36.12 PM". | Same name. |
+| Power button | A press never shuts the Mac down. Hold to force off. | A press opens the power menu. Hold forces off. (Before: one press shut the server down.) |
+| Shut down | Restart and Shut Down ask once. Lock and sleep do not. | Same. |
+| Battery | Screen dims and sleeps sooner on battery. Warning at 10%. Saves itself before it dies. | Shorter screen timers on battery. Warning at 20% and 10%. Clean shutdown at 4% so the server's data is safe. |
+| Idle | Screen off, keyboard light off. A playing video keeps it awake. | Same. The machine itself never sleeps (it is the server). |
+| Updates | Checks quietly, tells you, never installs behind your back. | A weekly quiet check, one notice, `oracle update` stays your decision. |
+| When things break | "Brave quit unexpectedly." "Your disk is almost full." Plain words, one action. | Same: crash, full disk, failed service and sign-in Wi-Fi pages become one plain notification each. |
+| Settings | One place, grouped: Trackpad, Keyboard, Displays, Battery, Lock Screen. | `oracle settings` gains Trackpad, Keyboard and Energy groups with the same names. |
+
+What we leave out, and why: the menu bar's File / Edit menus (Linux apps keep their own), Mission Control's window
+overview and Stage Manager (no solid equivalent yet), automatic sleep (this machine is a server), Handoff and other
+Apple-account features.
 
 ## How a slice ships
 
@@ -78,9 +116,10 @@ Ranked by value for effort. Each ends fully done or is not merged.
 | 4 | **Launcher.** One box for apps, files, sums and `oracle` commands. | M | Medium | The top result is right for 20 scripted searches. Opens instantly. Power menu still works. |
 | 5 | **Boot to desktop.** Silent boot, menu on keypress, styled login. | M | Medium | Power button to login with no scrolling text. Snapshot menu still reachable. Password fallback readable if the TPM fails. |
 | 6 | **Screenshot flow.** Area pick, thumbnail, copy or edit. | S | Low | Print, drag, paste into a chat in under 3 seconds. |
-| 7 | **System feel.** Boot time, plain-word alerts (battery, disk, failed service, update ready), doctor. | M | Low | Boot time down and written here. Every alert has a fix line. |
+| 7 | **System logic.** Power button, battery rules, idle by power source, quiet update check, plain-word alerts (battery, disk, crash, failed service, sign-in Wi-Fi), boot time, doctor. | M | Medium | A power-button press cannot kill the server. Every alert has a fix line. Boot time written here. |
 | 8 | **Welcome.** `oracle welcome` and installer polish. | M | Low | A fresh install ends in a guided first minute. |
 | 9 | **Secure Boot and UKI.** Own keys, closes the disk-unlock gap. | L | High | Boots unattended with Secure Boot on, with a tested way back. Or not merged. |
+| 10 | **Behaviour.** Focus, dialogs, keys, gestures, clipboard, Quick Look, text rendering, Settings groups (table above). | L | Medium | Every row of the Behaviour table is either checked in the VM or on the laptop checklist. |
 
 Changes from the first ranking, and why:
 
@@ -97,7 +136,39 @@ Open choices are made inside their slice and shown to you before building: the l
 
 ## Status
 
-| Slice | State |
+All slices are built and sit together on `feel/base`. The G14 runs them as a preview (`oracle try feel/try`) since
+2026-11-12. What is left: the owner's hands-on check (`docs/feel-checklist.md`, findings go in `docs/feel-tuning.md`),
+fixes from it, then the merge into `main`.
+
+| Slice | State (2026-11-16) |
 |---|---|
 | 0 Spec | Done 2026-11-11 |
-| 1 Motion | In progress |
+| 1 Motion | Built. Checked on the G14 (round 1) |
+| 2 One look | Built. Bar blur, text and lock screen checked (round 1). Frosted panels fixed after round 1, to re-check |
+| 3 Control Center | Built with Quickshell; the Notification Center is swaync. Round 1 fixes shipped, to re-check |
+| 4 Launcher (Signal) | Built: own small GTK4 program, fuzzel removed. Sums, learning and the power confirm checked (round 1) |
+| 5 Boot to desktop | Built. To check on the G14: silent boot, menu on M, login, a wrong password |
+| 6 Screenshot flow | Built (editor: satty). The thumbnail banner did not show on the owner's first try; not reproduced, to re-check |
+| 7 System logic | Built. Power button checked (round 1). Battery notices, idle and alerts to check |
+| 8 Welcome | Built. Shows on a fresh install only (VM-tested) |
+| 9 Secure Boot | Built, VM-proven, opt-in: the owner switches it on (`oracle secureboot setup`, docs/manual/secure-boot.md). No UKI: Limine checks kernel, initramfs and boot line by hash. Separate from it, on every machine: the disk key follows firmware updates |
+| 10 Behaviour | Built. Round 1 fixes shipped (four-finger Shell gesture, force quit, Quick Look), to re-check |
+
+## Boot time (slice 7)
+
+Measured in the VM (`systemd-analyze`, after the first-boot setup had finished, TPM unlock, no password):
+
+| | Firmware | Loader | Kernel | Initrd | Userspace | Total |
+|---|---|---|---|---|---|---|
+| Before slice 7 | 2.0 s | 3.4 s | 0.76 s | 2.3 s | 3.87 s | 12.4 s |
+| After slice 7 | 2.0 s | 3.4 s | 0.78 s | 2.3 s | 4.00 s | 12.4 s |
+
+Userspace is already lean: the slowest path is NetworkManager → wait-online (0.15 s) → docker (0.9 s) → multi-user.
+Nothing there is waste the server can do without, so nothing was cut (the 0.1 s difference is noise between runs).
+On the G14, Wi-Fi can make wait-online take a few seconds, but that only delays docker, not the login screen.
+Loader, kernel and initrd belong to slice 5 (silent boot).
+
+On the G14 itself (2026-11-14, a real start, read with `systemd-analyze`): firmware 5.8 s, loader 2.4 s, kernel 0.55 s,
+initrd 3.6 s, userspace 3.5 s, about 16 s in all. About 3 s of the initrd is the disk unlock (disk found at 0.8 s, opened
+at 3.8 s). Why it takes that long is open: it needs root to look, so it waits for a session at the laptop.
+

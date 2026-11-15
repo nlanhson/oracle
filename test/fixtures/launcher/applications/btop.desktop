@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=btop++
+GenericName=System Monitor
+Keywords=process;cpu;memory;task
+Exec=true
+Icon=btop
