@@ -42,6 +42,12 @@ sleep 5; ck "battery level unreadable: nothing said, no shutdown" '[[ ! -s $N &&
 set_b 3 Discharging 0; sleep 1; set_b 55 Discharging 0; sleep 4
 ck "a low reading that is gone before the wait ends: shutdown cancelled" '[[ ! -e $T/poweroff && $(seen "Battery at 55%|Shutdown cancelled.") == 1 ]]'
 kill $PW 2>/dev/null; wait $PW 2>/dev/null
+rm -f "$T/poweroff"; : >"$N"; set_b 3 Discharging 0 # a USB-C charger: no Mains supply comes online, the battery just starts charging
+ORACLE_POWER_SUPPLY=$PS ORACLE_POWER_RUN=$T/run ORACLE_POWER_TICK=1 ORACLE_POWER_GRACE=4 ORACLE_POWEROFF="touch $T/poweroff" \
+  bash "$R/system/oracle-power" >"$T/power3.log" 2>&1 & PW=$!
+sleep 2; set_b 3 Charging 0; sleep 5
+ck "battery 3%, USB-C charger plugged in during the wait (no Mains): shutdown cancelled" '[[ ! -e $T/poweroff && $(seen "Power is back|Shutdown cancelled.") == 1 ]]'
+kill $PW 2>/dev/null; wait $PW 2>/dev/null
 mkdir -p "$T/none"; out=$(ORACLE_POWER_SUPPLY=$T/none bash "$R/system/oracle-power"; echo "rc=$?")
 ck "no battery: exits quietly" '[[ $out == *"rc=0" ]]'
 cat "$T/power.log"
