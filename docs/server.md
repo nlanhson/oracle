@@ -51,7 +51,7 @@ The original photos also live in iCloud Photos and cloud storage, so losing the 
 
 - **Immich:** in `~/docker/immich/`, copy `~/.local/share/oracle/server/immich/.env.example` to `.env`, set a random `DB_PASSWORD` (letters and numbers only), `chmod 600 .env`, then `docker compose up -d` and open http://localhost:2283 to create the admin account.
 - **Tailscale:** `sudo tailscale up --operator=$USER`, open the link, log in. Then `oracle update` shares Immich and Dockge with the phone.
-- **Phone:** install Immich, set the server to the `https://…ts.net` address, log in, Backup → **Recents** → on. In iOS Settings, turn on **Background App Refresh** for Immich.
+- **Phone:** install Immich, set the server to the `https://…ts.net` address (if the app cannot find that name, for example with a DNS profile on the phone: `http://<the laptop's Tailscale number>:2283` reaches the same server, also over Tailscale only), log in, Backup → **Recents** → on. In iOS Settings, turn on **Background App Refresh** for Immich.
 - **VPN exit node:**
   1. ProtonVPN key: account.protonvpn.com → Downloads → WireGuard configuration. Platform **GNU/Linux**, NetShield off, Moderate NAT off, NAT-PMP off, VPN Accelerator on, any **free** server.
   2. Copy only the `PrivateKey` into `~/docker/vpn/.env` (template: `server/vpn/.env.example`), `chmod 600`. Don't paste the key into a chat. Delete the downloaded file.
