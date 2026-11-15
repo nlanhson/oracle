@@ -136,19 +136,23 @@ Open choices are made inside their slice and shown to you before building: the l
 
 ## Status
 
-| Slice | State |
+All slices are built and sit together on `feel/base`. The G14 runs them as a preview (`oracle try feel/try`) since
+2026-11-12. What is left: the owner's hands-on check (`docs/feel-checklist.md`, findings go in `docs/feel-tuning.md`),
+fixes from it, then the merge into `main`.
+
+| Slice | State (2026-11-16) |
 |---|---|
 | 0 Spec | Done 2026-11-11 |
-| 1 Motion | Built on `feel/motion`, waiting for the feel check on the G14 |
-| 2 One look | Built on `feel/look`, waiting for the feel check |
-| 3 Control Center | Rebuilt with Quickshell (`feel/cc`), waiting for feel check. Notification Center = swaync only |
-| 4 Launcher | Built on `feel/launcher` (stacked on `feel/look`), waiting for the feel check. Own small GTK4 program, fuzzel removed |
-| 5 Boot to desktop | Built, waiting for feel check (branch `feel/boot`) |
-| 6 Screenshot flow | Built on `feel/shot`, waiting for feel check. Editor: satty |
-| 7 System logic | Built on `feel/system`, waiting for feel check. Power button, battery rules, idle by power source, quiet update check, plain-word alerts, doctor lines. Boot time measured below |
-| 8 Welcome | Built on `feel/welcome`, waiting for feel check |
-| 9 Secure Boot + UKI | Built, VM-proven, opt-in: owner switches it on (`oracle secureboot setup`, docs/manual/secure-boot.md). No UKI: Limine checks kernel, initramfs and cmdline by hash instead |
-| 10 Behaviour | Built on `feel/behaviour`, waiting for feel check |
+| 1 Motion | Built. Checked on the G14 (round 1) |
+| 2 One look | Built. Bar blur, text and lock screen checked (round 1). Frosted panels fixed after round 1, to re-check |
+| 3 Control Center | Built with Quickshell; the Notification Center is swaync. Round 1 fixes shipped, to re-check |
+| 4 Launcher (Signal) | Built: own small GTK4 program, fuzzel removed. Sums, learning and the power confirm checked (round 1) |
+| 5 Boot to desktop | Built. To check on the G14: silent boot, menu on M, login, a wrong password |
+| 6 Screenshot flow | Built (editor: satty). The thumbnail banner did not show on the owner's first try; not reproduced, to re-check |
+| 7 System logic | Built. Power button checked (round 1). Battery notices, idle and alerts to check |
+| 8 Welcome | Built. Shows on a fresh install only (VM-tested) |
+| 9 Secure Boot | Built, VM-proven, opt-in: the owner switches it on (`oracle secureboot setup`, docs/manual/secure-boot.md). No UKI: Limine checks kernel, initramfs and boot line by hash. Separate from it, on every machine: the disk key follows firmware updates |
+| 10 Behaviour | Built. Round 1 fixes shipped (four-finger Shell gesture, force quit, Quick Look), to re-check |
 
 ## Boot time (slice 7)
 
@@ -163,4 +167,8 @@ Userspace is already lean: the slowest path is NetworkManager → wait-online (0
 Nothing there is waste the server can do without, so nothing was cut (the 0.1 s difference is noise between runs).
 On the G14, Wi-Fi can make wait-online take a few seconds, but that only delays docker, not the login screen.
 Loader, kernel and initrd belong to slice 5 (silent boot).
+
+On the G14 itself (2026-11-14, a real start, read with `systemd-analyze`): firmware 5.8 s, loader 2.4 s, kernel 0.55 s,
+initrd 3.6 s, userspace 3.5 s, about 16 s in all. About 3 s of the initrd is the disk unlock (disk found at 0.8 s, opened
+at 3.8 s). Why it takes that long is open: it needs root to look, so it waits for a session at the laptop.
 
